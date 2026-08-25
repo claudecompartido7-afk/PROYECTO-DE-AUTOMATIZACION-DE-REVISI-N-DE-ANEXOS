@@ -14,11 +14,12 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v4.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v5.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v4.md              Reglas vigentes
-reglas/ANEXO-1_reglas-v3.md              Reglas previas a las contra observaciones
+reglas/ANEXO-1_reglas-v5.md              Reglas vigentes
+reglas/ANEXO-1_reglas-v4.md              Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
@@ -30,19 +31,24 @@ tests/validadores.test.js                Pruebas de los validadores (Node)
 node tests/validadores.test.js
 ```
 
-106 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+137 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
-regla de mayúsculas y preservación de las columnas del revisor.
+regla de mayúsculas, sufijo de formulario, puntuación de las filas de proceso y
+preservación de las columnas del revisor.
 
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v4.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v5.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
-   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1`, `COBERTURA_PROCESOS_A1`
-   y `OBSERVACIONES_PROCESOS_A1`
+   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
+   `OBSERVACIONES_DE_PROCESO_A1`
+
+La hoja `COBERTURA_PROCESOS_A1` se **renombra** a `OBSERVACIONES_DE_PROCESO_A1`
+en la primera corrida de la v5; no se crea una hoja nueva, para que las contra
+observaciones ya escritas viajen con ella.
 
 ## Columna CONTRA OBSERVACIÓN
 
@@ -50,6 +56,13 @@ El revisor puede añadir columnas propias a la derecha de las que genera el
 script. **Se conservan entre corridas**: antes de reescribir cada hoja, el
 script las lee y las repone reidentificando la fila por su contenido. No hace
 falta volver a escribirlas después de cada auditoría.
+
+## Lectura del Anexo 1 desde fuera de Google
+
+El conector de Google Drive corta cada pestaña en **250 filas**. Siete pestañas
+superan ese límite (FDCP, FFB, FO, FQIQ, FCC, FCM, FPSIC), así que cualquier
+análisis hecho sobre esa exportación da mínimos, no totales. Las cifras válidas
+son las que produce el script al ejecutarse dentro de Google.
 
 ## Nota sobre las reglas
 

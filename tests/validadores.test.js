@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v4.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v5.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -22,9 +22,10 @@ module.exports = {
   CONFIG_A1, validarCodigo_, validarTipoProducto_, validarAccionEstrategica_,
   validarActividadOperativa_, validarListaCerrada_, validarListaAbierta_,
   esDenominacionDeProcesoN0_, buscarNivel0PorNombre_, facultadDeLaHoja_,
-  localizarHoja_, construirCobertura_, esValorNulo_, normalizarTexto_,
-  normalizarCodigo_, clasificarFila_, extraerCodigos_, denominacionDe_,
-  rescatarColumnasManuales_
+  localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
+  clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
+  filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
+  TOTAL_CRITERIOS_PROCESO
 };
 `;
 
@@ -205,17 +206,22 @@ bloque("Jerarquía — procesos con código de producto", function () {
 });
 
 bloque("Cobertura de los 16 procesos de Nivel 0", function () {
-  const vacia = M.construirCobertura_("FM", {});
-  chequear("son 16 procesos", vacia.length === 16);
-  chequear("PE.03 se reporta como NO APLICA", vacia.find(function (c) { return c[1] === "PE.03"; })[4] === "NO APLICA");
-  chequear("PS.08 se reporta como NO APLICA", vacia.find(function (c) { return c[1] === "PS.08"; })[4] === "NO APLICA");
-  chequear("quedan 14 obligatorios faltantes",
-    vacia.filter(function (c) { return c[4] === "FALTANTE"; }).length === 14);
+  const vacia = M.filasNivel0_("FM", {});
+  const porCodigo = function (c) { return vacia.find(function (f) { return f[1] === c; }); };
 
-  const completa = {};
-  M.CONFIG_A1.PROCESOS_NIVEL0.forEach(function (p) { completa[M.normalizarTexto_(p.codigo)] = true; });
-  chequear("con los 16 presentes no hay faltantes",
-    M.construirCobertura_("FM", completa).filter(function (c) { return c[4] === "FALTANTE"; }).length === 0);
+  chequear("son 16 procesos", vacia.length === 16);
+  chequear("PE.03 se reporta como NO APLICA", porCodigo("PE.03")[6] === "NO APLICA");
+  chequear("PS.08 se reporta como NO APLICA", porCodigo("PS.08")[6] === "NO APLICA");
+  chequear("quedan 14 obligatorios faltantes",
+    vacia.filter(function (f) { return f[6] === "FALTANTE"; }).length === 14);
+  chequear("un faltante puntúa 0", porCodigo("PE.01")[8] === "0/" + M.TOTAL_CRITERIOS_PROCESO);
+  chequear("un opcional ausente no puntúa", porCodigo("PE.03")[8] === "—");
+
+  const conforme = M.clasificarFila_("PE.01_F01 GESTIÓN ESTRATÉGICA", function () { return true; }, "F01");
+  const llena = M.filasNivel0_("FM", { "PE.01": { fila: 7, cls: conforme } });
+  chequear("un Nivel 0 correcto sale CONFORME al 100%",
+    llena[0][6] === "CONFORME" && llena[0][7] === "100%");
+  chequear("y registra la fila del Anexo 1", llena[0][5] === 7);
 });
 
 
@@ -262,8 +268,8 @@ bloque("Jerarquía de profundidad variable (contra observación FDCP)", function
 bloque("Nivel 0 por código embebido o denominación (contra observaciones de cobertura)", function () {
   const fo = M.clasificarFila_("PM.03.19_F05 PS.01 GESTIÓN DE ADMISIÓN Y MATRÍCULA", padreEntre(["PM.03", "PM.03.19"]));
   chequear("FO: reconoce PS.01 pese al código PM.03.19", fo.tipo === "nivel0" && fo.nivel0.codigo === "PS.01");
-  chequear("FO: reporta que la celda arrastra dos códigos",
-    fo.observaciones.some(function (o) { return /arrastra 2 códigos/.test(o); }));
+  chequear("FO: declara la codificación errónea",
+    fo.observaciones.some(function (o) { return /CODIFICACIÓN ERRÓNEA/.test(o); }));
 
   const ffb = M.clasificarFila_("PE.01.03.06_F04 PE.02_04 GESTIÓN DE LA CALIDAD Y MEJORA CONTINUA",
     padreEntre(["PE.01", "PE.01.03", "PE.01.03.06"]));
@@ -334,6 +340,99 @@ bloque("Preservación de las columnas del revisor", function () {
 
   chequear("una hoja inexistente no rompe el rescate",
     M.rescatarColumnasManuales_(null, encabezados, clave).encabezados.length === 0);
+});
+
+
+bloque("Codificación errónea con el código correcto en la misma celda", function () {
+  const fo = M.clasificarFila_("PM.03.173_F05 PS.08 GESTIÓN DE ACTIVIDADES PRODUCTIVAS",
+    padreEntre(["PM.03", "PM.03.173"]), "F05");
+
+  chequear("reconoce PS.08", fo.tipo === "nivel0" && fo.nivel0.codigo === "PS.08");
+
+  const obs = fo.observaciones.join(" ");
+  chequear("declara la codificación errónea", /CODIFICACIÓN ERRÓNEA/.test(obs));
+  chequear("nombra el código que sobra", /PM\.03\.173_F05/.test(obs));
+  chequear("nombra el código que debe quedar", /PS\.08_F05/.test(obs));
+  chequear("marca fallado el criterio de código único", fo.checks.unico === false);
+
+  const ps10 = M.clasificarFila_("PM.03.180_F05 PS.10 GESTIÓN DE LA COMUNICACIÓN",
+    padreEntre(["PM.03", "PM.03.180"]), "F05");
+  chequear("el mismo diagnóstico aplica a PS.10",
+    ps10.nivel0.codigo === "PS.10" && /CODIFICACIÓN ERRÓNEA/.test(ps10.observaciones.join(" ")));
+
+  const corregido = M.clasificarFila_("PS.10_F05 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), "F05");
+  chequear("una vez corregido el código, no hay observación",
+    corregido.tipo === "nivel0" && corregido.nivel0.codigo === "PS.10" && corregido.observaciones.length === 0);
+});
+
+bloque("Sufijo de formulario consistente en la pestaña", function () {
+  chequear("extrae el sufijo con guion bajo", M.sufijoDe_("PS.10_F04") === "F04");
+  chequear("extrae el sufijo con punto", M.sufijoDe_("PM.02.F07") === "F07");
+  chequear("acepta el sufijo sin la F tras guion bajo", M.sufijoDe_("PE.02_04") === "F04");
+  chequear("no confunde el último grupo del código con un sufijo", M.sufijoDe_("PM.03.173") === null);
+  chequear("sin sufijo devuelve null", M.sufijoDe_("PS.10") === null);
+
+  const ajeno = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), "F05");
+  chequear("detecta el sufijo que no corresponde a la hoja", ajeno.checks.sufijo === false);
+  chequear("y lo explica", /Sufijo de formulario inconsistente/.test(ajeno.observaciones.join(" ")));
+
+  const propio = M.clasificarFila_("PS.10_F05 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), "F05");
+  chequear("no marca el sufijo correcto", propio.checks.sufijo === true);
+
+  const sinEsperado = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), null);
+  chequear("sin sufijo dominante no inventa observaciones", sinEsperado.checks.sufijo === true);
+});
+
+bloque("Puntuación de las filas de proceso", function () {
+  chequear("son 5 criterios", M.TOTAL_CRITERIOS_PROCESO === 5 && M.CRITERIOS_PROCESO.length === 5);
+
+  const todoBien = { unico: true, coherente: true, sufijo: true, mayusculas: true };
+  chequear("todo correcto y registrado puntúa 5", M.puntuarProceso_(todoBien, true) === 5);
+  chequear("no registrado pierde un punto", M.puntuarProceso_(todoBien, false) === 4);
+  chequear("dos fallos restan dos puntos",
+    M.puntuarProceso_({ unico: false, coherente: true, sufijo: false, mayusculas: true }, true) === 3);
+
+  const cls = M.clasificarFila_("PS.09_F04 Gestión de Recursos Bibliográficos", padreEntre(["PS.09"]), "F05");
+  const fila = M.filaDeProceso_("FO", "PS.09", "GESTIÓN DE RECURSOS BIBLIOGRÁFICOS", "Nivel 0", "Obligatorio", 292, cls);
+  chequear("una fila con dos fallos sale OBSERVADO", fila[6] === "OBSERVADO");
+  chequear("y muestra el detalle puntuado", fila[8] === "3/5");
+  chequear("con el porcentaje correspondiente", fila[7] === "60%");
+  chequear("y las observaciones en la misma fila",
+    /Sufijo de formulario/.test(fila[9]) && /MAYÚSCULAS/.test(fila[9]));
+});
+
+bloque("Rescate de columnas tras el cambio de formato de la hoja", function () {
+  const hojaSimulada = function (valores) {
+    return {
+      getLastRow: function () { return valores.length; },
+      getLastColumn: function () { return valores[0].length; },
+      getRange: function (r, c, nr, nc) {
+        return { getValues: function () {
+          return valores.slice(r - 1, r - 1 + nr).map(function (f) { return f.slice(c - 1, c - 1 + nc); });
+        } };
+      }
+    };
+  };
+
+  // Hoja COBERTURA_PROCESOS_A1 de la v4: 6 columnas generadas + la del revisor.
+  const previaV4 = [
+    ["FACULTAD", "CÓDIGO", "PROCESO NIVEL 0", "EXIGENCIA", "ESTADO", "OBSERVACIÓN", "CONTRA OBSERVACIÓN"],
+    ["FO", "PS.09", "GESTIÓN DE RECURSOS BIBLIOGRÁFICOS", "Obligatorio", "FALTANTE", "obs", "Corregido en B292"],
+    ["FO", "PS.10", "GESTIÓN DE LA COMUNICACIÓN", "Obligatorio", "FALTANTE", "obs", "Corregido en B324"]
+  ];
+  // La hoja nueva tiene 10 columnas generadas: más que la previa.
+  const encabezadosV5 = ["FACULTAD", "CÓDIGO", "PROCESO", "NIVEL", "EXIGENCIA", "FILA",
+                         "ESTADO", "CUMPLIMIENTO", "CRITERIOS", "OBSERVACIONES Y CORRECCIONES"];
+  const clave = function (f) { return f[0] + "␟" + M.normalizarCodigo_(f[1]); };
+
+  const rescate = M.rescatarColumnasManuales_(hojaSimulada(previaV4), encabezadosV5, clave);
+
+  chequear("rescata aunque la hoja previa sea más angosta que la nueva",
+    rescate.encabezados.length === 1 && rescate.encabezados[0] === "CONTRA OBSERVACIÓN");
+  chequear("conserva la contra observación de PS.09", rescate.porClave["FO␟PS.09"][0] === "Corregido en B292");
+  chequear("conserva la contra observación de PS.10", rescate.porClave["FO␟PS.10"][0] === "Corregido en B324");
+  chequear("no confunde PROCESO NIVEL 0 ni OBSERVACIÓN con columnas del revisor",
+    rescate.encabezados.indexOf("PROCESO NIVEL 0") === -1 && rescate.encabezados.indexOf("OBSERVACIÓN") === -1);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

@@ -4,7 +4,10 @@ Registradas en `COBERTURA_PROCESOS_A1` y `DETALLADO_PRODUCTOS_A1` del dashboard,
 sobre la corrida de la v3. Se leyeron 44 contra observaciones: 13 en cobertura y
 31 en detalle.
 
-**Resultado: 42 aceptadas y aplicadas, 2 no confirmadas por los datos.**
+**Resultado: las 44 aceptadas y aplicadas.**
+
+> Las 2 que en la primera respuesta se dieron por no confirmadas sí eran
+> correctas: la lectura del Anexo 1 estaba truncada. Ver el apartado 4.
 
 ---
 
@@ -61,15 +64,32 @@ tienen la denominación correcta bajo un código equivocado:
 **Corrección.** Un proceso de Nivel 0 se reconoce por su denominación o por un
 código de un nivel embebido en cualquier posición de la celda. Ver regla 3.3.
 
-### 2 no confirmadas por los datos
+### Las 2 que se dieron por no confirmadas — **rectificado**
 
-| Contra observación | Qué muestra la hoja |
+Se informó que la FFB no tenía PS.10 y que la FO no tenía PS.09 ni PS.10, «según
+lo que muestra la hoja». **Esa conclusión era incorrecta y queda sin efecto.**
+
+El conector de Google Drive que se usó para leer el Anexo 1 **corta cada pestaña
+en 250 filas**. Siete pestañas superan ese límite —FDCP, FFB, FO, FQIQ, FCC, FCM
+y FPSIC—, de modo que lo que se leyó como «la hoja termina aquí» era el corte de
+la exportación, no el final de la hoja.
+
+Las filas en cuestión están más abajo de ese corte:
+
+| Celda | Contenido |
 |---|---|
-| **FFB PS.10** — se cita `PS.09_F04 GESTIÓN DE LA COMUNICACIÓN` | Esa fila no existe en el libro. La hoja de la FFB termina en `PS.04.02.05_F04 PLANILLAS DE RETRIBUCIONES ECONÓMICAS`; no hay ninguna fila con «BIBLIOGRÁFICOS» ni «COMUNICACIÓN». La cita coincide con la fila de la **FE**, que sí la tiene. |
-| **FO PS.09 y PS.10** | La hoja de la FO termina en `PM.03.167_F05 INCIDENCIAS TECNOLÓGICAS REGISTRADAS Y ATENDIDAS`. El último proceso embebido es `PM.03.152_F05 PS.07 GESTIÓN DE LA TECNOLOGÍA DE LA INFORMACIÓN`. No hay PS.08, PS.09 ni PS.10. |
+| FO **B255** | `PM.03.173_F05 PS.08 GESTIÓN DE ACTIVIDADES PRODUCTIVAS` |
+| FO **B292** | `PS.09_F04 GESTIÓN DE RECURSOS BIBLIOGRÁFICOS` |
+| FO **B324** | `PS.10_F04 GESTIÓN DE LA COMUNICACIÓN` |
 
-Ambos siguen reportándose como FALTANTE. Si la información está en otro archivo
-o pestaña, indíquelo y se ajusta el alcance de la búsqueda.
+Las 13 contra observaciones de cobertura eran correctas. **El script sí las
+reconoce**: B292 y B324 por su código de un nivel más la denominación, y B255
+por el código `PS.08` embebido junto al erróneo `PM.03.173_F05`.
+
+**Consecuencia para el resto del informe.** Ninguna cifra por facultad obtenida
+de esa exportación es un total: para las siete pestañas truncadas son mínimos.
+Las cifras válidas son las que produce el propio script al ejecutarse dentro de
+Google, que lee la hoja completa.
 
 ---
 
