@@ -115,22 +115,40 @@ Cada proceso Nivel 0 presente debe tener **al menos un producto** asociado.
 | 7 | H | Variables de calidad | Contiene ≥1 de las 5 variables |
 | 8 | I | Criterios de validación | Contiene ≥1 de los 5 criterios |
 
-**4.3 Acción estratégica (col D) — REGLA A DEFINIR.**
-Hoy solo se aceptan `AE.##` y `AE ##`. En los datos reales conviven otras
-nomenclaturas que el validador rechaza:
+**4.3 Acción estratégica (col D) — REGLA CERRADA.**
 
-| Variante | Filas | ¿Válida? |
+Formato exigido: **`AE` + numeración de dos niveles + descripción**.
+Ejemplo canónico: `AE.02.01 Formación académica de calidad`.
+Se aceptan como separador el punto, el espacio o el guion, y como separador
+entre código y texto el espacio, los dos puntos o ninguno.
+
+Los dos niveles son `AE.<objetivo>.<acción>`: el primero identifica el objetivo
+estratégico del que deriva la acción y el segundo el correlativo de la acción.
+Por eso `AE.02` es un registro incompleto — nombra el objetivo, no la acción.
+
+**Siglas rechazadas.** Ninguna de estas es una forma válida de la acción
+estratégica, y cada una falla por un motivo distinto:
+
+| Sigla | Filas | Por qué es un error | Corrección |
+|---|---|---|---|
+| `AEI` | 19 | Sigla del PEI (*Acción Estratégica Institucional*). El Anexo 1 normaliza a `AE`. | **No basta con quitar la «I».** La numeración del PEI no coincide con la del Anexo: `AEI.04.02` = «Simplificación administrativa» mientras `AE 04.02` = «Infraestructura y equipamiento». Hay que ubicar la AE equivalente **por su descripción**. |
+| `OE` | 19 | Nivel jerárquico equivocado: es un *Objetivo* Estratégico, no una *Acción*. El objetivo agrupa varias acciones. | Descender al nivel de acción: de `OE.02` → `AE.02.01` + descripción. |
+| `AO` | 3 | Contenido en la columna equivocada: identifica una *Actividad Operativa*, que va en la **columna E**. | Trasladar el texto a E y registrar en D la AE de la que depende. |
+| `AS` | 76 | Sigla no reconocida en el planeamiento institucional. Además vienen sin descripción, solo el código. | Reemplazar por la AE correspondiente en formato `AE.##.##` + texto. |
+| `AM` | 20 | Igual que `AS`. | Igual que `AS`. |
+
+**Otros incumplimientos de la columna D:**
+
+| Caso | Filas | Motivo |
 |---|---|---|
-| `AE.##.##` / `AE ##.##` | 1 613 | Sí |
-| *(vacía)* | 200 | No |
-| `AEI.##.##` | 19 | **por decidir** |
-| `AS.##.##` | 76 | **por decidir** |
-| `OE.##` | 19 | **por decidir** |
-| otras | 55 | **por decidir** |
+| Vacía | 200 | Todo producto se alinea a una AE. |
+| Código sin descripción (`AE.04.02` a secas) | 512 | La regla 3.1 exige código **seguido del texto** de la acción. |
+| Marcador de vacío (`NINGUNO`) | 5 | No es una acción estratégica. |
 
 **4.4 Actividad operativa (col E) — CORRECCIÓN.**
 Debe rechazarse explícitamente el literal `NINGUNO` y variantes
 (`N/A`, `NO APLICA`, `-`). Hoy 85 filas lo usan y **aprueban indebidamente**.
+También se rechaza una acción estratégica registrada aquí por error.
 
 **Valores de referencia**
 
