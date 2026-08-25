@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v3.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v4.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -22,7 +22,9 @@ module.exports = {
   CONFIG_A1, validarCodigo_, validarTipoProducto_, validarAccionEstrategica_,
   validarActividadOperativa_, validarListaCerrada_, validarListaAbierta_,
   esDenominacionDeProcesoN0_, buscarNivel0PorNombre_, facultadDeLaHoja_,
-  localizarHoja_, construirCobertura_, esValorNulo_, normalizarTexto_
+  localizarHoja_, construirCobertura_, esValorNulo_, normalizarTexto_,
+  normalizarCodigo_, clasificarFila_, extraerCodigos_, denominacionDe_,
+  rescatarColumnasManuales_
 };
 `;
 
@@ -102,14 +104,13 @@ bloque("Columna D — el diagnóstico explica el error", function () {
   chequear("un nivel explica objetivo vs acción", /dos niveles/.test(unNivel));
 });
 
-bloque("Columna E — Actividad Operativa", function () {
+bloque("Columna E — Actividad Operativa (contra observación: solo exige texto)", function () {
   chequear("acepta texto real", M.validarActividadOperativa_("Gestión del planeamiento institucional").ok);
-  chequear("rechaza NINGUNO", !M.validarActividadOperativa_("NINGUNO").ok);
-  chequear("rechaza N/A", !M.validarActividadOperativa_("N/A").ok);
+  chequear("acepta NINGUNO", M.validarActividadOperativa_("NINGUNO").ok);
+  chequear("acepta N/A", M.validarActividadOperativa_("N/A").ok);
   chequear("rechaza vacía", !M.validarActividadOperativa_("").ok);
   chequear("rechaza una AE mal ubicada", !M.validarActividadOperativa_("AE.01.02 algo").ok);
-  chequear("el mensaje de NINGUNO lo llama marcador de vacío",
-    /marcador de vacío/.test(M.validarActividadOperativa_("NINGUNO").obs));
+  chequear("rechaza un texto de dos caracteres", !M.validarActividadOperativa_("ok").ok);
 });
 
 bloque("Columnas C, F, G, H, I", function () {
@@ -215,6 +216,124 @@ bloque("Cobertura de los 16 procesos de Nivel 0", function () {
   M.CONFIG_A1.PROCESOS_NIVEL0.forEach(function (p) { completa[M.normalizarTexto_(p.codigo)] = true; });
   chequear("con los 16 presentes no hay faltantes",
     M.construirCobertura_("FM", completa).filter(function (c) { return c[4] === "FALTANTE"; }).length === 0);
+});
+
+
+/* ─── Bloques añadidos en la v4, a partir de las contra observaciones ─────── */
+
+/** Construye el predicado `esPadre` a partir de una lista de códigos. */
+function padreEntre(codigos) {
+  const normalizados = codigos.map(M.normalizarCodigo_);
+  return function (base) {
+    const b = M.normalizarCodigo_(base);
+    return normalizados.some(function (x) { return x !== b && x.indexOf(b + ".") === 0; });
+  };
+}
+
+bloque("Jerarquía de profundidad variable (contra observación FDCP)", function () {
+  const fdcp = padreEntre([
+    "PM.01", "PM.01.01", "PM.01.01.01", "PM.01.01.01.01", "PM.01.01.01.02",
+    "PM.01.02.02", "PM.01.02.02.05"
+  ]);
+
+  const subproceso = M.clasificarFila_("PM.01.01.01_F02 DISEÑO Y ACTUALIZACIÓN CURRICULAR", fdcp);
+  chequear("un código con descendientes es proceso, no producto", subproceso.tipo === "proceso");
+
+  const cinco = M.clasificarFila_("PM.01.01.01.01_F02 PLAN CURRICULAR DE PREGRADO DE LAS ESCUELAS", fdcp);
+  chequear("un código de cinco niveles es producto", cinco.tipo === "producto");
+  chequear("y conserva su código", cinco.codigo && cinco.codigo.indexOf("PM.01.01.01.01") === 0);
+
+  const hoja = M.clasificarFila_("PM.01.02.02.05_F02 INFORME DE ACTIVIDADES DEL DOCENTE CONTRATADO VALIDADO", fdcp);
+  chequear("PM.01.02.02.05 es producto con código", hoja.tipo === "producto" && !!hoja.codigo);
+
+  const fm = padreEntre(["PE.01", "PE.01.01", "PE.01.01.01", "PE.01.02", "PE.01.02.01"]);
+  chequear("regresión FM: PE.01.01.01 sigue siendo producto",
+    M.clasificarFila_("PE.01.01.01_F01 PLAN ESTRATÉGICO APROBADO", fm).tipo === "producto");
+  chequear("regresión FM: PE.01.02 sigue siendo proceso",
+    M.clasificarFila_("PE.01.02_F01 MODERNIZACIÓN DE LA FACULTAD", fm).tipo === "proceso");
+  chequear("FO: un código de dos niveles sin hijos es producto",
+    M.clasificarFila_("PM.02.01_F05 ARTÍCULOS CIENTÍFICOS PUBLICADOS.", padreEntre(["PM.02", "PM.02.01"])).tipo === "producto");
+  chequear("un código de un solo nivel sin hijos no es producto",
+    M.clasificarFila_("PS.11_F03 ALGO NO CATALOGADO", padreEntre(["PS.11"])).tipo === "proceso");
+  chequear("un código de Nivel 0 sin hijos se clasifica como nivel0",
+    M.clasificarFila_("PS.08_F03 GESTIÓN DE ACTIVIDADES PRODUCTIVAS", padreEntre(["PS.08"])).tipo === "nivel0");
+});
+
+bloque("Nivel 0 por código embebido o denominación (contra observaciones de cobertura)", function () {
+  const fo = M.clasificarFila_("PM.03.19_F05 PS.01 GESTIÓN DE ADMISIÓN Y MATRÍCULA", padreEntre(["PM.03", "PM.03.19"]));
+  chequear("FO: reconoce PS.01 pese al código PM.03.19", fo.tipo === "nivel0" && fo.nivel0.codigo === "PS.01");
+  chequear("FO: reporta que la celda arrastra dos códigos",
+    fo.observaciones.some(function (o) { return /arrastra 2 códigos/.test(o); }));
+
+  const ffb = M.clasificarFila_("PE.01.03.06_F04 PE.02_04 GESTIÓN DE LA CALIDAD Y MEJORA CONTINUA",
+    padreEntre(["PE.01", "PE.01.03", "PE.01.03.06"]));
+  chequear("FFB: reconoce PE.02", ffb.tipo === "nivel0" && ffb.nivel0.codigo === "PE.02");
+
+  const fqiq = M.clasificarFila_("PM.01.04.07_F07 PM.02.F07 GESTIÓN DE LA INVESTIGACIÓN",
+    padreEntre(["PM.01", "PM.01.04", "PM.01.04.07"]));
+  chequear("FQIQ: reconoce PM.02 con sufijo .F07", fqiq.tipo === "nivel0" && fqiq.nivel0.codigo === "PM.02");
+
+  const fe = M.clasificarFila_("PS.09_F06 Gestión de Comunicación", padreEntre(["PS.09"]));
+  chequear("FE: la denominación manda sobre el código", fe.tipo === "nivel0" && fe.nivel0.codigo === "PS.10");
+  chequear("FE: reporta la discrepancia código/denominación",
+    fe.observaciones.some(function (o) { return /Discrepancia entre código y denominación/.test(o); }));
+
+  chequear("acepta el sufijo _04 sin la F",
+    M.extraerCodigos_("PE.02_04 GESTIÓN").length === 1);
+  chequear("la denominación sale limpia de códigos",
+    M.denominacionDe_("PM.03.19_F05 PS.01 GESTIÓN DE ADMISIÓN Y MATRÍCULA",
+      M.extraerCodigos_("PM.03.19_F05 PS.01 GESTIÓN DE ADMISIÓN Y MATRÍCULA")) === "GESTIÓN DE ADMISIÓN Y MATRÍCULA");
+});
+
+bloque("Denominación de proceso en MAYÚSCULAS (regla pedida por el revisor)", function () {
+  const minuscula = M.clasificarFila_("PS.09_F06 Gestión de Comunicación", padreEntre(["PS.09"]));
+  chequear("detecta la denominación en minúsculas",
+    minuscula.observaciones.some(function (o) { return /MAYÚSCULAS/.test(o); }));
+
+  const correcta = M.clasificarFila_("PE.01_F05 GESTIÓN ESTRATÉGICA", padreEntre(["PE.01"]));
+  chequear("no marca las que ya están bien",
+    !correcta.observaciones.some(function (o) { return /MAYÚSCULAS/.test(o); }));
+
+  const subproceso = M.clasificarFila_("PE.02.01_F05 Aseguramiento de la Calidad",
+    padreEntre(["PE.02.01", "PE.02.01.01"]));
+  chequear("también aplica a los subprocesos",
+    subproceso.tipo === "proceso" && subproceso.observaciones.some(function (o) { return /MAYÚSCULAS/.test(o); }));
+});
+
+bloque("Preservación de las columnas del revisor", function () {
+  const hojaSimulada = function (valores) {
+    return {
+      getLastRow: function () { return valores.length; },
+      getLastColumn: function () { return valores[0].length; },
+      getRange: function (r, c, nr, nc) {
+        return { getValues: function () {
+          return valores.slice(r - 1, r - 1 + nr).map(function (f) { return f.slice(c - 1, c - 1 + nc); });
+        } };
+      }
+    };
+  };
+
+  const encabezados = ["FACULTAD", "CÓDIGO", "PROCESO NIVEL 0", "EXIGENCIA", "ESTADO", "OBSERVACIÓN"];
+  const clave = function (f) { return f[0] + "␟" + f[1]; };
+
+  const previas = [
+    encabezados.concat(["CONTRA OBSERVACIÓN"]),
+    ["FFB", "PE.02", "GESTIÓN DE LA CALIDAD", "Obligatorio", "FALTANTE", "obs", "Sí tiene la denominación"],
+    ["FO", "PS.01", "GESTIÓN DE ADMISIÓN", "Obligatorio", "FALTANTE", "obs", ""]
+  ];
+  const rescate = M.rescatarColumnasManuales_(hojaSimulada(previas), encabezados, clave);
+
+  chequear("detecta la columna añadida a mano",
+    rescate.encabezados.length === 1 && rescate.encabezados[0] === "CONTRA OBSERVACIÓN");
+  chequear("recupera el texto del revisor", rescate.porClave["FFB␟PE.02"][0] === "Sí tiene la denominación");
+  chequear("ignora las filas sin contra observación", rescate.porClave["FO␟PS.01"] === undefined);
+
+  const sinExtras = M.rescatarColumnasManuales_(
+    hojaSimulada([encabezados, ["FFB", "PE.02", "a", "b", "c", "d"]]), encabezados, clave);
+  chequear("sin columnas extra no rescata nada", sinExtras.encabezados.length === 0);
+
+  chequear("una hoja inexistente no rompe el rescate",
+    M.rescatarColumnasManuales_(null, encabezados, clave).encabezados.length === 0);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

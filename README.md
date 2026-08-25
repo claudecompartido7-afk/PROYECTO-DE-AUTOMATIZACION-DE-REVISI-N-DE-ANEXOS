@@ -14,10 +14,13 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v3.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v4.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v3.md              Reglas consolidadas y verificadas
+reglas/ANEXO-1_reglas-v4.md              Reglas vigentes
+reglas/ANEXO-1_reglas-v3.md              Reglas previas a las contra observaciones
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
+docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
 ```
 
@@ -27,17 +30,26 @@ tests/validadores.test.js                Pruebas de los validadores (Node)
 node tests/validadores.test.js
 ```
 
-81 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
-localización de pestañas con los 20 títulos reales, detección de procesos
-registrados con código de producto y cobertura de los 16 procesos de Nivel 0.
+106 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+localización de pestañas con los 20 títulos reales, jerarquía de profundidad
+variable, detección de procesos de Nivel 0 por código embebido o denominación,
+regla de mayúsculas y preservación de las columnas del revisor.
 
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v3.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v4.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
-   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y `COBERTURA_PROCESOS_A1`
+   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1`, `COBERTURA_PROCESOS_A1`
+   y `OBSERVACIONES_PROCESOS_A1`
+
+## Columna CONTRA OBSERVACIÓN
+
+El revisor puede añadir columnas propias a la derecha de las que genera el
+script. **Se conservan entre corridas**: antes de reescribir cada hoja, el
+script las lee y las repone reidentificando la fila por su contenido. No hace
+falta volver a escribirlas después de cada auditoría.
 
 ## Nota sobre las reglas
 
