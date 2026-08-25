@@ -234,19 +234,55 @@ productos. Por eso el resultado se publica en la hoja
 `OBSERVACIONES_PROCESOS_A1`, no en `DETALLADO_PRODUCTOS_A1`.
 
 **6.3 Sufijo de formulario `_F##` — NUEVA en v5.** Todo código de una pestaña
-debe llevar el mismo sufijo, que identifica el formulario de la facultad. Se
-compara contra el sufijo dominante de la hoja.
+debe llevar el sufijo del **formulario oficial de su facultad**. No basta con
+que la hoja sea internamente consistente: el número está asignado.
+
+| Formulario | Sigla | Facultad |
+|---|---|---|
+| F01 | FM | Facultad de Medicina |
+| F02 | FDCP | Facultad de Derecho y Ciencia Política |
+| F03 | FLCH | Facultad de Letras y Ciencias Humanas |
+| F04 | FFB | Facultad de Farmacia y Bioquímica |
+| F05 | FO | Facultad de Odontología |
+| F06 | FE | Facultad de Educación |
+| F07 | FQIQ | Facultad de Química e Ingeniería Química |
+| F08 | FMV | Facultad de Medicina Veterinaria |
+| F09 | FCA | Facultad de Ciencias Administrativas |
+| F10 | FCB | Facultad de Ciencias Biológicas |
+| F11 | FCC | Facultad de Ciencias Contables |
+| F12 | FCE | Facultad de Ciencias Económicas |
+| F13 | FCF | Facultad de Ciencias Físicas |
+| F14 | FCM | Facultad de Ciencias Matemáticas |
+| F15 | FCCSS | Facultad de Ciencias Sociales |
+| F16 | FIGMMG | Facultad de Ingeniería Geológica, Minera, Metalúrgica y Geográfica |
+| F17 | FPSIC | Facultad de Psicología |
+| F18 | FIEE | Facultad de Ingeniería Electrónica y Eléctrica |
+| F19 | FISI | Facultad de Ingeniería de Sistemas e Informática |
+| F20 | FII | Facultad de Ingeniería Industrial |
 
 Se admite escrito de cuatro maneras: `_F04`, `-F04`, `.F07` y `_04` (sin la F).
 Tras un punto la `F` es obligatoria; sin ella, el último grupo del propio código
 (`PS.10`) se confundiría con un sufijo.
 
-> **Nota de aplicación.** El sufijo dominante se detecta por hoja. Cinco
-> pestañas usan uno que no parece el suyo en toda la hoja —FCF y FCCSS usan
-> `F02`, FIGMMG usa `F06`, FIEE usa `F17`, FISI usa `F02`—, probablemente por
-> haberse copiado de otra facultad. Como el criterio es la mayoría, ahí no se
-> reporta nada. Para fijarlo, declare el número oficial en el campo
-> `formulario` de la facultad en `CONFIG_A1.FACULTADES`.
+**6.4 Pestaña con el formulario de otra facultad.** Cuando el sufijo mayoritario
+de la hoja no es el oficial, además de marcarse fila por fila se emite un aviso
+único en el diagnóstico de la facultad, en `RESUMEN_EJECUTIVO_A1`:
+
+> FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo `_F18`, que
+> corresponde a otra facultad; el formulario oficial de FPSIC es `_F17`. Debe
+> corregirse en toda la hoja.
+
+Siete pestañas están en ese caso. FPSIC y FIEE tienen el suyo **intercambiado**:
+
+| Sigla | Usa | Oficial |
+|---|---|---|
+| FCF | F02 | **F13** |
+| FCCSS | F02 | **F15** |
+| FIGMMG | F06 | **F16** |
+| FPSIC | F18 | **F17** |
+| FIEE | F17 | **F18** |
+| FISI | F02 | **F19** |
+| FII | F17 | **F20** |
 
 **Aún sin automatizar** (requieren leer el formato de la celda, no su texto):
 fuente Roboto, celdas de la columna B sin combinar, color heredado del modelo `PE.01`.

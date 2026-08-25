@@ -374,7 +374,7 @@ bloque("Sufijo de formulario consistente en la pestaña", function () {
 
   const ajeno = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), "F05");
   chequear("detecta el sufijo que no corresponde a la hoja", ajeno.checks.sufijo === false);
-  chequear("y lo explica", /Sufijo de formulario inconsistente/.test(ajeno.observaciones.join(" ")));
+  chequear("y lo explica", /Sufijo de formulario incorrecto/.test(ajeno.observaciones.join(" ")));
 
   const propio = M.clasificarFila_("PS.10_F05 GESTIÓN DE LA COMUNICACIÓN", padreEntre(["PS.10"]), "F05");
   chequear("no marca el sufijo correcto", propio.checks.sufijo === true);
@@ -433,6 +433,85 @@ bloque("Rescate de columnas tras el cambio de formato de la hoja", function () {
   chequear("conserva la contra observación de PS.10", rescate.porClave["FO␟PS.10"][0] === "Corregido en B324");
   chequear("no confunde PROCESO NIVEL 0 ni OBSERVACIÓN con columnas del revisor",
     rescate.encabezados.indexOf("PROCESO NIVEL 0") === -1 && rescate.encabezados.indexOf("OBSERVACIÓN") === -1);
+});
+
+
+bloque("Catálogo oficial de facultades", function () {
+  const oficial = {
+    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05",
+    FE: "F06", FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10",
+    FCC: "F11", FCE: "F12", FCF: "F13", FCM: "F14", FCCSS: "F15",
+    FIGMMG: "F16", FPSIC: "F17", FIEE: "F18", FISI: "F19", FII: "F20"
+  };
+
+  chequear("son 20 facultades", M.CONFIG_A1.FACULTADES.length === 20);
+
+  Object.keys(oficial).forEach(function (sigla) {
+    const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
+    chequear(sigla + " existe en el catálogo", !!f);
+    if (f) chequear(sigla + " lleva el formulario " + oficial[sigla], f.formulario === oficial[sigla]);
+  });
+
+  const formularios = M.CONFIG_A1.FACULTADES.map(function (f) { return f.formulario; });
+  chequear("no hay formularios repetidos", new Set(formularios).size === 20);
+  chequear("la numeración va de F01 a F20",
+    formularios.slice().sort().join(",") === Object.values(oficial).sort().join(","));
+
+  chequear("todas llevan denominación oficial",
+    M.CONFIG_A1.FACULTADES.every(function (f) { return /^FACULTAD DE /.test(f.nombre); }));
+  chequear("FIEE es Electrónica y Eléctrica",
+    M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FIEE"; }).nombre ===
+    "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA");
+  chequear("FIGMMG lleva su nombre completo",
+    /GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA/.test(
+      M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FIGMMG"; }).nombre));
+});
+
+bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
+  const fo = M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FO"; });
+
+  const ajeno = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN",
+    padreEntre(["PS.10"]), fo.formulario);
+  chequear("_F04 en una hoja de la FO se marca", ajeno.checks.sufijo === false);
+  chequear("y el mensaje nombra el que corresponde",
+    /corresponde "_F05"/.test(ajeno.observaciones.join(" ")));
+
+  const propio = M.clasificarFila_("PS.10_F05 GESTIÓN DE LA COMUNICACIÓN",
+    padreEntre(["PS.10"]), fo.formulario);
+  chequear("_F05 no se marca", propio.checks.sufijo === true);
+
+  // Las siglas cuyo uso en la hoja no coincide con el formulario oficial.
+  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FPSIC: "F18", FIEE: "F17", FISI: "F02", FII: "F17" };
+  Object.keys(desfase).forEach(function (sigla) {
+    const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
+    chequear(sigla + ": el uso observado (" + desfase[sigla] + ") difiere del oficial (" + f.formulario + ")",
+      f.formulario !== desfase[sigla]);
+  });
+});
+
+bloque("Los nombres oficiales no rompen la localización de pestañas", function () {
+  const titulos = [
+    ["Facultad de Ingeniería Eléctrica Electrónica", "FIEE"],
+    ["FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA", "FIEE"],
+    ["FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA", "FISI"],
+    ["FACULTAD DE INGENIERÍA INDUSTRIAL", "FII"],
+    ["FACULTAD DE PSICOLOGÍA", "FPSIC"],
+    ["FACULTAD DE CIENCIAS FÍSICAS", "FCF"],
+    ["FACULTAD DE CIENCIAS SOCIALES", "FCCSS"],
+    ["FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA", "FIGMMG"],
+    ["FACULTAD DE MEDICINA", "FM"],
+    ["FACULTAD DE MEDICINA VETERINARIA", "FMV"]
+  ];
+  titulos.forEach(function (par) {
+    const f = M.facultadDeLaHoja_(par[0]);
+    chequear(par[0].slice(0, 46) + " → " + par[1], f !== null && f.sigla === par[1]);
+  });
+
+  const siglas = M.CONFIG_A1.FACULTADES.map(function (f) {
+    return M.facultadDeLaHoja_(f.nombre) ? M.facultadDeLaHoja_(f.nombre).sigla : null;
+  });
+  chequear("cada nombre oficial resuelve a su propia facultad",
+    siglas.join(",") === M.CONFIG_A1.FACULTADES.map(function (f) { return f.sigla; }).join(","));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

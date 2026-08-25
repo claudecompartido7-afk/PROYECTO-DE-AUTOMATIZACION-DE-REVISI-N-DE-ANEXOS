@@ -40,27 +40,58 @@ const CONFIG_A1 = {
   // volver al criterio estricto de la v3.
   RECHAZAR_NULOS_EN_E: false,
 
+  /**
+   * Catálogo oficial de facultades.
+   *
+   *  - `formulario`: número de formulario oficial, el sufijo `_F##` que deben
+   *    llevar todos los códigos de su pestaña.
+   *  - `nombre`: denominación oficial completa.
+   *  - `alias`: formas con que aparece el nombre en los títulos de las pestañas.
+   *    Se elige siempre la coincidencia más larga, de modo que "MEDICINA
+   *    VETERINARIA" gana sobre "MEDICINA".
+   */
   FACULTADES: [
-    { sigla: "FM",     nombre: "Medicina",        alias: ["MEDICINA"] },
-    { sigla: "FDCP",   nombre: "Derecho",         alias: ["DERECHO Y CIENCIA POLITICA", "DERECHO"] },
-    { sigla: "FLCH",   nombre: "Letras",          alias: ["LETRAS Y CIENCIAS HUMANAS", "LETRAS"] },
-    { sigla: "FFB",    nombre: "Farmacia",        alias: ["FARMACIA Y BIOQUIMICA", "FARMACIA"] },
-    { sigla: "FO",     nombre: "Odontología",     alias: ["ODONTOLOGIA"] },
-    { sigla: "FE",     nombre: "Educación",       alias: ["EDUCACION"] },
-    { sigla: "FQIQ",   nombre: "Química",         alias: ["QUIMICA E INGENIERIA QUIMICA"] },
-    { sigla: "FMV",    nombre: "Veterinaria",     alias: ["MEDICINA VETERINARIA", "VETERINARIA"] },
-    { sigla: "FCA",    nombre: "Administrativas", alias: ["CIENCIAS ADMINISTRATIVA"] },
-    { sigla: "FCB",    nombre: "Biológicas",      alias: ["CIENCIAS BIOLOGICA"] },
-    { sigla: "FCC",    nombre: "Contables",       alias: ["CIENCIAS CONTABLE"] },
-    { sigla: "FCE",    nombre: "Económicas",      alias: ["CIENCIAS ECONOMICA"] },
-    { sigla: "FCF",    nombre: "Físicas",         alias: ["CIENCIAS FISICA"] },
-    { sigla: "FCM",    nombre: "Matemáticas",     alias: ["CIENCIAS MATEMATICA"] },
-    { sigla: "FCCSS",  nombre: "Sociales",        alias: ["CIENCIAS SOCIALE"] },
-    { sigla: "FIGMMG", nombre: "Geológica",       alias: ["INGENIERIA GEOLOGICA", "GEOLOGICA"] },
-    { sigla: "FII",    nombre: "Industrial",      alias: ["INGENIERIA INDUSTRIAL", "INDUSTRIAL"] },
-    { sigla: "FPSIC",  nombre: "Psicología",      alias: ["PSICOLOGIA"] },
-    { sigla: "FIEE",   nombre: "Electrónica",     alias: ["INGENIERIA ELECTRICA ELECTRONICA", "ELECTRONICA"] },
-    { sigla: "FISI",   nombre: "Sistemas",        alias: ["INGENIERIA DE SISTEMAS", "SISTEMAS"] }
+    { sigla: "FM",     formulario: "F01", nombre: "FACULTAD DE MEDICINA",
+      alias: ["MEDICINA"] },
+    { sigla: "FDCP",   formulario: "F02", nombre: "FACULTAD DE DERECHO Y CIENCIA POLÍTICA",
+      alias: ["DERECHO Y CIENCIA POLITICA", "DERECHO"] },
+    { sigla: "FLCH",   formulario: "F03", nombre: "FACULTAD DE LETRAS Y CIENCIAS HUMANAS",
+      alias: ["LETRAS Y CIENCIAS HUMANAS", "LETRAS"] },
+    { sigla: "FFB",    formulario: "F04", nombre: "FACULTAD DE FARMACIA Y BIOQUÍMICA",
+      alias: ["FARMACIA Y BIOQUIMICA", "FARMACIA"] },
+    { sigla: "FO",     formulario: "F05", nombre: "FACULTAD DE ODONTOLOGÍA",
+      alias: ["ODONTOLOGIA"] },
+    { sigla: "FE",     formulario: "F06", nombre: "FACULTAD DE EDUCACIÓN",
+      alias: ["EDUCACION"] },
+    { sigla: "FQIQ",   formulario: "F07", nombre: "FACULTAD DE QUÍMICA E INGENIERÍA QUÍMICA",
+      alias: ["QUIMICA E INGENIERIA QUIMICA"] },
+    { sigla: "FMV",    formulario: "F08", nombre: "FACULTAD DE MEDICINA VETERINARIA",
+      alias: ["MEDICINA VETERINARIA", "VETERINARIA"] },
+    { sigla: "FCA",    formulario: "F09", nombre: "FACULTAD DE CIENCIAS ADMINISTRATIVAS",
+      alias: ["CIENCIAS ADMINISTRATIVA"] },
+    { sigla: "FCB",    formulario: "F10", nombre: "FACULTAD DE CIENCIAS BIOLÓGICAS",
+      alias: ["CIENCIAS BIOLOGICA"] },
+    { sigla: "FCC",    formulario: "F11", nombre: "FACULTAD DE CIENCIAS CONTABLES",
+      alias: ["CIENCIAS CONTABLE"] },
+    { sigla: "FCE",    formulario: "F12", nombre: "FACULTAD DE CIENCIAS ECONÓMICAS",
+      alias: ["CIENCIAS ECONOMICA"] },
+    { sigla: "FCF",    formulario: "F13", nombre: "FACULTAD DE CIENCIAS FÍSICAS",
+      alias: ["CIENCIAS FISICA"] },
+    { sigla: "FCM",    formulario: "F14", nombre: "FACULTAD DE CIENCIAS MATEMÁTICAS",
+      alias: ["CIENCIAS MATEMATICA"] },
+    { sigla: "FCCSS",  formulario: "F15", nombre: "FACULTAD DE CIENCIAS SOCIALES",
+      alias: ["CIENCIAS SOCIALE"] },
+    { sigla: "FIGMMG", formulario: "F16",
+      nombre: "FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA",
+      alias: ["INGENIERIA GEOLOGICA", "GEOLOGICA"] },
+    { sigla: "FPSIC",  formulario: "F17", nombre: "FACULTAD DE PSICOLOGÍA",
+      alias: ["PSICOLOGIA"] },
+    { sigla: "FIEE",   formulario: "F18", nombre: "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA",
+      alias: ["INGENIERIA ELECTRONICA Y ELECTRICA", "INGENIERIA ELECTRICA ELECTRONICA", "ELECTRONICA"] },
+    { sigla: "FISI",   formulario: "F19", nombre: "FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA",
+      alias: ["INGENIERIA DE SISTEMAS", "SISTEMAS"] },
+    { sigla: "FII",    formulario: "F20", nombre: "FACULTAD DE INGENIERÍA INDUSTRIAL",
+      alias: ["INGENIERIA INDUSTRIAL", "INDUSTRIAL"] }
   ],
 
   PROCESOS_NIVEL0: [
@@ -401,9 +432,10 @@ function clasificarFila_(colB, esPadre, sufijoEsperado) {
   const sufijo = principal ? sufijoDe_(principal.completo) : null;
   if (sufijoEsperado && sufijo && sufijo !== sufijoEsperado) {
     checks.sufijo = false;
-    obs.push('Col B — Sufijo de formulario inconsistente. Esta fila usa "_' + sufijo +
-             '" y el resto de la pestaña usa "_' + sufijoEsperado + '". El sufijo ' +
-             'identifica el formulario de la facultad y debe ser el mismo en toda la hoja.');
+    obs.push('Col B — Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
+             '" y corresponde "_' + sufijoEsperado + '". El sufijo identifica el ' +
+             'formulario oficial de la facultad y debe ser el mismo en todos los ' +
+             'códigos de la pestaña.');
   }
 
   // ── [C11] Denominación de proceso en MAYÚSCULAS ──
@@ -712,9 +744,16 @@ function procesarFacultad_(hoja, fac) {
     return padre;
   };
 
-  const sufijoEsperado = fac.formulario || Object.keys(sufijos).sort(function (a, b) {
+  const sufijoDominante = Object.keys(sufijos).sort(function (a, b) {
     return sufijos[b] - sufijos[a];
   })[0] || null;
+
+  // El formulario oficial manda. El dominante solo se usa si no está declarado.
+  const sufijoEsperado = fac.formulario || sufijoDominante;
+
+  // [C18] La pestaña entera con el formulario de otra facultad.
+  const hojaConFormularioAjeno = !!(fac.formulario && sufijoDominante &&
+                                    sufijoDominante !== fac.formulario);
 
   // ── PASADA 2: clasificación y validación ──
   const productos = [];
@@ -801,6 +840,11 @@ function procesarFacultad_(hoja, fac) {
   }
   if (observados.length) {
     diagnostico += " " + observados.length + " procesos con observaciones de codificación o formato.";
+  }
+  if (hojaConFormularioAjeno) {
+    diagnostico += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
+                   sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
+                   sigla + " es _" + fac.formulario + ". Debe corregirse en toda la hoja.";
   }
 
   return {
