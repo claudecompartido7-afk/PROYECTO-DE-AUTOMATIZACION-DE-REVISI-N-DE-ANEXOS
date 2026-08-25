@@ -14,12 +14,13 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v5.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v6.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v5.md              Reglas vigentes
-reglas/ANEXO-1_reglas-v4.md              Reglas previas
+reglas/ANEXO-1_reglas-v6.md              Reglas vigentes
+reglas/ANEXO-1_reglas-v5.md              Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
@@ -40,7 +41,7 @@ las filas de proceso y preservación de las columnas del revisor.
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v5.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v6.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
    `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y

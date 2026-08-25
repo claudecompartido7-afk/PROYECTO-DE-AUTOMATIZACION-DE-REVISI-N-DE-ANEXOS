@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v5.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v6.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -512,6 +512,43 @@ bloque("Los nombres oficiales no rompen la localización de pestañas", function
   });
   chequear("cada nombre oficial resuelve a su propia facultad",
     siglas.join(",") === M.CONFIG_A1.FACULTADES.map(function (f) { return f.sigla; }).join(","));
+});
+
+
+bloque("Catálogo oficial de facultades", function () {
+  const F = M.CONFIG_A1.FACULTADES;
+  chequear("son 20 facultades", F.length === 20);
+
+  const oficiales = {
+    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
+    FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
+    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FPSIC: "F17",
+    FIEE: "F18", FISI: "F19", FII: "F20"
+  };
+  Object.keys(oficiales).forEach(function (sigla) {
+    const f = F.find(function (x) { return x.sigla === sigla; });
+    chequear(sigla + " lleva el formulario " + oficiales[sigla],
+      f && f.formulario === oficiales[sigla]);
+  });
+
+  chequear("los 20 formularios son distintos",
+    new Set(F.map(function (f) { return f.formulario; })).size === 20);
+  chequear("todas llevan denominación oficial",
+    F.every(function (f) { return /^FACULTAD DE /.test(f.nombre); }));
+
+  chequear("FII es F20 y no F17", F.find(function (f) { return f.sigla === "FII"; }).formulario === "F20");
+  chequear("FPSIC es F17 y no F18", F.find(function (f) { return f.sigla === "FPSIC"; }).formulario === "F17");
+  chequear("FIEE es F18 y no F19", F.find(function (f) { return f.sigla === "FIEE"; }).formulario === "F18");
+  chequear("FISI es F19 y no F20", F.find(function (f) { return f.sigla === "FISI"; }).formulario === "F19");
+});
+
+bloque("La pestaña titulada con el nombre oficial también resuelve", function () {
+  M.CONFIG_A1.FACULTADES.forEach(function (f) {
+    const hallada = M.facultadDeLaHoja_(f.nombre);
+    chequear(f.nombre.slice(0, 40) + " → " + f.sigla, hallada !== null && hallada.sigla === f.sigla);
+  });
+  chequear("la FIEE resuelve con el orden invertido del título real",
+    M.facultadDeLaHoja_("Facultad de Ingeniería Eléctrica Electrónica").sigla === "FIEE");
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
