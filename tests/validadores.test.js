@@ -25,7 +25,7 @@ module.exports = {
   localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
-  TOTAL_CRITERIOS_PROCESO
+  TOTAL_CRITERIOS_PROCESO, celdaFormulario_
 };
 `;
 
@@ -436,36 +436,6 @@ bloque("Rescate de columnas tras el cambio de formato de la hoja", function () {
 });
 
 
-bloque("Catálogo oficial de facultades", function () {
-  const oficial = {
-    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05",
-    FE: "F06", FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10",
-    FCC: "F11", FCE: "F12", FCF: "F13", FCM: "F14", FCCSS: "F15",
-    FIGMMG: "F16", FPSIC: "F17", FIEE: "F18", FISI: "F19", FII: "F20"
-  };
-
-  chequear("son 20 facultades", M.CONFIG_A1.FACULTADES.length === 20);
-
-  Object.keys(oficial).forEach(function (sigla) {
-    const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
-    chequear(sigla + " existe en el catálogo", !!f);
-    if (f) chequear(sigla + " lleva el formulario " + oficial[sigla], f.formulario === oficial[sigla]);
-  });
-
-  const formularios = M.CONFIG_A1.FACULTADES.map(function (f) { return f.formulario; });
-  chequear("no hay formularios repetidos", new Set(formularios).size === 20);
-  chequear("la numeración va de F01 a F20",
-    formularios.slice().sort().join(",") === Object.values(oficial).sort().join(","));
-
-  chequear("todas llevan denominación oficial",
-    M.CONFIG_A1.FACULTADES.every(function (f) { return /^FACULTAD DE /.test(f.nombre); }));
-  chequear("FIEE es Electrónica y Eléctrica",
-    M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FIEE"; }).nombre ===
-    "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA");
-  chequear("FIGMMG lleva su nombre completo",
-    /GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA/.test(
-      M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FIGMMG"; }).nombre));
-});
 
 bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
   const fo = M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FO"; });
@@ -473,15 +443,16 @@ bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
   const ajeno = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN",
     padreEntre(["PS.10"]), fo.formulario);
   chequear("_F04 en una hoja de la FO se marca", ajeno.checks.sufijo === false);
-  chequear("y el mensaje nombra el que corresponde",
-    /corresponde "_F05"/.test(ajeno.observaciones.join(" ")));
+  chequear("y el mensaje nombra el que usa el resto de la pestaña",
+    /resto de la pestaña usa "_F05"/.test(ajeno.observaciones.join(" ")));
 
   const propio = M.clasificarFila_("PS.10_F05 GESTIÓN DE LA COMUNICACIÓN",
     padreEntre(["PS.10"]), fo.formulario);
   chequear("_F05 no se marca", propio.checks.sufijo === true);
 
-  // Las siglas cuyo uso en la hoja no coincide con el formulario oficial.
-  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FPSIC: "F18", FIEE: "F17", FISI: "F02", FII: "F17" };
+  // Pestañas cuyo uso observado no coincide con el formulario oficial declarado.
+  // FPSIC, FIEE y FISI quedan fuera: su formulario oficial aún no está declarado.
+  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17" };
   Object.keys(desfase).forEach(function (sigla) {
     const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
     chequear(sigla + ": el uso observado (" + desfase[sigla] + ") difiere del oficial (" + f.formulario + ")",
@@ -515,32 +486,6 @@ bloque("Los nombres oficiales no rompen la localización de pestañas", function
 });
 
 
-bloque("Catálogo oficial de facultades", function () {
-  const F = M.CONFIG_A1.FACULTADES;
-  chequear("son 20 facultades", F.length === 20);
-
-  const oficiales = {
-    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
-    FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
-    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FPSIC: "F17",
-    FIEE: "F18", FISI: "F19", FII: "F20"
-  };
-  Object.keys(oficiales).forEach(function (sigla) {
-    const f = F.find(function (x) { return x.sigla === sigla; });
-    chequear(sigla + " lleva el formulario " + oficiales[sigla],
-      f && f.formulario === oficiales[sigla]);
-  });
-
-  chequear("los 20 formularios son distintos",
-    new Set(F.map(function (f) { return f.formulario; })).size === 20);
-  chequear("todas llevan denominación oficial",
-    F.every(function (f) { return /^FACULTAD DE /.test(f.nombre); }));
-
-  chequear("FII es F20 y no F17", F.find(function (f) { return f.sigla === "FII"; }).formulario === "F20");
-  chequear("FPSIC es F17 y no F18", F.find(function (f) { return f.sigla === "FPSIC"; }).formulario === "F17");
-  chequear("FIEE es F18 y no F19", F.find(function (f) { return f.sigla === "FIEE"; }).formulario === "F18");
-  chequear("FISI es F19 y no F20", F.find(function (f) { return f.sigla === "FISI"; }).formulario === "F19");
-});
 
 bloque("La pestaña titulada con el nombre oficial también resuelve", function () {
   M.CONFIG_A1.FACULTADES.forEach(function (f) {
@@ -549,6 +494,145 @@ bloque("La pestaña titulada con el nombre oficial también resuelve", function 
   });
   chequear("la FIEE resuelve con el orden invertido del título real",
     M.facultadDeLaHoja_("Facultad de Ingeniería Eléctrica Electrónica").sigla === "FIEE");
+});
+
+
+bloque("Formularios oficiales por facultad", function () {
+  const F = function (sigla) {
+    return M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === sigla; });
+  };
+
+  chequear("son 20 facultades", M.CONFIG_A1.FACULTADES.length === 20);
+
+  const oficiales = {
+    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
+    FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
+    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20"
+  };
+  Object.keys(oficiales).forEach(function (sigla) {
+    chequear(sigla + " = " + oficiales[sigla], F(sigla).formulario === oficiales[sigla]);
+  });
+
+  ["FPSIC", "FIEE", "FISI"].forEach(function (sigla) {
+    chequear(sigla + " queda sin formulario declarado", F(sigla).formulario === null);
+  });
+
+  chequear("no hay dos facultades con el mismo formulario", (function () {
+    const usados = M.CONFIG_A1.FACULTADES
+      .map(function (f) { return f.formulario; })
+      .filter(Boolean);
+    return new Set(usados).size === usados.length;
+  })());
+
+  chequear("los nombres oficiales están en mayúsculas",
+    M.CONFIG_A1.FACULTADES.every(function (f) { return f.nombre === f.nombre.toUpperCase(); }));
+  chequear("FIEE lleva el nombre oficial",
+    F("FIEE").nombre === "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA");
+  chequear("FCA lleva el nombre oficial en plural",
+    F("FCA").nombre === "FACULTAD DE CIENCIAS ADMINISTRATIVAS");
+
+  // El título de la pestaña no coincide con el nombre oficial en varias hojas.
+  chequear("FIEE se localiza pese al orden invertido del título",
+    M.facultadDeLaHoja_("Facultad de Ingeniería Eléctrica Electrónica").sigla === "FIEE");
+  chequear("FIEE también con el nombre oficial",
+    M.facultadDeLaHoja_("FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA").sigla === "FIEE");
+  chequear("FCA se localiza con el título en singular",
+    M.facultadDeLaHoja_("Facultad de Ciencias Administrativa").sigla === "FCA");
+});
+
+bloque("Celda FORMULARIO del resumen", function () {
+  const fo = { sigla: "FO", formulario: "F05" };
+  chequear("coincidencia: solo el oficial", M.celdaFormulario_(fo, "F05") === "F05");
+  chequear("discrepancia: señala el que usa la hoja",
+    M.celdaFormulario_(fo, "F02") === "F05 (la hoja usa F02)");
+
+  const sinDeclarar = { sigla: "FISI", formulario: null };
+  chequear("sin declarar: muestra el dominante",
+    M.celdaFormulario_(sinDeclarar, "F02") === "F02 (oficial sin declarar)");
+  chequear("sin declarar y sin códigos", M.celdaFormulario_(sinDeclarar, null) === "— (oficial sin declarar)");
+});
+
+bloque("Hoja mal numerada: hallazgo de hoja, no de fila", function () {
+  // La FII usa _F17 en toda la pestaña y su formulario oficial es _F20.
+  // Ninguna fila debe salir observada por el sufijo: el defecto es de la hoja.
+  const fila = M.clasificarFila_("PM.01_F17 GESTIÓN DE LA FORMACIÓN ACADÉMICA",
+    padreEntre(["PM.01"]), "F17", "F20");
+  chequear("la fila no se marca por el sufijo", fila.checks.sufijo === true);
+  chequear("ni genera observación de sufijo",
+    !fila.observaciones.some(function (o) { return /Sufijo de formulario/.test(o); }));
+
+  // Una fila suelta que se aparta del dominante sí se marca.
+  const suelta = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN",
+    padreEntre(["PS.10"]), "F05", "F05");
+  chequear("la fila suelta sí se marca", suelta.checks.sufijo === false);
+
+  // El código sugerido usa el formulario OFICIAL, no el dominante equivocado.
+  const erronea = M.clasificarFila_("PM.03.173_F17 PS.08 GESTIÓN DE ACTIVIDADES PRODUCTIVAS",
+    padreEntre(["PM.03", "PM.03.173"]), "F17", "F20");
+  chequear("la corrección sugerida usa el formulario oficial",
+    /PS\.08_F20/.test(erronea.observaciones.join(" ")));
+});
+
+bloque("Coherencia entre encabezados y filas del dashboard", function () {
+  // Un desajuste entre encabezados y celdas desplaza las columnas del revisor.
+  // Se cuentan los elementos de cada literal respetando comillas y paréntesis.
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+
+  function contarElementos(literal) {
+    let nivel = 0, comillas = null, n = 1;
+    for (let i = 0; i < literal.length; i++) {
+      const c = literal[i];
+      if (comillas) {
+        if (c === "\\") i++;
+        else if (c === comillas) comillas = null;
+      } else if (c === '"' || c === "'") comillas = c;
+      else if (c === "(" || c === "[") nivel++;
+      else if (c === ")" || c === "]") nivel--;
+      else if (c === "," && nivel === 0) n++;
+    }
+    return n;
+  }
+
+  function literalTras(marca) {
+    const i = fuente.indexOf(marca);
+    if (i === -1) return null;
+    const ini = fuente.indexOf("[", i);
+    let nivel = 0;
+    for (let j = ini; j < fuente.length; j++) {
+      if (fuente[j] === "[") nivel++;
+      else if (fuente[j] === "]") { nivel--; if (!nivel) return fuente.slice(ini + 1, j); }
+    }
+    return null;
+  }
+
+  const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
+  chequear("se encuentran los encabezados del resumen", enc !== null);
+  const nEnc = contarElementos(enc);
+  chequear("el resumen declara 10 columnas", nEnc === 10);
+
+  const construcciones = [];
+  let desde = 0;
+  while (true) {
+    const i = fuente.indexOf("resumenFila", desde);
+    if (i === -1) break;
+    desde = i + 1;
+    if (fuente.slice(i - 20, i).indexOf("r.") !== -1) continue;
+    const ini = fuente.indexOf("[", i);
+    if (ini === -1 || ini - i > 40) continue;
+    let nivel = 0;
+    for (let j = ini; j < fuente.length; j++) {
+      if (fuente[j] === "[") nivel++;
+      else if (fuente[j] === "]") { nivel--; if (!nivel) { construcciones.push(fuente.slice(ini + 1, j)); break; } }
+    }
+  }
+  const pushResumen = literalTras("resumen.push(");
+  if (pushResumen) construcciones.push(pushResumen);
+
+  chequear("se localizan las tres construcciones de fila", construcciones.length === 3);
+  construcciones.forEach(function (c, i) {
+    const n = contarElementos(c);
+    chequear("la fila de resumen #" + (i + 1) + " tiene " + nEnc + " celdas (tiene " + n + ")", n === nEnc);
+  });
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

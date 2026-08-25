@@ -5,28 +5,19 @@
  *
  *  VERSIÓN 6
  *  ─────────────────────────────────────────────────────────────────────────────
- *   [C18] Se incorpora la numeración oficial de formulario y la denominación
- *         oficial de cada facultad. El sufijo `_F##` deja de compararse contra
- *         el dominante de la pestaña y se compara contra el que corresponde.
- *   [C19] Cuando la pestaña ENTERA usa el formulario de otra facultad, se
- *         reporta una sola vez en el resumen en lugar de marcar cada fila. Las
- *         filas se siguen contrastando contra el dominante de su propia hoja,
- *         para detectar las desviaciones sueltas.
+ *   [C18] Se declaran el nombre oficial y el formulario oficial de cada
+ *         facultad. El sufijo `_F##` deja de inferirse de la mayoría cuando hay
+ *         un valor oficial declarado.
+ *   [C19] Distinción entre dos defectos que antes se confundían:
+ *         · pestaña con el formulario de OTRA facultad  → hallazgo de hoja,
+ *           reportado una vez en el resumen;
+ *         · filas sueltas que se apartan del sufijo dominante → observación por
+ *           fila.
+ *         Así una pestaña entera mal numerada no genera cientos de
+ *         observaciones repetidas.
  *
- *  VERSIÓN 5
- *  ─────────────────────────────────────────────────────────────────────────────
- *   [C14] `COBERTURA_PROCESOS_A1` y `OBSERVACIONES_PROCESOS_A1` se fusionan en
- *         `OBSERVACIONES_DE_PROCESO_A1`, con una fila puntuada por proceso: los
- *         16 de Nivel 0 más cada subproceso registrado. Las hojas anteriores se
- *         renombran, de modo que las contra observaciones ya escritas se conservan.
- *   [C15] Cuando la celda arrastra un código equivocado junto al correcto, la
- *         observación dice explícitamente cuál es el código erróneo y cuál debe
- *         quedar, en vez de limitarse a señalar que hay dos códigos.
- *   [C16] Regla nueva: el sufijo de formulario `_F##` debe ser el mismo en toda
- *         la hoja. Se compara contra el sufijo dominante de la pestaña.
- *   [C17] Se corrige el rescate de columnas manuales: ya no se descarta cuando la
- *         hoja previa tiene menos columnas que la nueva, y los encabezados de
- *         versiones anteriores no se confunden con columnas del revisor.
+ *  Arrastra de la v5: hoja de procesos puntuada, diagnóstico de codificación
+ *  errónea, códigos de hasta tres dígitos.
  *
  *  Arrastra de la v4: profundidad de código variable, Nivel 0 por código
  *  embebido o denominación, columna E que admite NINGUNO, y la regla de
@@ -61,11 +52,16 @@ const CONFIG_A1 = {
    *    VETERINARIA" gana sobre "MEDICINA".
    */
   /**
-   * [C18] `formulario` es el número oficial de formulario de la facultad y
-   * `nombre` su denominación oficial. Los alias son las formas con que la
-   * pestaña puede estar titulada, que no siempre coinciden con el nombre
-   * oficial: la pestaña de la FIEE se titula "Ingeniería Eléctrica Electrónica"
-   * mientras su denominación oficial invierte los términos.
+   * Facultades según la relación oficial.
+   *
+   * `formulario` es el número de formulario asignado a la facultad; cuando está
+   * declarado, prevalece sobre el sufijo dominante de la pestaña. Las tres que
+   * están en null quedan pendientes de que la OGPL confirme su número: hasta
+   * entonces se usa el dominante de su hoja.
+   *
+   * `alias` conserva la forma en que el título aparece HOY en cada pestaña, que
+   * no siempre coincide con el nombre oficial (la FIEE lo lleva con las
+   * palabras invertidas y la FCA en singular). Se usan raíces sin plural.
    */
   FACULTADES: [
     { sigla: "FM",     formulario: "F01", nombre: "FACULTAD DE MEDICINA",
@@ -100,14 +96,14 @@ const CONFIG_A1 = {
       alias: ["CIENCIAS SOCIALE"] },
     { sigla: "FIGMMG", formulario: "F16", nombre: "FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA",
       alias: ["INGENIERIA GEOLOGICA", "GEOLOGICA"] },
-    { sigla: "FPSIC",  formulario: "F17", nombre: "FACULTAD DE PSICOLOGÍA",
-      alias: ["PSICOLOGIA"] },
-    { sigla: "FIEE",   formulario: "F18", nombre: "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA",
-      alias: ["INGENIERIA ELECTRONICA Y ELECTRICA", "INGENIERIA ELECTRICA ELECTRONICA", "ELECTRONICA"] },
-    { sigla: "FISI",   formulario: "F19", nombre: "FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA",
-      alias: ["INGENIERIA DE SISTEMAS", "SISTEMAS"] },
     { sigla: "FII",    formulario: "F20", nombre: "FACULTAD DE INGENIERÍA INDUSTRIAL",
-      alias: ["INGENIERIA INDUSTRIAL", "INDUSTRIAL"] }
+      alias: ["INGENIERIA INDUSTRIAL", "INDUSTRIAL"] },
+    { sigla: "FPSIC",  formulario: null,  nombre: "FACULTAD DE PSICOLOGÍA",
+      alias: ["PSICOLOGIA"] },
+    { sigla: "FIEE",   formulario: null,  nombre: "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA",
+      alias: ["INGENIERIA ELECTRONICA Y ELECTRICA", "INGENIERIA ELECTRICA ELECTRONICA", "ELECTRONICA"] },
+    { sigla: "FISI",   formulario: null,  nombre: "FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA",
+      alias: ["INGENIERIA DE SISTEMAS", "SISTEMAS"] }
   ],
 
   PROCESOS_NIVEL0: [
@@ -240,7 +236,7 @@ const CONFIG_A1 = {
     "CUMPLIMIENTO", "CUMPLIMIENTO (%)", "CRITERIOS", "AVANCE", "AVANCE (%)",
     "TOTAL PRODUCTOS", "COMPLETOS", "COMPLETOS (100%)", "PARCIALES",
     "PARCIALES (CON OBS.)", "PENDIENTES", "PENDIENTES (VACÍOS)",
-    "ESTADO GENERAL", "DIAGNÓSTICO"
+    "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"
   ]
 };
 
@@ -388,9 +384,12 @@ function sufijoDe_(codigoCompleto) {
  * jerarquía no es igual en todas las facultades (la FDCP llega a cinco niveles
  * y la FO resuelve algunos procesos en dos).
  *
- * `sufijoEsperado` es el sufijo dominante de la pestaña, para [C16].
+ * `sufijoDominante` es el sufijo mayoritario de la pestaña: es el que gobierna
+ * la observación por fila, para que una hoja entera mal numerada se reporte una
+ * sola vez a nivel de hoja y no en cada una de sus filas. `sufijoOficial`, si se
+ * declara, solo se usa para redactar la corrección sugerida.
  */
-function clasificarFila_(colB, esPadre, sufijoEsperado) {
+function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   const texto = (colB || "").toString().trim();
   const checks = { unico: true, coherente: true, sufijo: true, mayusculas: true };
 
@@ -422,7 +421,8 @@ function clasificarFila_(colB, esPadre, sufijoEsperado) {
   if (codigos.length > 1) {
     checks.unico = false;
     if (esNivel0 && codigoN0 && principal && principal.base !== codigoN0.base) {
-      const correcto = elegido.codigo + (sufijoEsperado ? "_" + sufijoEsperado : "_F##");
+      const sufijoSugerido = sufijoOficial || sufijoDominante;
+      const correcto = elegido.codigo + (sufijoSugerido ? "_" + sufijoSugerido : "_F##");
       obs.push('Col B — CODIFICACIÓN ERRÓNEA. El código que abre la celda, "' +
                principal.completo + '", no corresponde a esta fila: la denominación "' +
                recortar_(denominacion) + '" es la del proceso de Nivel 0 ' + elegido.codigo +
@@ -446,12 +446,12 @@ function clasificarFila_(colB, esPadre, sufijoEsperado) {
 
   // ── [C16] Sufijo de formulario ──
   const sufijo = principal ? sufijoDe_(principal.completo) : null;
-  if (sufijoEsperado && sufijo && sufijo !== sufijoEsperado) {
+  if (sufijoDominante && sufijo && sufijo !== sufijoDominante) {
     checks.sufijo = false;
     obs.push('Col B — Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
-             '" y corresponde "_' + sufijoEsperado + '". El sufijo identifica el ' +
-             'formulario oficial de la facultad y debe ser el mismo en todos los ' +
-             'códigos de la pestaña.');
+             '" y el resto de la pestaña usa "_' + sufijoDominante + '". El sufijo ' +
+             'identifica el formulario de la facultad y debe ser el mismo en todos ' +
+             'los códigos de la hoja.');
   }
 
   // ── [C11] Denominación de proceso en MAYÚSCULAS ──
@@ -657,7 +657,8 @@ function ejecutarAuditoriaAnexo1() {
     const hoja = localizarHoja_(hojas, fac, yaAsignadas);
     if (!hoja) {
       resumen.push([fac.sigla, fac.nombre, 0, 0, 0, 0, "0%", "NO INICIADO",
-        "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja cuyo nombre contenga la sigla " + fac.sigla + "."]);
+        "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja cuyo nombre contenga la sigla " + fac.sigla + ".",
+        fac.formulario || "—"]);
       procesos = procesos.concat(filasNivel0_(fac.sigla, {}));
       return;
     }
@@ -720,6 +721,18 @@ function filasNivel0_(sigla, encontrados) {
   });
 }
 
+/**
+ * Contenido de la columna FORMULARIO del resumen: el número oficial y, entre
+ * paréntesis, el que realmente usa la pestaña cuando no coinciden.
+ */
+function celdaFormulario_(fac, sufijoDominante) {
+  if (!fac.formulario) return (sufijoDominante || "—") + " (oficial sin declarar)";
+  if (sufijoDominante && sufijoDominante !== fac.formulario) {
+    return fac.formulario + " (la hoja usa " + sufijoDominante + ")";
+  }
+  return fac.formulario;
+}
+
 function procesarFacultad_(hoja, fac) {
   const sigla = fac.sigla;
   const ultimaFila = hoja.getLastRow();
@@ -727,7 +740,8 @@ function procesarFacultad_(hoja, fac) {
   if (ultimaFila < CONFIG_A1.FILA_INICIO) {
     return {
       resumenFila: [sigla, fac.nombre, 0, 0, 0, 0, "0%", "VACÍO",
-                    "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + "."],
+                    "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + ".",
+                    fac.formulario || "—"],
       detalleFilas: [], procesoFilas: filasNivel0_(sigla, {})
     };
   }
@@ -764,15 +778,6 @@ function procesarFacultad_(hoja, fac) {
     return sufijos[b] - sufijos[a];
   })[0] || null;
 
-  /**
-   * [C19] Las filas se contrastan contra el sufijo DOMINANTE de su propia hoja,
-   * no contra el oficial. Así se detecta la desviación suelta —una fila con el
-   * formulario de otra facultad, como la B324 de la FO— sin marcar las
-   * doscientas filas de una pestaña que está entera con el número equivocado.
-   * Ese caso se reporta una sola vez, en el diagnóstico del resumen.
-   */
-  const sufijoEsperado = sufijoDominante;
-
   // [C18] La pestaña entera con el formulario de otra facultad.
   const hojaConFormularioAjeno = !!(fac.formulario && sufijoDominante &&
                                     sufijoDominante !== fac.formulario);
@@ -791,7 +796,7 @@ function procesarFacultad_(hoja, fac) {
 
     if (!colB && !colC && !colD && !colE && !colF && !colG && !colH && !colI) continue;
 
-    const cls = clasificarFila_(colB, esPadre, sufijoEsperado);
+    const cls = clasificarFila_(colB, esPadre, sufijoDominante, fac.formulario);
     if (cls.tipo === "vacia" || cls.tipo === "categoria") continue;
 
     if (cls.tipo === "nivel0") {
@@ -863,6 +868,10 @@ function procesarFacultad_(hoja, fac) {
   if (observados.length) {
     diagnostico += " " + observados.length + " procesos con observaciones de codificación o formato.";
   }
+  if (!fac.formulario && sufijoDominante) {
+    diagnostico += " Formulario oficial sin declarar para " + sigla +
+                   "; se toma el dominante de la pestaña (_" + sufijoDominante + ").";
+  }
   if (hojaConFormularioAjeno) {
     diagnostico += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
                    sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
@@ -870,7 +879,8 @@ function procesarFacultad_(hoja, fac) {
   }
 
   return {
-    resumenFila: [sigla, fac.nombre, total, completos, parciales, pendientes, avance + "%", estadoGeneral, diagnostico],
+    resumenFila: [sigla, fac.nombre, total, completos, parciales, pendientes, avance + "%",
+                  estadoGeneral, diagnostico, celdaFormulario_(fac, sufijoDominante)],
     detalleFilas: productos.map(function (p) { return p.fila; }),
     procesoFilas: nivel0.concat(subprocesos)
   };
@@ -904,7 +914,7 @@ function escribirEnDashboard_(resumen, detalle, procesos) {
   const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
 
   volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1",
-    ["FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "COMPLETOS", "PARCIALES", "PENDIENTES", "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO"],
+    ["FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "COMPLETOS", "PARCIALES", "PENDIENTES", "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"],
     resumen, 7, "#1c4587", function (f) { return f[0]; });
 
   volcarHoja_(ss, "DETALLADO_PRODUCTOS_A1",

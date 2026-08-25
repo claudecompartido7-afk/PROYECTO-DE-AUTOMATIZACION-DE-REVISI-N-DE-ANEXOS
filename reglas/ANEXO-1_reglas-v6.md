@@ -3,8 +3,9 @@
 
 > **Origen.** v1 = hoja `REGLAS DE AUTOMATIZACIÓN` (solo filas de Anexo 1).
 > v2 = script `Anexo1_Auditoria.gs`. v3 = consolidación verificada contra la
-> estructura real. **v4 = incorpora las contra observaciones del revisor**
-> registradas en `COBERTURA_PROCESOS_A1` y `DETALLADO_PRODUCTOS_A1`.
+> estructura real. v4 = incorpora las contra observaciones del revisor. v5 =
+> puntúa cada proceso en una fila. **v6 = fija el catálogo oficial de facultades
+> y separa el defecto de hoja del defecto de fila.**
 >
 > **Criterio de autoridad:** cuando la hoja de reglas y la hoja real se
 > contradicen, manda la **hoja real**. La hoja de reglas v1 quedó desactualizada
@@ -233,56 +234,69 @@ La observación indica el texto registrado y el texto corregido.
 productos. Por eso el resultado se publica en la hoja
 `OBSERVACIONES_PROCESOS_A1`, no en `DETALLADO_PRODUCTOS_A1`.
 
-**6.3 Sufijo de formulario `_F##` — NUEVA en v5.** Todo código de una pestaña
-debe llevar el sufijo del **formulario oficial de su facultad**. No basta con
-que la hoja sea internamente consistente: el número está asignado.
-
-| Formulario | Sigla | Facultad |
-|---|---|---|
-| F01 | FM | Facultad de Medicina |
-| F02 | FDCP | Facultad de Derecho y Ciencia Política |
-| F03 | FLCH | Facultad de Letras y Ciencias Humanas |
-| F04 | FFB | Facultad de Farmacia y Bioquímica |
-| F05 | FO | Facultad de Odontología |
-| F06 | FE | Facultad de Educación |
-| F07 | FQIQ | Facultad de Química e Ingeniería Química |
-| F08 | FMV | Facultad de Medicina Veterinaria |
-| F09 | FCA | Facultad de Ciencias Administrativas |
-| F10 | FCB | Facultad de Ciencias Biológicas |
-| F11 | FCC | Facultad de Ciencias Contables |
-| F12 | FCE | Facultad de Ciencias Económicas |
-| F13 | FCF | Facultad de Ciencias Físicas |
-| F14 | FCM | Facultad de Ciencias Matemáticas |
-| F15 | FCCSS | Facultad de Ciencias Sociales |
-| F16 | FIGMMG | Facultad de Ingeniería Geológica, Minera, Metalúrgica y Geográfica |
-| F17 | FPSIC | Facultad de Psicología |
-| F18 | FIEE | Facultad de Ingeniería Electrónica y Eléctrica |
-| F19 | FISI | Facultad de Ingeniería de Sistemas e Informática |
-| F20 | FII | Facultad de Ingeniería Industrial |
+**6.3 Sufijo de formulario `_F##`.** Todo código de una pestaña debe llevar el
+sufijo del formulario asignado a su facultad.
 
 Se admite escrito de cuatro maneras: `_F04`, `-F04`, `.F07` y `_04` (sin la F).
 Tras un punto la `F` es obligatoria; sin ella, el último grupo del propio código
 (`PS.10`) se confundiría con un sufijo.
 
-**6.4 Pestaña con el formulario de otra facultad.** Cuando el sufijo mayoritario
-de la hoja no es el oficial, además de marcarse fila por fila se emite un aviso
-único en el diagnóstico de la facultad, en `RESUMEN_EJECUTIVO_A1`:
+**Relación oficial de la OGPL:**
 
-> FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo `_F18`, que
-> corresponde a otra facultad; el formulario oficial de FPSIC es `_F17`. Debe
-> corregirse en toda la hoja.
-
-Siete pestañas están en ese caso. FPSIC y FIEE tienen el suyo **intercambiado**:
-
-| Sigla | Usa | Oficial |
+| Formulario | Sigla | Facultad |
 |---|---|---|
-| FCF | F02 | **F13** |
-| FCCSS | F02 | **F15** |
-| FIGMMG | F06 | **F16** |
-| FPSIC | F18 | **F17** |
-| FIEE | F17 | **F18** |
-| FISI | F02 | **F19** |
-| FII | F17 | **F20** |
+| F01 | FM | FACULTAD DE MEDICINA |
+| F02 | FDCP | FACULTAD DE DERECHO Y CIENCIA POLÍTICA |
+| F03 | FLCH | FACULTAD DE LETRAS Y CIENCIAS HUMANAS |
+| F04 | FFB | FACULTAD DE FARMACIA Y BIOQUÍMICA |
+| F05 | FO | FACULTAD DE ODONTOLOGÍA |
+| F06 | FE | FACULTAD DE EDUCACIÓN |
+| F07 | FQIQ | FACULTAD DE QUÍMICA E INGENIERÍA QUÍMICA |
+| F08 | FMV | FACULTAD DE MEDICINA VETERINARIA |
+| F09 | FCA | FACULTAD DE CIENCIAS ADMINISTRATIVAS |
+| F10 | FCB | FACULTAD DE CIENCIAS BIOLÓGICAS |
+| F11 | FCC | FACULTAD DE CIENCIAS CONTABLES |
+| F12 | FCE | FACULTAD DE CIENCIAS ECONÓMICAS |
+| F13 | FCF | FACULTAD DE CIENCIAS FÍSICAS |
+| F14 | FCM | FACULTAD DE CIENCIAS MATEMÁTICAS |
+| F15 | FCCSS | FACULTAD DE CIENCIAS SOCIALES |
+| F16 | FIGMMG | FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA |
+| F20 | FII | FACULTAD DE INGENIERÍA INDUSTRIAL |
+
+**Pendientes de declarar: FPSIC, FIEE y FISI.** La relación recibida llega hasta
+F16 y salta a F20, de modo que F17, F18 y F19 quedan sin asignar y no hay forma
+de saber cuál corresponde a cada una. Mientras no se declaren, esas tres
+pestañas se validan contra su propio sufijo dominante y el resumen lo advierte.
+No se les asigna un número por inferencia.
+
+**6.4 Dos defectos distintos.**
+
+| Defecto | Cómo se reporta |
+|---|---|
+| La pestaña entera usa el formulario de otra facultad | **Hallazgo de hoja**: una sola vez, en el `DIAGNÓSTICO` del resumen y en la columna `FORMULARIO` |
+| Filas sueltas que se apartan del sufijo del resto de la hoja | **Observación por fila**, en el criterio 4 de la hoja de procesos |
+
+La separación evita que una pestaña mal numerada de principio a fin genere
+cientos de observaciones idénticas. La comparación por fila se hace siempre
+contra el **dominante de la pestaña**; el formulario **oficial** solo interviene
+en el hallazgo de hoja y en la corrección sugerida.
+
+**6.5 Estado actual, medido sobre el Anexo 1.**
+
+Cuatro pestañas llevan el formulario de otra facultad en toda la hoja:
+
+| Facultad | Oficial | Usa | Códigos |
+|---|---|---|---|
+| FCF | F13 | **F02** | 88 |
+| FCCSS | F15 | **F02** | 113 |
+| FIGMMG | F16 | **F06** | 61 |
+| FII | F20 | **F17** | 41 |
+
+Las tres sin declarar usan: FPSIC → F18 (242 códigos), FIEE → F17 (182),
+FISI → F02 (91). Nótese que FIEE usa F17, el mismo que usa la pestaña de FII.
+
+Filas sueltas fuera del dominante: FIGMMG 11, FCC 9, FE 8, FII 7, FCA 5, FFB 2,
+FLCH 1, FCB 1, FCCSS 1.
 
 **Aún sin automatizar** (requieren leer el formato de la celda, no su texto):
 fuente Roboto, celdas de la columna B sin combinar, color heredado del modelo `PE.01`.
@@ -372,3 +386,26 @@ fusionan. **Una fila por proceso, puntuada**: los 16 de Nivel 0 de cada facultad
 **Estados:** `CONFORME` con 5/5; `OBSERVADO` por debajo; `FALTANTE` para un
 Nivel 0 obligatorio ausente (0/5); `NO APLICA` para `PE.03` y `PS.08` ausentes,
 que no se puntúan.
+
+
+---
+
+## 10. Catálogo de facultades — *NUEVA en v6*
+
+El nombre oficial es el que se publica en el resumen. **No siempre coincide con
+el título de la pestaña**, así que la localización de la hoja sigue apoyándose en
+la sigla y en alias que recogen el título tal como está escrito hoy:
+
+| Sigla | Nombre oficial | Título de la pestaña |
+|---|---|---|
+| FIEE | FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA | «Ingeniería Eléctrica Electrónica» — palabras invertidas |
+| FCA | FACULTAD DE CIENCIAS ADMINISTRATIVAS | «Ciencias Administrativa» — singular |
+| FCF | FACULTAD DE CIENCIAS FÍSICAS | «Ciencias Fisicas» — sin tilde |
+| FFB | FACULTAD DE FARMACIA Y BIOQUÍMICA | «Farmacia y Bioquimica» — sin tilde |
+| FO | FACULTAD DE ODONTOLOGÍA | «Odontologia» — sin tilde |
+
+Las tildes no son problema —la comparación las ignora—, pero el orden de las
+palabras y el número gramatical sí, y por eso se conservan los alias.
+
+La columna `FORMULARIO` del resumen muestra el número oficial y, entre
+paréntesis, el que realmente usa la pestaña cuando no coinciden.
