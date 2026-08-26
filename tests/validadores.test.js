@@ -450,9 +450,9 @@ bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
     padreEntre(["PS.10"]), fo.formulario);
   chequear("_F05 no se marca", propio.checks.sufijo === true);
 
-  // Pestañas cuyo uso observado no coincide con el formulario oficial declarado.
-  // FPSIC, FIEE y FISI quedan fuera: su formulario oficial aún no está declarado.
-  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17" };
+  // Pestañas cuyo uso observado no coincide con el formulario oficial.
+  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17",
+                    FPSIC: "F18", FIEE: "F17", FISI: "F02" };
   Object.keys(desfase).forEach(function (sigla) {
     const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
     chequear(sigla + ": el uso observado (" + desfase[sigla] + ") difiere del oficial (" + f.formulario + ")",
@@ -507,21 +507,24 @@ bloque("Formularios oficiales por facultad", function () {
   const oficiales = {
     FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
     FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
-    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20"
+    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20",
+    FPSIC: "F17", FIEE: "F18", FISI: "F19"
   };
   Object.keys(oficiales).forEach(function (sigla) {
     chequear(sigla + " = " + oficiales[sigla], F(sigla).formulario === oficiales[sigla]);
   });
 
-  ["FPSIC", "FIEE", "FISI"].forEach(function (sigla) {
-    chequear(sigla + " queda sin formulario declarado", F(sigla).formulario === null);
-  });
+  chequear("los 20 formularios están declarados",
+    M.CONFIG_A1.FACULTADES.every(function (f) { return !!f.formulario; }));
+  chequear("la numeración no es posicional: FII lleva F20",
+    F("FII").formulario === "F20" && M.CONFIG_A1.FACULTADES.indexOf(F("FII")) === 16);
 
-  chequear("no hay dos facultades con el mismo formulario", (function () {
-    const usados = M.CONFIG_A1.FACULTADES
-      .map(function (f) { return f.formulario; })
-      .filter(Boolean);
-    return new Set(usados).size === usados.length;
+  chequear("los 20 formularios son distintos",
+    new Set(M.CONFIG_A1.FACULTADES.map(function (f) { return f.formulario; })).size === 20);
+  chequear("cubren F01..F20 sin huecos", (function () {
+    const n = M.CONFIG_A1.FACULTADES.map(function (f) { return parseInt(f.formulario.slice(1), 10); })
+      .sort(function (a, b) { return a - b; });
+    return n.every(function (v, i) { return v === i + 1; });
   })());
 
   chequear("los nombres oficiales están en mayúsculas",

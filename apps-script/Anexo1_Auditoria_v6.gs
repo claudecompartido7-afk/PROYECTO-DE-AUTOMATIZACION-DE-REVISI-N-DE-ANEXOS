@@ -54,10 +54,10 @@ const CONFIG_A1 = {
   /**
    * Facultades según la relación oficial.
    *
-   * `formulario` es el número de formulario asignado a la facultad; cuando está
-   * declarado, prevalece sobre el sufijo dominante de la pestaña. Las tres que
-   * están en null quedan pendientes de que la OGPL confirme su número: hasta
-   * entonces se usa el dominante de su hoja.
+   * `formulario` es el número de formulario asignado a la facultad. Fuente: hoja
+   * CODIFICACION_DE_LAS_FACULTADES del dashboard, columna E. Los 20 están
+   * declarados; nótese que la numeración no sigue el orden de la relación: la
+   * FII lleva F20 y las tres últimas F17, F18 y F19.
    *
    * `alias` conserva la forma en que el título aparece HOY en cada pestaña, que
    * no siempre coincide con el nombre oficial (la FIEE lo lleva con las
@@ -98,11 +98,11 @@ const CONFIG_A1 = {
       alias: ["INGENIERIA GEOLOGICA", "GEOLOGICA"] },
     { sigla: "FII",    formulario: "F20", nombre: "FACULTAD DE INGENIERÍA INDUSTRIAL",
       alias: ["INGENIERIA INDUSTRIAL", "INDUSTRIAL"] },
-    { sigla: "FPSIC",  formulario: null,  nombre: "FACULTAD DE PSICOLOGÍA",
+    { sigla: "FPSIC",  formulario: "F17", nombre: "FACULTAD DE PSICOLOGÍA",
       alias: ["PSICOLOGIA"] },
-    { sigla: "FIEE",   formulario: null,  nombre: "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA",
+    { sigla: "FIEE",   formulario: "F18", nombre: "FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA",
       alias: ["INGENIERIA ELECTRONICA Y ELECTRICA", "INGENIERIA ELECTRICA ELECTRONICA", "ELECTRONICA"] },
-    { sigla: "FISI",   formulario: null,  nombre: "FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA",
+    { sigla: "FISI",   formulario: "F19", nombre: "FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA",
       alias: ["INGENIERIA DE SISTEMAS", "SISTEMAS"] }
   ],
 

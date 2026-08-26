@@ -261,13 +261,15 @@ Tras un punto la `F` es obligatoria; sin ella, el último grupo del propio códi
 | F14 | FCM | FACULTAD DE CIENCIAS MATEMÁTICAS |
 | F15 | FCCSS | FACULTAD DE CIENCIAS SOCIALES |
 | F16 | FIGMMG | FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA |
+| F17 | FPSIC | FACULTAD DE PSICOLOGÍA |
+| F18 | FIEE | FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA |
+| F19 | FISI | FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA |
 | F20 | FII | FACULTAD DE INGENIERÍA INDUSTRIAL |
 
-**Pendientes de declarar: FPSIC, FIEE y FISI.** La relación recibida llega hasta
-F16 y salta a F20, de modo que F17, F18 y F19 quedan sin asignar y no hay forma
-de saber cuál corresponde a cada una. Mientras no se declaren, esas tres
-pestañas se validan contra su propio sufijo dominante y el resumen lo advierte.
-No se les asigna un número por inferencia.
+**Fuente:** hoja `CODIFICACION_DE_LAS_FACULTADES` del dashboard, columna E.
+Los 20 están declarados. La numeración **no sigue el orden de la relación**: la
+FII es la 17.ª de la lista y lleva F20, mientras que F17, F18 y F19 van a las
+tres últimas.
 
 **6.4 Dos defectos distintos.**
 
@@ -283,17 +285,20 @@ en el hallazgo de hoja y en la corrección sugerida.
 
 **6.5 Estado actual, medido sobre el Anexo 1.**
 
-Cuatro pestañas llevan el formulario de otra facultad en toda la hoja:
+**Siete pestañas** llevan el formulario de otra facultad en toda la hoja:
 
-| Facultad | Oficial | Usa | Códigos |
+| Facultad | Oficial | Usa | Observación |
 |---|---|---|---|
-| FCF | F13 | **F02** | 88 |
-| FCCSS | F15 | **F02** | 113 |
-| FIGMMG | F16 | **F06** | 61 |
-| FII | F20 | **F17** | 41 |
+| FCF | F13 | **F02** | usa el de FDCP |
+| FCCSS | F15 | **F02** | usa el de FDCP |
+| FISI | F19 | **F02** | usa el de FDCP |
+| FIGMMG | F16 | **F06** | usa el de FE |
+| FII | F20 | **F17** | usa el de FPSIC |
+| FPSIC | F17 | **F18** | **intercambiado con FIEE** |
+| FIEE | F18 | **F17** | **intercambiado con FPSIC** |
 
-Las tres sin declarar usan: FPSIC → F18 (242 códigos), FIEE → F17 (182),
-FISI → F02 (91). Nótese que FIEE usa F17, el mismo que usa la pestaña de FII.
+FPSIC y FIEE tienen el suyo cruzado entre sí. Y F17 lo usan a la vez las
+pestañas de FIEE y de FII.
 
 Filas sueltas fuera del dominante: FIGMMG 11, FCC 9, FE 8, FII 7, FCA 5, FFB 2,
 FLCH 1, FCB 1, FCCSS 1.
