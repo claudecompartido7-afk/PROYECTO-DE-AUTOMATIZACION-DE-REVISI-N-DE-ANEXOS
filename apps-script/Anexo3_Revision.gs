@@ -80,6 +80,8 @@ const CONFIG_A3 = {
   },
 
   FUENTE_OBLIGATORIA: 'Arial',
+  /** Máximo de celdas fuera de Arial que se detallan una por una por ficha. */
+  MAX_CELDAS_FUENTE: 25,
 
   /**
    * Semáforo de las hojas de salida. Cada fila se pinta según su estado:
@@ -547,13 +549,52 @@ function revisarFicha_(ctx, bloque, numero) {
     cotejo: cotejo
   };
 
-  function anotar(seccion, campo, codigo, estructura, completo, obs) {
+  /**
+   * Registra una fila del detalle.
+   *
+   * `ubicacion` = { fila, col } en base 0, tal como vienen del recorrido de la
+   * matriz. Se traduce a la fila y la celda que el revisor ve en la hoja, para
+   * que pueda ir directo al dato sin tener que buscarlo. Cuando el hallazgo no
+   * cuelga de una celda concreta (una columna entera sin registros, la revisión
+   * de fuente de toda la ficha) se deja el rango de filas de la ficha.
+   */
+  function anotar(seccion, campo, codigo, estructura, completo, obs, ubicacion) {
+    let fila = '';
+    let celda = '';
+    if (ubicacion && ubicacion.fila !== undefined && ubicacion.fila !== null && ubicacion.fila >= 0) {
+      fila = ubicacion.fila + 1;
+      if (ubicacion.col !== undefined && ubicacion.col !== null && ubicacion.col >= 0) {
+        celda = letraColumna_(ubicacion.col + 1) + fila;
+      }
+    } else if (ubicacion && ubicacion.rango) {
+      fila = ubicacion.rango;
+    }
     detalle.push({
       ficha: numero, nombre: ficha.nombre, seccion: seccion, campo: campo,
+      fila: fila, celda: celda,
       codigo: recortarA3_(codigo, 90),
       estructura: estructura, completo: completo,
       observacion: obs || ''
     });
+  }
+
+  /** Rango de filas de la ficha, para los hallazgos que no son de una celda. */
+  const rangoFicha = { rango: (bloque.inicio + 1) + '–' + (bloque.fin + 1) };
+
+  /**
+   * Anota un campo pendiente y le adjunta dónde está, para que el resumen
+   * ejecutivo sirva de lista de tareas sin tener que abrir el detalle.
+   */
+  function faltante(nombre, ubicacion) {
+    let donde = '';
+    if (ubicacion && ubicacion.fila !== undefined && ubicacion.fila !== null && ubicacion.fila >= 0) {
+      donde = (ubicacion.col !== undefined && ubicacion.col !== null && ubicacion.col >= 0)
+        ? ' (celda ' + letraColumna_(ubicacion.col + 1) + (ubicacion.fila + 1) + ')'
+        : ' (fila ' + (ubicacion.fila + 1) + ')';
+    } else if (ubicacion && ubicacion.rango) {
+      donde = ' (filas ' + ubicacion.rango + ')';
+    }
+    ficha.faltantes.push(nombre + donde);
   }
 
   /* ── 3.2 Definición del Proceso ─────────────────────────────────────── */
@@ -562,32 +603,38 @@ function revisarFicha_(ctx, bloque, numero) {
     const pos = buscarFilaEtiqueta_(V, bloque.inicio, bloque.fin, def.etiquetas);
     ficha.campos++;
     if (!pos) {
-      ficha.faltantes.push('Definición › ' + def.campo);
+      faltante('Definición › ' + def.campo, rangoFicha);
       anotar('Definición', def.campo, '', 'N/A', 'No',
-             'No se encontró la etiqueta "' + def.campo + '" en la ficha.');
+             'No se encontró la etiqueta "' + def.campo + '" en la ficha.', rangoFicha);
       return;
     }
     const v = valorDeEtiqueta_(V[pos.fila], pos.col, ctx.etiquetas);
     if (esVacio_(v.valor)) {
-      ficha.faltantes.push('Definición › ' + def.campo);
+      faltante('Definición › ' + def.campo, { fila: pos.fila, col: pos.col });
       anotar('Definición', def.campo, '', def.codigo ? 'No' : 'N/A', 'No',
-             'Campo obligatorio vacío (fila ' + (pos.fila + 1) + ').');
+             'Campo obligatorio vacío.', { fila: pos.fila, col: pos.col });
       return;
     }
     ficha.completos++;
     if (def.campo === 'Nombre') ficha.nombre = v.valor.toString().trim();
 
-    if (!def.codigo) { anotar('Definición', def.campo, recortarA3_(v.valor, 90), 'N/A', 'Sí', ''); return; }
+    if (!def.codigo) {
+      anotar('Definición', def.campo, recortarA3_(v.valor, 90), 'N/A', 'Sí', '',
+             { fila: pos.fila, col: v.col });
+      return;
+    }
 
     const r = validarCeldaA3_(v.valor, def.codigo, ctx.formulario, ctx.permiteNivel2, true);
     if (def.campo === 'Código' && r.codigos.length) ficha.codigo = r.codigos[0];
     if (r.errores.length) {
       ficha.erroresCodificacion += r.errores.length;
       anotar('Definición', def.campo, v.valor, 'No', 'Sí',
-             r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '));
+             r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
+             { fila: pos.fila, col: v.col });
     } else {
       anotar('Definición', def.campo, v.valor, 'Sí', 'Sí',
-             r.notas.map(function (n) { return n.motivo; }).join(' | '));
+             r.notas.map(function (n) { return n.motivo; }).join(' | '),
+             { fila: pos.fila, col: v.col });
       r.notas.forEach(function (n) { ficha.notas.push(def.campo + ': ' + n.motivo); });
     }
   });
@@ -600,8 +647,9 @@ function revisarFicha_(ctx, bloque, numero) {
 
   if (!posDesc) {
     ficha.campos++;
-    ficha.faltantes.push('Descripción › sección completa');
-    anotar('Descripción', 'Sección', '', 'N/A', 'No', 'No se encontró "DESCRIPCIÓN DEL PROCESO" en la ficha.');
+    faltante('Descripción › sección completa', rangoFicha);
+    anotar('Descripción', 'Sección', '', 'N/A', 'No',
+           'No se encontró "DESCRIPCIÓN DEL PROCESO" en la ficha.', rangoFicha);
   } else {
     // Fila de encabezados (PROVEEDORES … BENEFICIARIOS) y columna de cada uno.
     let filaEnc = -1;
@@ -621,9 +669,10 @@ function revisarFicha_(ctx, bloque, numero) {
     CONFIG_A3.COLUMNAS_DESCRIPCION.forEach(function (col) {
       ficha.campos++;
       if (filaEnc === -1 || columnas[col.campo] === undefined) {
-        ficha.faltantes.push('Descripción › ' + col.campo);
+        faltante('Descripción › ' + col.campo, filaEnc === -1 ? rangoFicha : { fila: filaEnc });
         anotar('Descripción', col.campo, '', 'N/A', 'No',
-               'No se ubicó la columna "' + col.campo + '" (columna ' + col.columna + ').');
+               'No se ubicó la columna "' + col.campo + '" (columna ' + col.columna + ').',
+               filaEnc === -1 ? rangoFicha : { fila: filaEnc });
         return;
       }
       const c = columnas[col.campo];
@@ -638,12 +687,14 @@ function revisarFicha_(ctx, bloque, numero) {
         const denom = denominacionDeA3_(celda) || denominacionVecina_(V[f], c);
         if (r.errores.length) {
           ficha.erroresCodificacion += r.errores.length;
-          anotar('Descripción', col.campo + ' (fila ' + (f + 1) + ')', celda, 'No', 'Sí',
-                 r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '));
+          anotar('Descripción', col.campo, celda, 'No', 'Sí',
+                 r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
+                 { fila: f, col: c });
         } else if (r.notas.length) {
           r.notas.forEach(function (n) { ficha.notas.push(col.campo + ': ' + n.motivo); });
-          anotar('Descripción', col.campo + ' (fila ' + (f + 1) + ')', celda, 'Sí', 'Sí',
-                 r.notas.map(function (n) { return n.motivo; }).join(' | '));
+          anotar('Descripción', col.campo, celda, 'Sí', 'Sí',
+                 r.notas.map(function (n) { return n.motivo; }).join(' | '),
+                 { fila: f, col: c });
         }
         // Registro maestro (reglas 2, 3 y 6) y cotejo con el Anexo 1 (regla 5).
         r.codigos.forEach(function (cod) {
@@ -655,12 +706,14 @@ function revisarFicha_(ctx, bloque, numero) {
         });
       }
       if (conDatos === 0) {
-        ficha.faltantes.push('Descripción › ' + col.campo);
+        faltante('Descripción › ' + col.campo, { rango: (filaEnc + 2) + '–' + (finDesc + 1) });
         anotar('Descripción', col.campo, '', 'N/A', 'No',
-               'La columna ' + col.columna + ' (' + col.campo + ') no tiene ningún registro.');
+               'La columna ' + col.columna + ' (' + col.campo + ') no tiene ningún registro.',
+               { rango: (filaEnc + 2) + '–' + (finDesc + 1) });
       } else {
         ficha.completos++;
-        anotar('Descripción', col.campo, conDatos + ' registro(s)', 'Sí', 'Sí', '');
+        anotar('Descripción', col.campo, conDatos + ' registro(s)', 'Sí', 'Sí', '',
+               { rango: (filaEnc + 2) + '–' + (finDesc + 1) });
       }
     });
   }
@@ -675,37 +728,48 @@ function revisarFicha_(ctx, bloque, numero) {
     ficha.campos++;
     let valor = '';
     let filaHallada = -1;
+    let colEtiqueta = -1;
+    let colValor = -1;
     for (let f = iniEjec; f <= finEjec && f < V.length; f++) {
       for (let c = 0; c < V[f].length; c++) {
         if (!esEtiqueta_(V[f][c], def.etiquetas)) continue;
         const v = valorDeEtiqueta_(V[f], c, ctx.etiquetas);
-        if (!esVacio_(v.valor)) { valor = v.valor; filaHallada = f; break; }
-        if (filaHallada === -1) filaHallada = f;
+        if (!esVacio_(v.valor)) { valor = v.valor; filaHallada = f; colEtiqueta = c; colValor = v.col; break; }
+        // La etiqueta existe pero está vacía: se recuerda su posición por si no
+        // aparece llena más abajo (las celdas combinadas la repiten por fila).
+        if (filaHallada === -1) { filaHallada = f; colEtiqueta = c; }
       }
       if (valor) break;
     }
     if (filaHallada === -1) {
-      ficha.faltantes.push('Ejecución › ' + def.campo);
-      anotar('Ejecución', def.campo, '', 'N/A', 'No', 'No se encontró la etiqueta "' + def.campo + '".');
+      faltante('Ejecución › ' + def.campo, rangoFicha);
+      anotar('Ejecución', def.campo, '', 'N/A', 'No',
+             'No se encontró la etiqueta "' + def.campo + '".', rangoFicha);
       return;
     }
     if (esVacio_(valor)) {
-      ficha.faltantes.push('Ejecución › ' + def.campo);
+      faltante('Ejecución › ' + def.campo, { fila: filaHallada, col: colEtiqueta });
       anotar('Ejecución', def.campo, '', def.codigo ? 'No' : 'N/A', 'No',
-             'Campo obligatorio vacío (fila ' + (filaHallada + 1) + ').');
+             'Campo obligatorio vacío.', { fila: filaHallada, col: colEtiqueta });
       return;
     }
     ficha.completos++;
-    if (!def.codigo) { anotar('Ejecución', def.campo, recortarA3_(valor, 90), 'N/A', 'Sí', ''); return; }
+    if (!def.codigo) {
+      anotar('Ejecución', def.campo, recortarA3_(valor, 90), 'N/A', 'Sí', '',
+             { fila: filaHallada, col: colValor });
+      return;
+    }
 
     const r = validarCeldaA3_(valor, def.codigo, ctx.formulario, ctx.permiteNivel2, false);
     if (r.errores.length) {
       ficha.erroresCodificacion += r.errores.length;
       anotar('Ejecución', def.campo, valor, 'No', 'Sí',
-             r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '));
+             r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
+             { fila: filaHallada, col: colValor });
     } else {
       anotar('Ejecución', def.campo, valor, 'Sí', 'Sí',
-             r.notas.map(function (n) { return n.motivo; }).join(' | '));
+             r.notas.map(function (n) { return n.motivo; }).join(' | '),
+             { fila: filaHallada, col: colValor });
       r.notas.forEach(function (n) { ficha.notas.push(def.campo + ': ' + n.motivo); });
     }
     // Regla 7: los registros se cotejan contra los productos parciales del A1.
@@ -719,9 +783,9 @@ function revisarFicha_(ctx, bloque, numero) {
 
   if (!posForm) {
     ficha.campos++;
-    ficha.faltantes.push('Formalización › sección completa');
+    faltante('Formalización › sección completa', rangoFicha);
     anotar('Formalización', 'Sección', '', 'N/A', 'No',
-           'No se encontró "FORMALIZACIÓN DEL PROCESO" en la ficha.');
+           'No se encontró "FORMALIZACIÓN DEL PROCESO" en la ficha.', rangoFicha);
   } else {
     // Encabezado Unidad | Cargo | Nombre y Apellidos | Firma.
     let filaEnc = -1;
@@ -752,14 +816,16 @@ function revisarFicha_(ctx, bloque, numero) {
         if (!campo.obligatorio) {
           // La firma va como foto: se informa, no se computa ni se exige.
           anotar('Formalización', rotulo + ' › ' + campo.campo, '', 'N/A', 'Opcional',
-                 'La firma es una imagen; no se computa como campo faltante.');
+                 'La firma es una imagen; no se computa como campo faltante.',
+                 filaBloque === -1 ? rangoFicha
+                                   : { fila: filaBloque, col: columnas[campo.campo] });
           return;
         }
         ficha.campos++;
         if (filaBloque === -1) {
-          ficha.faltantes.push('Formalización › ' + rotulo + ' › ' + campo.campo);
+          faltante('Formalización › ' + rotulo + ' › ' + campo.campo, rangoFicha);
           anotar('Formalización', rotulo + ' › ' + campo.campo, '', 'N/A', 'No',
-                 'No se encontró la fila "' + rotulo + '".');
+                 'No se encontró la fila "' + rotulo + '".', rangoFicha);
           return;
         }
         let valor = '';
@@ -773,12 +839,14 @@ function revisarFicha_(ctx, bloque, numero) {
           if (campo.campo === 'Unidad') valor = v.valor;
         }
         if (esVacio_(valor)) {
-          ficha.faltantes.push('Formalización › ' + rotulo + ' › ' + campo.campo);
+          faltante('Formalización › ' + rotulo + ' › ' + campo.campo, { fila: filaBloque, col: columnas[campo.campo] });
           anotar('Formalización', rotulo + ' › ' + campo.campo, '', 'N/A', 'No',
-                 'Campo obligatorio vacío (fila ' + (filaBloque + 1) + ').');
+                 'Campo obligatorio vacío.',
+                 { fila: filaBloque, col: columnas[campo.campo] });
         } else {
           ficha.completos++;
-          anotar('Formalización', rotulo + ' › ' + campo.campo, recortarA3_(valor, 90), 'N/A', 'Sí', '');
+          anotar('Formalización', rotulo + ' › ' + campo.campo, recortarA3_(valor, 90), 'N/A', 'Sí', '',
+                 { fila: filaBloque, col: columnas[campo.campo] });
         }
       });
     });
@@ -787,21 +855,28 @@ function revisarFicha_(ctx, bloque, numero) {
   /* ── Regla 1: fuente Arial ──────────────────────────────────────────── */
 
   if (ctx.fuentes) {
-    const fuera = [];
+    // Una fila por celda infractora, para que el revisor tenga la celda exacta.
+    // Si son muchas se listan las primeras y se cierra con el total, para no
+    // inundar el detalle con cientos de filas de una misma ficha.
+    let listadas = 0;
     for (let f = bloque.inicio; f <= bloque.fin && f < ctx.fuentes.length; f++) {
       for (let c = 0; c < ctx.fuentes[f].length; c++) {
         if (esVacio_(V[f][c])) continue;
         const fuente = (ctx.fuentes[f][c] || '').toString();
-        if (normalizar_(fuente) !== normalizar_(CONFIG_A3.FUENTE_OBLIGATORIA)) {
-          ficha.fueraDeArial++;
-          if (fuera.length < 5) fuera.push('fila ' + (f + 1) + ' col ' + letraColumna_(c + 1) + ' (' + fuente + ')');
+        if (normalizar_(fuente) === normalizar_(CONFIG_A3.FUENTE_OBLIGATORIA)) continue;
+        ficha.fueraDeArial++;
+        if (listadas < CONFIG_A3.MAX_CELDAS_FUENTE) {
+          listadas++;
+          anotar('Formato', 'Fuente Arial', recortarA3_(V[f][c], 60), 'N/A', 'No',
+                 'Regla 1: la celda usa la fuente "' + fuente + '" en lugar de Arial.',
+                 { fila: f, col: c });
         }
       }
     }
-    if (ficha.fueraDeArial) {
+    if (ficha.fueraDeArial > listadas) {
       anotar('Formato', 'Fuente Arial', '', 'N/A', 'No',
-             'Regla 1: ' + ficha.fueraDeArial + ' celda(s) con fuente distinta de Arial. ' +
-             'Ejemplos: ' + fuera.join('; ') + '.');
+             'Regla 1: ' + ficha.fueraDeArial + ' celda(s) fuera de Arial en la ficha; ' +
+             'se detallan las ' + listadas + ' primeras.', rangoFicha);
     }
   }
 
@@ -1215,14 +1290,14 @@ function escribirResultado_(ss, resultado) {
   const estadosDetalle = [];
   resultado.fichas.forEach(function (f) {
     f.detalle.forEach(function (d) {
-      detalle.push([f.numero + '. ' + f.nombre, d.seccion, d.campo, d.codigo,
-                    d.estructura, d.completo, d.observacion]);
+      detalle.push([f.numero + '. ' + f.nombre, d.seccion, d.campo, d.fila, d.celda,
+                    d.codigo, d.estructura, d.completo, d.observacion]);
       estadosDetalle.push(estadoDeDetalle_(d));
     });
   });
   escribirHoja_(ss, H.DETALLE,
-    ['N° FICHA / PROCESO', 'SECCIÓN', 'CAMPO REVISADO', 'CÓDIGO ENCONTRADO',
-     '¿CUMPLE ESTRUCTURA?', '¿CAMPO COMPLETO?', 'OBSERVACIÓN ESPECÍFICA'],
+    ['N° FICHA / PROCESO', 'SECCIÓN', 'CAMPO REVISADO', 'N° DE FILA', 'CELDA',
+     'CÓDIGO ENCONTRADO', '¿CUMPLE ESTRUCTURA?', '¿CAMPO COMPLETO?', 'OBSERVACIÓN ESPECÍFICA'],
     detalle, estadosDetalle);
 
   /* Hoja 2 — Resumen ejecutivo */
@@ -1331,22 +1406,23 @@ function escribirResultado_(ss, resultado) {
       const estado = estadoDeDetalle_(d);
       if (estado === 'ok' || estado === 'neutro') return;
       agregarHallazgo([CONFIG_A3.HOJAS.DETALLE, f.numero + '. ' + f.nombre,
-                       d.seccion + ' › ' + d.campo, d.codigo, d.observacion], estado);
+                       d.seccion + ' › ' + d.campo, d.celda || d.fila, d.codigo,
+                       d.observacion], estado);
     });
   });
   resultado.maestro.forEach(function (m) {
     if (estadoDeMaestro_(m) !== 'ok') {
-      agregarHallazgo([CONFIG_A3.HOJAS.MAESTRO, m.fichas, m.tipo, m.codigo, m.observacion], 'error');
+      agregarHallazgo([CONFIG_A3.HOJAS.MAESTRO, m.fichas, m.tipo, '', m.codigo, m.observacion], 'error');
     }
   });
   resultado.cotejo.forEach(function (c) {
     const estado = estadoDeCotejo_(c);
     if (estado !== 'ok') {
-      agregarHallazgo([CONFIG_A3.HOJAS.COTEJO, c.fichas, c.tipo, c.codigo, c.observacion], estado);
+      agregarHallazgo([CONFIG_A3.HOJAS.COTEJO, c.fichas, c.tipo, '', c.codigo, c.observacion], estado);
     }
   });
   escribirHoja_(ss, H.ERRORES,
-    ['HOJA DE ORIGEN', 'FICHA(S)', 'SECCIÓN / TIPO', 'CÓDIGO', 'OBSERVACIÓN'],
+    ['HOJA DE ORIGEN', 'FICHA(S)', 'SECCIÓN / TIPO', 'FILA / CELDA', 'CÓDIGO', 'OBSERVACIÓN'],
     soloErrores, estadosErrores);
 
   // La hoja que crea Google por defecto sobra.

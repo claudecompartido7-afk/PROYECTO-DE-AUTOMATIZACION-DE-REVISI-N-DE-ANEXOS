@@ -153,14 +153,26 @@ una celda con dos códigos mal escritos suma dos.
 
 | Hoja | Contenido |
 |---|---|
-| `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, código, ¿cumple estructura?, ¿campo completo?, observación |
+| `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
 | `RESUMEN_EJECUTIVO` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
 | `DASHBOARD` | Consolidado de la facultad: fichas revisadas, completas vs. incompletas, avance global, errores, secciones con más faltantes |
 | `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |
 | `COTEJO_ANEXO1` | Salidas y registros contra el Anexo 1 |
 | `SOLO_OBSERVACIONES` | Extracto de las tres hojas anteriores, solo filas con hallazgos |
 
-**6.1 Semáforo.** Cada fila de las hojas 1, 2, 4, 5 y 6 se pinta según su
+**6.1 Ubicación de cada hallazgo.** El detalle indica dónde está el dato en la
+pestaña revisada: `N° DE FILA` con la fila tal como se ve en la hoja (base 1) y
+`CELDA` en notación A1 apuntando al **valor**, no a la etiqueta. Cuando el
+hallazgo no cuelga de una celda concreta —una columna entera sin registros, una
+sección que no aparece— se informa el **rango de filas** (`10–11`). La misma
+ubicación se repite entre paréntesis en la lista de campos faltantes del resumen
+ejecutivo, y en la columna `FILA / CELDA` de la hoja de observaciones.
+
+Las celdas fuera de Arial se detallan **una por una**, con su celda exacta, hasta
+el tope de `MAX_CELDAS_FUENTE` (25) por ficha; si hay más, se cierra con una fila
+que informa el total.
+
+**6.2 Semáforo.** Cada fila de las hojas 1, 2, 4, 5 y 6 se pinta según su
 estado, y el mismo estado se escribe en texto en la columna `ESTADO`, para que
 la hoja se lea igual impresa en blanco y negro o por quien no distinga los
 colores.

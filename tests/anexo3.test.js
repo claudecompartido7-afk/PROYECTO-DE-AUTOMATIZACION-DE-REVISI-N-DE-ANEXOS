@@ -318,16 +318,16 @@ bloque("Ficha completa — sin hallazgos", function () {
 });
 
 bloque("Ficha con defectos", function () {
-  chequear("el alcance vacío se reporta",
-    F2.faltantes.indexOf("Definición › Alcance") !== -1);
-  chequear("los riesgos vacíos se reportan",
-    F2.faltantes.indexOf("Ejecución › Riesgos") !== -1);
-  chequear("los controles vacíos se reportan",
-    F2.faltantes.indexOf("Ejecución › Controles") !== -1);
+  function faltaReportada(nombre) {
+    return F2.faltantes.some(function (x) { return x.indexOf(nombre) === 0; });
+  }
+  chequear("el alcance vacío se reporta", faltaReportada("Definición › Alcance"));
+  chequear("los riesgos vacíos se reportan", faltaReportada("Ejecución › Riesgos"));
+  chequear("los controles vacíos se reportan", faltaReportada("Ejecución › Controles"));
   chequear("el cargo faltante en Elaboración se reporta",
-    F2.faltantes.indexOf("Formalización › Elaboracion › Cargo") !== -1);
+    faltaReportada("Formalización › Elaboracion › Cargo"));
   chequear("la unidad faltante en Revisión se reporta",
-    F2.faltantes.indexOf("Formalización › Revision › Unidad") !== -1);
+    faltaReportada("Formalización › Revision › Unidad"));
   chequear("dos procesos en una celda cuentan como error",
     F2.detalle.some(function (d) { return d.observacion.indexOf("Regla 4") !== -1; }));
   chequear("el beneficiario con formulario ajeno cuenta como error",
@@ -343,6 +343,47 @@ bloque("Ficha con defectos", function () {
     F2.notas.some(function (n) { return n.indexOf("nivel 2") !== -1; }));
 });
 
+bloque("Ubicación de cada campo revisado", function () {
+  function buscar(ficha, seccion, campo) {
+    let hallada = null;
+    ficha.detalle.forEach(function (d) {
+      if (!hallada && d.seccion === seccion && d.campo === campo) hallada = d;
+    });
+    return hallada;
+  }
+
+  chequear("la fila del campo es la que se ve en la hoja (base 1)",
+    buscar(F1, "Definición", "Responsable").fila === 4);
+  chequear("y la celda apunta al valor, no a la etiqueta",
+    buscar(F1, "Definición", "Responsable").celda === "B4");
+  chequear("el código de la definición se ubica en su propia celda",
+    buscar(F1, "Definición", "Código").celda === "H3");
+  chequear("un campo de ejecución trae su celda",
+    buscar(F1, "Ejecución", "Registros").celda === "E13");
+  chequear("un campo de formalización trae su celda",
+    buscar(F1, "Formalización", "Elaboracion › Unidad").celda === "B19");
+  chequear("una columna de la descripción informa el rango de filas",
+    buscar(F1, "Descripción", "Proveedores").fila === "10–11");
+  chequear("un hallazgo de una celda de la descripción trae la celda exacta",
+    (function () {
+      let d = null;
+      F2.detalle.forEach(function (x) {
+        if (!d && x.seccion === "Descripción" && x.estructura === "No") d = x;
+      });
+      return d && d.celda === "F31";
+    })());
+  chequear("un campo vacío también trae su ubicación",
+    buscar(F2, "Definición", "Alcance").fila === 26);
+  chequear("la ubicación ya no se repite dentro del texto de la observación",
+    buscar(F2, "Definición", "Alcance").observacion.indexOf("fila") === -1);
+  chequear("el campo revisado ya no arrastra la fila en su nombre",
+    F2.detalle.every(function (d) { return d.campo.indexOf("(fila") === -1; }));
+  chequear("el resumen de faltantes indica dónde completar",
+    F2.faltantes.some(function (x) { return x.indexOf("(celda ") !== -1; }));
+  chequear("toda fila del detalle trae fila o rango",
+    F1.detalle.every(function (d) { return d.fila !== "" && d.fila !== undefined; }));
+});
+
 bloque("Regla 1 — fuente Arial", function () {
   const fuentes = V.map(function (fila) { return fila.map(function () { return "Arial"; }); });
   fuentes[3][1] = "Calibri";
@@ -351,6 +392,10 @@ bloque("Regla 1 — fuente Arial", function () {
   chequear("se cuenta la celda fuera de Arial", f.fueraDeArial === 1);
   chequear("se reporta como observación de formato",
     f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf("Regla 1") !== -1; }));
+  chequear("con la celda exacta que hay que corregir",
+    f.detalle.some(function (d) { return d.seccion === "Formato" && d.celda === "B4"; }));
+  chequear("y nombrando la fuente encontrada",
+    f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf("Calibri") !== -1; }));
   chequear("una celda vacía en otra fuente no se observa",
     M.revisarFicha_(Object.assign({}, CTX, {
       fuentes: (function () { const x = V.map(function (fila) { return fila.map(function () { return "Arial"; }); });
