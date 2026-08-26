@@ -270,7 +270,7 @@ const V = [
 
 const CTX = {
   valores: V,
-  fuentes: V.map(function (fila) { return fila.map(function () { return "Arial"; }); }),
+  fuentes: V.map(function (fila) { return fila.map(function () { return M.CONFIG_A3.FUENTE_OBLIGATORIA; }); }),
   formulario: "F02",
   permiteNivel2: true,
   etiquetas: M.catalogoDeEtiquetas_()
@@ -384,23 +384,29 @@ bloque("Ubicación de cada campo revisado", function () {
     F1.detalle.every(function (d) { return d.fila !== "" && d.fila !== undefined; }));
 });
 
-bloque("Regla 1 — fuente Arial", function () {
-  const fuentes = V.map(function (fila) { return fila.map(function () { return "Arial"; }); });
-  fuentes[3][1] = "Calibri";
+bloque("Regla 1 — fuente exigida", function () {
+  const EXIGIDA = M.CONFIG_A3.FUENTE_OBLIGATORIA;
+  const OTRA = EXIGIDA === "Arial" ? "Calibri" : "Arial";
+  const fuentes = V.map(function (fila) { return fila.map(function () { return EXIGIDA; }); });
+  fuentes[3][1] = OTRA;
   const ctx = Object.assign({}, CTX, { fuentes: fuentes });
   const f = M.revisarFicha_(ctx, BLOQUES[0], 1);
-  chequear("se cuenta la celda fuera de Arial", f.fueraDeArial === 1);
+  chequear("se cuenta la celda fuera de la fuente exigida", f.fueraDeFuente === 1);
   chequear("se reporta como observación de formato",
     f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf("Regla 1") !== -1; }));
   chequear("con la celda exacta que hay que corregir",
     f.detalle.some(function (d) { return d.seccion === "Formato" && d.celda === "B4"; }));
   chequear("y nombrando la fuente encontrada",
-    f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf("Calibri") !== -1; }));
+    f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf(OTRA) !== -1; }));
+  chequear("el mensaje nombra la fuente que se exige",
+    f.detalle.some(function (d) { return d.seccion === "Formato" && d.observacion.indexOf(EXIGIDA) !== -1; }));
+  chequear("la exigida al Anexo 3 y la del reporte son ajustes distintos",
+    typeof M.CONFIG_A3.FUENTE_REPORTE === "string" && M.CONFIG_A3.FUENTE_REPORTE.length > 0);
   chequear("una celda vacía en otra fuente no se observa",
     M.revisarFicha_(Object.assign({}, CTX, {
-      fuentes: (function () { const x = V.map(function (fila) { return fila.map(function () { return "Arial"; }); });
+      fuentes: (function () { const x = V.map(function (fila) { return fila.map(function () { return EXIGIDA; }); });
                               x[5][10] = "Times New Roman"; return x; })()
-    }), BLOQUES[0], 1).fueraDeArial === 0);
+    }), BLOQUES[0], 1).fueraDeFuente === 0);
 });
 
 bloque("Hoja 4 — registro maestro de códigos", function () {
@@ -489,15 +495,15 @@ bloque("Semáforo — estado de cada fila", function () {
     M.estadoDeDetalle_({ seccion: "Ejecución", estructura: "No", completo: "No" }) === "error");
 
   chequear("ficha sin hallazgos en verde",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 0, faltantes: [] }) === "ok");
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 0, faltantes: [] }) === "ok");
   chequear("ficha con campos pendientes en ámbar",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 0, faltantes: ["x"] }) === "incompleto");
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 0, faltantes: ["x"] }) === "incompleto");
   chequear("ficha con error de codificación en rojo",
-    M.estadoDeFicha_({ erroresCodificacion: 1, fueraDeArial: 0, faltantes: [] }) === "error");
+    M.estadoDeFicha_({ erroresCodificacion: 1, fueraDeFuente: 0, faltantes: [] }) === "error");
   chequear("ficha fuera de Arial en rojo",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 3, faltantes: [] }) === "error");
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 3, faltantes: [] }) === "error");
   chequear("el error manda sobre lo incompleto",
-    M.estadoDeFicha_({ erroresCodificacion: 2, fueraDeArial: 0, faltantes: ["x"] }) === "error");
+    M.estadoDeFicha_({ erroresCodificacion: 2, fueraDeFuente: 0, faltantes: ["x"] }) === "error");
 
   chequear("código consistente en verde", M.estadoDeMaestro_({ consistente: "Sí" }) === "ok");
   chequear("código inconsistente en rojo", M.estadoDeMaestro_({ consistente: "No" }) === "error");

@@ -42,7 +42,7 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 162 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 164 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 regla de fuente Arial, el registro maestro de códigos, el cotejo con el Anexo 1
 la localización tolerante de la pestaña a revisar, el semáforo de estados y la

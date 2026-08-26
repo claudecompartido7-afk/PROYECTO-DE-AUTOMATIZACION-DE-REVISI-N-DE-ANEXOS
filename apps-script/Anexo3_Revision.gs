@@ -79,8 +79,16 @@ const CONFIG_A3 = {
     ERRORES:   'SOLO_OBSERVACIONES'
   },
 
-  FUENTE_OBLIGATORIA: 'Arial',
-  /** Máximo de celdas fuera de Arial que se detallan una por una por ficha. */
+  /**
+   * Fuente que se exige al Anexo 3 (regla 1). Ojo: el bloque DIRECTRICES escrito
+   * dentro de la propia hoja del Anexo 3 dice "Arial"; aquí manda lo que se
+   * declare en esta línea, así que si la OGPL vuelve a Arial basta con
+   * cambiarla —los mensajes del reporte la nombran sola.
+   */
+  FUENTE_OBLIGATORIA: 'Calibri',
+  /** Fuente con la que se escribe el archivo de salida. */
+  FUENTE_REPORTE: 'Arial',
+  /** Máximo de celdas fuera de la fuente exigida que se detallan una por una. */
   MAX_CELDAS_FUENTE: 25,
 
   /**
@@ -543,7 +551,7 @@ function revisarFicha_(ctx, bloque, numero) {
     faltantes: [],
     erroresCodificacion: 0,
     notas: [],
-    fueraDeArial: 0,
+    fueraDeFuente: 0,
     detalle: detalle,
     codigosMaestro: codigosMaestro,
     cotejo: cotejo
@@ -852,7 +860,7 @@ function revisarFicha_(ctx, bloque, numero) {
     });
   }
 
-  /* ── Regla 1: fuente Arial ──────────────────────────────────────────── */
+  /* ── Regla 1: fuente exigida ────────────────────────────────────────── */
 
   if (ctx.fuentes) {
     // Una fila por celda infractora, para que el revisor tenga la celda exacta.
@@ -864,18 +872,21 @@ function revisarFicha_(ctx, bloque, numero) {
         if (esVacio_(V[f][c])) continue;
         const fuente = (ctx.fuentes[f][c] || '').toString();
         if (normalizar_(fuente) === normalizar_(CONFIG_A3.FUENTE_OBLIGATORIA)) continue;
-        ficha.fueraDeArial++;
+        ficha.fueraDeFuente++;
         if (listadas < CONFIG_A3.MAX_CELDAS_FUENTE) {
           listadas++;
-          anotar('Formato', 'Fuente Arial', recortarA3_(V[f][c], 60), 'N/A', 'No',
-                 'Regla 1: la celda usa la fuente "' + fuente + '" en lugar de Arial.',
+          anotar('Formato', 'Fuente ' + CONFIG_A3.FUENTE_OBLIGATORIA,
+                 recortarA3_(V[f][c], 60), 'N/A', 'No',
+                 'Regla 1: la celda usa la fuente "' + fuente + '" en lugar de ' +
+                 CONFIG_A3.FUENTE_OBLIGATORIA + '.',
                  { fila: f, col: c });
         }
       }
     }
-    if (ficha.fueraDeArial > listadas) {
-      anotar('Formato', 'Fuente Arial', '', 'N/A', 'No',
-             'Regla 1: ' + ficha.fueraDeArial + ' celda(s) fuera de Arial en la ficha; ' +
+    if (ficha.fueraDeFuente > listadas) {
+      anotar('Formato', 'Fuente ' + CONFIG_A3.FUENTE_OBLIGATORIA, '', 'N/A', 'No',
+             'Regla 1: ' + ficha.fueraDeFuente + ' celda(s) fuera de ' +
+             CONFIG_A3.FUENTE_OBLIGATORIA + ' en la ficha; ' +
              'se detallan las ' + listadas + ' primeras.', rangoFicha);
     }
   }
@@ -1075,8 +1086,8 @@ function crearArchivoSalida_(sigla) {
  *  - `neutro`     → campo opcional (la firma).
  *  - `ok`         → nada que corregir.
  *
- * El formato manda sobre lo demás: una celda fuera de Arial es un
- * incumplimiento de la regla 1, no un campo a medio llenar.
+ * El formato manda sobre lo demás: una celda con una fuente distinta de la
+ * exigida es un incumplimiento de la regla 1, no un campo a medio llenar.
  */
 function estadoDeDetalle_(d) {
   if (d.seccion === 'Formato') return 'error';
@@ -1088,7 +1099,7 @@ function estadoDeDetalle_(d) {
 
 /** Estado de una ficha en el resumen ejecutivo. */
 function estadoDeFicha_(f) {
-  if (f.erroresCodificacion > 0 || f.fueraDeArial > 0) return 'error';
+  if (f.erroresCodificacion > 0 || f.fueraDeFuente > 0) return 'error';
   if (f.faltantes.length > 0) return 'incompleto';
   return 'ok';
 }
@@ -1133,7 +1144,7 @@ function escribirHoja_(ss, nombre, encabezados, filas, estados) {
   const ancho = cabecera.length;
   hoja.getRange(1, 1, datos.length, ancho).setValues(datos);
   hoja.getRange(1, 1, datos.length, ancho)
-      .setFontFamily(CONFIG_A3.FUENTE_OBLIGATORIA).setVerticalAlignment('top').setWrap(true);
+      .setFontFamily(CONFIG_A3.FUENTE_REPORTE).setVerticalAlignment('top').setWrap(true);
   hoja.getRange(1, 1, 1, ancho).setFontWeight('bold')
       .setFontColor('#ffffff').setBackground('#1f3864');
   hoja.setFrozenRows(1);
@@ -1305,7 +1316,10 @@ function escribirResultado_(ss, resultado) {
     const sugerencias = [];
     if (f.faltantes.length) sugerencias.push('Complete ' + f.faltantes.length + ' campo(s) pendiente(s).');
     if (f.erroresCodificacion) sugerencias.push('Corrija ' + f.erroresCodificacion + ' error(es) de codificación.');
-    if (f.fueraDeArial) sugerencias.push('Regla 1: uniformice ' + f.fueraDeArial + ' celda(s) a fuente Arial.');
+    if (f.fueraDeFuente) {
+      sugerencias.push('Regla 1: uniformice ' + f.fueraDeFuente + ' celda(s) a fuente ' +
+                       CONFIG_A3.FUENTE_OBLIGATORIA + '.');
+    }
     if (f.notas.length) sugerencias.push('Excepción de nivel 2 admitida: ' + f.notas.slice(0, 3).join('; ') + '.');
     if (!sugerencias.length) sugerencias.push('Sin observaciones.');
     return [f.numero + '. ' + f.nombre, f.codigo, f.completa ? 'Sí' : 'No', f.avance / 100,
@@ -1323,7 +1337,7 @@ function escribirResultado_(ss, resultado) {
   const campos = resultado.fichas.reduce(function (a, f) { return a + f.campos; }, 0);
   const completos = resultado.fichas.reduce(function (a, f) { return a + f.completos; }, 0);
   const errores = resultado.fichas.reduce(function (a, f) { return a + f.erroresCodificacion; }, 0);
-  const arial = resultado.fichas.reduce(function (a, f) { return a + f.fueraDeArial; }, 0);
+  const fueraDeFuente = resultado.fichas.reduce(function (a, f) { return a + f.fueraDeFuente; }, 0);
 
   const porSeccion = {};
   resultado.fichas.forEach(function (f) {
@@ -1348,7 +1362,7 @@ function escribirResultado_(ss, resultado) {
       ['% de avance global', campos ? (Math.round(completos * 1000 / campos) / 10) + '%' : '0%'],
       ['Campos aplicables / completos', campos + ' / ' + completos],
       ['Errores de codificación', errores],
-      ['Celdas fuera de Arial (regla 1)', arial],
+      ['Celdas fuera de ' + CONFIG_A3.FUENTE_OBLIGATORIA + ' (regla 1)', fueraDeFuente],
       ['Secciones con más campos faltantes', top],
       ['Códigos con uso inconsistente (reglas 2, 3 y 6)', inconsistencias],
       ['Salidas/registros ausentes del Anexo 1 (reglas 5 y 7)', sinAnexo1],
@@ -1361,7 +1375,8 @@ function escribirResultado_(ss, resultado) {
   const leyenda = [
     { clave: 'ok',         texto: 'La fila cumple: campo completo y codificación correcta.' },
     { clave: 'incompleto', texto: 'Falta completar el campo, o el dato está por verificar contra el Anexo 1.' },
-    { clave: 'error',      texto: 'Hay algo que corregir: codificación fuera de estructura o fuente distinta de Arial.' },
+    { clave: 'error',      texto: 'Hay algo que corregir: codificación fuera de estructura o fuente distinta de ' +
+                                   CONFIG_A3.FUENTE_OBLIGATORIA + '.' },
     { clave: 'neutro',     texto: 'Campo opcional (la firma va como imagen): no baja el porcentaje de avance.' }
   ];
 
