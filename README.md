@@ -44,7 +44,7 @@ las filas de proceso y preservación de las columnas del revisor.
 
 Anexo 3: 164 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
-regla de fuente Arial, el registro maestro de códigos, el cotejo con el Anexo 1
+regla de fuente exigida, el registro maestro de códigos, el cotejo con el Anexo 1
 la localización tolerante de la pestaña a revisar, el semáforo de estados y la
 ubicación (fila y celda) de cada campo revisado.
 
