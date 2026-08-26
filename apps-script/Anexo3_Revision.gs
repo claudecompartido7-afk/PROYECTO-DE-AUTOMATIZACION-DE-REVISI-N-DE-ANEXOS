@@ -1014,12 +1014,62 @@ function aplicarConfigDeHoja_(libro) {
 }
 
 /**
+ * Localiza la pestaña a revisar. `getSheetByName` exige el nombre exacto, y en
+ * la práctica los títulos traen espacios de más, espacios duros, tildes o el
+ * número de orden escrito de otra forma ("2. FDCP", "2.FDCP ", "FDCP"). Se
+ * busca en tres pasadas, de la más estricta a la más tolerante.
+ */
+function localizarPestanaA3_(libro, nombrePestana) {
+  const hojas = libro.getSheets();
+
+  // 1) Nombre exacto.
+  const exacta = libro.getSheetByName(nombrePestana);
+  if (exacta) return exacta;
+
+  // 2) Mismo nombre salvo espacios, tildes y mayúsculas.
+  const compacto = function (t) {
+    return normalizar_(t).replace(/\u00a0/g, ' ').replace(/[\s.]/g, '');
+  };
+  const buscado = compacto(nombrePestana);
+  for (let i = 0; i < hojas.length; i++) {
+    if (compacto(hojas[i].getName()) === buscado) return hojas[i];
+  }
+
+  // 3) Misma sigla de facultad ("2. FDCP", "FDCP", "2-FDCP").
+  const sigla = CONFIG_A3.FACULTAD_SIGLA || siglaDePestana_(nombrePestana);
+  if (sigla) {
+    for (let i = 0; i < hojas.length; i++) {
+      if (siglaDePestana_(hojas[i].getName()) === sigla) return hojas[i];
+    }
+  }
+
+  const disponibles = hojas.map(function (h) { return '"' + h.getName() + '"'; }).join(', ');
+  throw new Error('No existe la pestaña "' + nombrePestana + '" en el Anexo 3. ' +
+                  'Pestañas disponibles: ' + disponibles + '. ' +
+                  'Copie el nombre exacto en CONFIG_A3.SOURCE_TAB_NAME.');
+}
+
+/**
+ * Lista en el registro los nombres de todas las pestañas del Anexo 3, con el
+ * nombre entre comillas para que se vean los espacios sobrantes. Sirve para
+ * saber qué escribir en `SOURCE_TAB_NAME` cuando la pestaña no aparece.
+ */
+function listarPestanasA3() {
+  const libro = SpreadsheetApp.openById(CONFIG_A3.SOURCE_SHEET_ID);
+  const nombres = libro.getSheets().map(function (h, i) {
+    const sigla = siglaDePestana_(h.getName());
+    return (i + 1) + '. "' + h.getName() + '"' + (sigla ? '  → facultad ' + sigla : '');
+  });
+  Logger.log('Pestañas del Anexo 3:\n' + nombres.join('\n'));
+  return nombres;
+}
+
+/**
  * Revisa una pestaña del Anexo 3 y devuelve el resultado consolidado, sin
  * escribir nada. Reutilizable para revisar varias facultades en una corrida.
  */
 function revisarPestanaA3_(libro, nombrePestana) {
-  const hoja = libro.getSheetByName(nombrePestana);
-  if (!hoja) throw new Error('No existe la pestaña "' + nombrePestana + '" en el Anexo 3.');
+  const hoja = localizarPestanaA3_(libro, nombrePestana);
 
   const rango = hoja.getDataRange();
   const valores = rango.getValues();

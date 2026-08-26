@@ -26,7 +26,8 @@ module.exports = {
   denominacionDeA3_, nivelesEsperados_, validarCodigoA3_, validarCeldaA3_,
   siglaDePestana_, facultadPorSigla_, formularioDominante_, esInicioDeFicha_,
   localizarFichas_, buscarFilaEtiqueta_, valorDeEtiqueta_, catalogoDeEtiquetas_,
-  construirMaestro_, construirCotejo_, revisarFicha_, letraColumna_
+  construirMaestro_, construirCotejo_, revisarFicha_, letraColumna_,
+  localizarPestanaA3_
 };
 `;
 
@@ -167,6 +168,40 @@ bloque("Excepción de la FDCP — facultad de nivel 2", function () {
 
   const dosNiveles = M.validarCodigoA3_("PE.02.01_F02", "PROCESO_N2", "F02", true);
   chequear("el nivel normal sigue sin generar nota", dosNiveles.ok && !dosNiveles.excepcionNivel2);
+});
+
+bloque("Localización de la pestaña a revisar", function () {
+  function libroCon(nombres) {
+    const hojas = nombres.map(function (n) { return { getName: function () { return n; } }; });
+    return {
+      getSheets: function () { return hojas; },
+      getSheetByName: function (n) {
+        let h = null;
+        hojas.forEach(function (x) { if (x.getName() === n) h = x; });
+        return h;
+      }
+    };
+  }
+  chequear("nombre exacto",
+    M.localizarPestanaA3_(libroCon(["1.FM", "2.FDCP"]), "2.FDCP").getName() === "2.FDCP");
+  chequear("espacio de más",
+    M.localizarPestanaA3_(libroCon(["2. FDCP"]), "2.FDCP").getName() === "2. FDCP");
+  chequear("espacio al final",
+    M.localizarPestanaA3_(libroCon(["2.FDCP "]), "2.FDCP").getName() === "2.FDCP ");
+  chequear("sin el número de orden",
+    M.localizarPestanaA3_(libroCon(["FDCP"]), "2.FDCP").getName() === "FDCP");
+  chequear("separador distinto",
+    M.localizarPestanaA3_(libroCon(["2-FDCP"]), "2.FDCP").getName() === "2-FDCP");
+  chequear("no confunde con otra facultad",
+    (function () {
+      try { M.localizarPestanaA3_(libroCon(["1.FM", "3.FLCH"]), "2.FDCP"); return false; }
+      catch (e) { return true; }
+    })());
+  chequear("el error enumera las pestañas disponibles",
+    (function () {
+      try { M.localizarPestanaA3_(libroCon(["1.FM"]), "2.FDCP"); return false; }
+      catch (e) { return e.message.indexOf('"1.FM"') !== -1; }
+    })());
 });
 
 bloque("Facultad y formulario", function () {

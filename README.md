@@ -42,9 +42,10 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 118 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 125 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
-regla de fuente Arial, el registro maestro de códigos y el cotejo con el Anexo 1.
+regla de fuente Arial, el registro maestro de códigos, el cotejo con el Anexo 1
+y la localización tolerante de la pestaña a revisar.
 
 ## Cómo se ejecuta
 
@@ -67,6 +68,10 @@ observaciones ya escritas viajen con ella.
    salida, Anexo 1 para el cotejo). También puede configurarse desde una pestaña
    `CONFIG_A3` del propio Anexo 3: columna A = clave, columna B = valor.
 4. Ejecutar `ejecutarRevisionAnexo3` y autorizar los permisos
+
+Si el nombre de la pestaña no coincide, ejecute `listarPestanasA3`: escribe en el
+registro (Ver › Registro) el nombre exacto de cada pestaña, entre comillas para
+que se vean los espacios sobrantes.
 
 En cada corrida se **crea** un Google Sheets nuevo dentro de la carpeta
 `OUTPUT_FOLDER_ID`, con el nombre `Revision_Anexo3_<SIGLA>_<fecha_hora>`, para no
