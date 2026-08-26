@@ -42,10 +42,10 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 125 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 148 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 regla de fuente Arial, el registro maestro de códigos, el cotejo con el Anexo 1
-y la localización tolerante de la pestaña a revisar.
+la localización tolerante de la pestaña a revisar y el semáforo de estados.
 
 ## Cómo se ejecuta
 
@@ -78,6 +78,11 @@ En cada corrida se **crea** un Google Sheets nuevo dentro de la carpeta
 pisar corridas anteriores. Trae seis hojas: `DETALLE_REVISION`,
 `RESUMEN_EJECUTIVO`, `DASHBOARD`, `REGISTRO_MAESTRO_CODIGOS`, `COTEJO_ANEXO1` y
 `SOLO_OBSERVACIONES`.
+
+Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
+por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese
+mismo estado se escribe en la columna `ESTADO`, de modo que la hoja se lea igual
+impresa en blanco y negro. El `DASHBOARD` cierra con la leyenda.
 
 El piloto corre sobre la pestaña `2.FDCP`. Para el resto de facultades basta con
 cambiar `SOURCE_TAB_NAME`, o ejecutar `revisarTodasLasFacultadesA3`, que deja un

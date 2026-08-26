@@ -27,7 +27,7 @@ module.exports = {
   siglaDePestana_, facultadPorSigla_, formularioDominante_, esInicioDeFicha_,
   localizarFichas_, buscarFilaEtiqueta_, valorDeEtiqueta_, catalogoDeEtiquetas_,
   construirMaestro_, construirCotejo_, revisarFicha_, letraColumna_,
-  localizarPestanaA3_
+  localizarPestanaA3_, estadoDeDetalle_, estadoDeFicha_, estadoDeMaestro_, estadoDeCotejo_
 };
 `;
 
@@ -425,6 +425,62 @@ bloque("Hoja 5 — cotejo contra el Anexo 1", function () {
   ], anexo1);
   chequear("una salida repetida da una sola fila", repetida.length === 1);
   chequear("con las dos fichas listadas", repetida[0].fichas === "1, 3");
+});
+
+bloque("Semáforo — estado de cada fila", function () {
+  chequear("campo correcto en verde",
+    M.estadoDeDetalle_({ seccion: "Definición", estructura: "Sí", completo: "Sí" }) === "ok");
+  chequear("campo sin código a validar también en verde",
+    M.estadoDeDetalle_({ seccion: "Definición", estructura: "N/A", completo: "Sí" }) === "ok");
+  chequear("campo vacío en ámbar",
+    M.estadoDeDetalle_({ seccion: "Ejecución", estructura: "N/A", completo: "No" }) === "incompleto");
+  chequear("codificación fuera de estructura en rojo",
+    M.estadoDeDetalle_({ seccion: "Descripción", estructura: "No", completo: "Sí" }) === "error");
+  chequear("la fuente distinta de Arial es rojo, no ámbar",
+    M.estadoDeDetalle_({ seccion: "Formato", estructura: "N/A", completo: "No" }) === "error");
+  chequear("la firma queda en neutro",
+    M.estadoDeDetalle_({ seccion: "Formalización", estructura: "N/A", completo: "Opcional" }) === "neutro");
+  chequear("un campo con código mal escrito Y vacío pesa como error",
+    M.estadoDeDetalle_({ seccion: "Ejecución", estructura: "No", completo: "No" }) === "error");
+
+  chequear("ficha sin hallazgos en verde",
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 0, faltantes: [] }) === "ok");
+  chequear("ficha con campos pendientes en ámbar",
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 0, faltantes: ["x"] }) === "incompleto");
+  chequear("ficha con error de codificación en rojo",
+    M.estadoDeFicha_({ erroresCodificacion: 1, fueraDeArial: 0, faltantes: [] }) === "error");
+  chequear("ficha fuera de Arial en rojo",
+    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeArial: 3, faltantes: [] }) === "error");
+  chequear("el error manda sobre lo incompleto",
+    M.estadoDeFicha_({ erroresCodificacion: 2, fueraDeArial: 0, faltantes: ["x"] }) === "error");
+
+  chequear("código consistente en verde", M.estadoDeMaestro_({ consistente: "Sí" }) === "ok");
+  chequear("código inconsistente en rojo", M.estadoDeMaestro_({ consistente: "No" }) === "error");
+
+  chequear("salida que coincide con el Anexo 1 en verde",
+    M.estadoDeCotejo_({ existe: "Sí" }) === "ok");
+  chequear("salida ausente del Anexo 1 en rojo",
+    M.estadoDeCotejo_({ existe: "No" }) === "error");
+  chequear("denominación distinta en ámbar",
+    M.estadoDeCotejo_({ existe: "Sí (denominación distinta)" }) === "incompleto");
+  chequear("lo no verificable en ámbar, nunca en rojo",
+    M.estadoDeCotejo_({ existe: "No verificable" }) === "incompleto");
+
+  chequear("la ficha completa del ejemplo sale verde", M.estadoDeFicha_(F1) === "ok");
+  chequear("la ficha con defectos del ejemplo sale roja", M.estadoDeFicha_(F2) === "error");
+  chequear("cada fila del detalle tiene un estado conocido",
+    F2.detalle.every(function (d) {
+      return ["ok", "incompleto", "error", "neutro"].indexOf(M.estadoDeDetalle_(d)) !== -1;
+    }));
+  chequear("hay filas de los tres colores en la ficha con defectos",
+    ["ok", "incompleto", "error"].every(function (e) {
+      return F2.detalle.some(function (d) { return M.estadoDeDetalle_(d) === e; });
+    }));
+  chequear("la paleta define fondo, texto y rótulo para los cuatro estados",
+    ["ok", "incompleto", "error", "neutro"].every(function (k) {
+      const c = M.CONFIG_A3.COLORES[k];
+      return c && c.fondo && c.texto && c.rotulo;
+    }));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

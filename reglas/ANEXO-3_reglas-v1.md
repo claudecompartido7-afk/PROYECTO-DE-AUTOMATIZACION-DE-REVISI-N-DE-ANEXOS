@@ -160,6 +160,22 @@ una celda con dos códigos mal escritos suma dos.
 | `COTEJO_ANEXO1` | Salidas y registros contra el Anexo 1 |
 | `SOLO_OBSERVACIONES` | Extracto de las tres hojas anteriores, solo filas con hallazgos |
 
+**6.1 Semáforo.** Cada fila de las hojas 1, 2, 4, 5 y 6 se pinta según su
+estado, y el mismo estado se escribe en texto en la columna `ESTADO`, para que
+la hoja se lea igual impresa en blanco y negro o por quien no distinga los
+colores.
+
+| Color | Estado | Cuándo |
+|---|---|---|
+| Verde | `Correcto` | Campo completo y codificación correcta |
+| Ámbar | `Incompleto` | Campo obligatorio vacío, o dato por verificar (denominación distinta en el Anexo 1, cotejo no verificable) |
+| Rojo | `Con error` | Codificación fuera de estructura, o fuente distinta de Arial |
+| Gris | `Opcional` | La firma de Formalización |
+
+Cuando una fila reúne más de una condición manda la más grave: rojo sobre
+ámbar, y ámbar sobre verde. El `DASHBOARD` cierra con la leyenda de los cuatro
+colores.
+
 ---
 
 ## 7. Generalización al resto de facultades

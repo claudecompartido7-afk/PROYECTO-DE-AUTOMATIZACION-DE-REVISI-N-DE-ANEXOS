@@ -80,6 +80,20 @@ const CONFIG_A3 = {
   },
 
   FUENTE_OBLIGATORIA: 'Arial',
+
+  /**
+   * Semáforo de las hojas de salida. Cada fila se pinta según su estado:
+   * verde = correcto, ámbar = incompleto o por verificar, rojo = con error.
+   * El color va acompañado siempre de la columna ESTADO en texto, para que la
+   * hoja siga leyéndose impresa en blanco y negro o por quien no distinga los
+   * colores.
+   */
+  COLORES: {
+    ok:         { fondo: '#d9ead3', texto: '#274e13', rotulo: 'Correcto'   },
+    incompleto: { fondo: '#fff2cc', texto: '#7f6000', rotulo: 'Incompleto' },
+    error:      { fondo: '#f4cccc', texto: '#990000', rotulo: 'Con error'  },
+    neutro:     { fondo: '#f3f3f3', texto: '#666666', rotulo: 'Opcional'   }
+  },
   /** Pestaña opcional de configuración dentro del propio Anexo 3. */
   TAB_CONFIG: 'CONFIG_A3',
 
@@ -975,18 +989,98 @@ function crearArchivoSalida_(sigla) {
   return ss;
 }
 
-function escribirHoja_(ss, nombre, encabezados, filas) {
+/* ═══════════════════════════════════════════════════════════════════════════
+   SEMÁFORO DE ESTADOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Estado de una fila del detalle.
+ *  - `error`      → la codificación no cumple la estructura exigida.
+ *  - `incompleto` → el campo obligatorio está vacío o no se encontró.
+ *  - `neutro`     → campo opcional (la firma).
+ *  - `ok`         → nada que corregir.
+ *
+ * El formato manda sobre lo demás: una celda fuera de Arial es un
+ * incumplimiento de la regla 1, no un campo a medio llenar.
+ */
+function estadoDeDetalle_(d) {
+  if (d.seccion === 'Formato') return 'error';
+  if (d.estructura === 'No') return 'error';
+  if (d.completo === 'Opcional') return 'neutro';
+  if (d.completo === 'No') return 'incompleto';
+  return 'ok';
+}
+
+/** Estado de una ficha en el resumen ejecutivo. */
+function estadoDeFicha_(f) {
+  if (f.erroresCodificacion > 0 || f.fueraDeArial > 0) return 'error';
+  if (f.faltantes.length > 0) return 'incompleto';
+  return 'ok';
+}
+
+/** Estado de una fila del registro maestro de códigos. */
+function estadoDeMaestro_(m) {
+  return m.consistente === 'No' ? 'error' : 'ok';
+}
+
+/**
+ * Estado de una fila del cotejo con el Anexo 1. Lo que no se pudo verificar y
+ * lo que existe con otra denominación quedan en ámbar: son cosas por resolver,
+ * no incumplimientos probados.
+ */
+function estadoDeCotejo_(c) {
+  if (c.existe === 'No') return 'error';
+  if (c.existe === 'Sí') return 'ok';
+  return 'incompleto';
+}
+
+/**
+ * Escribe una hoja del archivo de salida.
+ *
+ * `estados` es opcional: una entrada por fila con la clave del semáforo
+ * (`ok`, `incompleto`, `error`, `neutro`). Cuando se pasa, se añade la columna
+ * ESTADO al final y cada fila se pinta con el color que le corresponde.
+ */
+function escribirHoja_(ss, nombre, encabezados, filas, estados) {
   let hoja = ss.getSheetByName(nombre);
   if (!hoja) hoja = ss.insertSheet(nombre);
   hoja.clear();
 
-  const datos = [encabezados].concat(filas.length ? filas : [encabezados.map(function () { return ''; })]);
-  hoja.getRange(1, 1, datos.length, encabezados.length).setValues(datos);
-  hoja.getRange(1, 1, datos.length, encabezados.length)
+  const conEstado = !!estados;
+  const cabecera = conEstado ? encabezados.concat(['ESTADO']) : encabezados.slice();
+  const cuerpo = filas.map(function (fila, i) {
+    if (!conEstado) return fila;
+    const clave = estados[i] || 'ok';
+    return fila.concat([(CONFIG_A3.COLORES[clave] || CONFIG_A3.COLORES.ok).rotulo]);
+  });
+
+  const datos = [cabecera].concat(cuerpo.length ? cuerpo : [cabecera.map(function () { return ''; })]);
+  const ancho = cabecera.length;
+  hoja.getRange(1, 1, datos.length, ancho).setValues(datos);
+  hoja.getRange(1, 1, datos.length, ancho)
       .setFontFamily(CONFIG_A3.FUENTE_OBLIGATORIA).setVerticalAlignment('top').setWrap(true);
-  hoja.getRange(1, 1, 1, encabezados.length).setFontWeight('bold').setBackground('#d9e2f3');
+  hoja.getRange(1, 1, 1, ancho).setFontWeight('bold')
+      .setFontColor('#ffffff').setBackground('#1f3864');
   hoja.setFrozenRows(1);
-  for (let c = 1; c <= encabezados.length; c++) hoja.setColumnWidth(c, c <= 2 ? 140 : 260);
+
+  if (conEstado && cuerpo.length) {
+    // Se pintan tramos contiguos del mismo estado en lugar de fila por fila:
+    // una hoja de miles de filas haría miles de llamadas al servicio.
+    let inicio = 0;
+    for (let i = 1; i <= cuerpo.length; i++) {
+      if (i < cuerpo.length && estados[i] === estados[inicio]) continue;
+      const color = CONFIG_A3.COLORES[estados[inicio]] || CONFIG_A3.COLORES.ok;
+      hoja.getRange(inicio + 2, 1, i - inicio, ancho)
+          .setBackground(color.fondo).setFontColor(color.texto);
+      inicio = i;
+    }
+    hoja.getRange(2, ancho, cuerpo.length, 1).setFontWeight('bold').setHorizontalAlignment('center');
+  }
+
+  for (let c = 1; c <= ancho; c++) {
+    hoja.setColumnWidth(c, c <= 2 ? 140 : (conEstado && c === ancho ? 110 : 260));
+  }
+  if (cuerpo.length) hoja.getRange(1, 1, cuerpo.length + 1, ancho).createFilter();
   return hoja;
 }
 
@@ -1118,15 +1212,18 @@ function escribirResultado_(ss, resultado) {
 
   /* Hoja 1 — Detalle */
   const detalle = [];
+  const estadosDetalle = [];
   resultado.fichas.forEach(function (f) {
     f.detalle.forEach(function (d) {
       detalle.push([f.numero + '. ' + f.nombre, d.seccion, d.campo, d.codigo,
                     d.estructura, d.completo, d.observacion]);
+      estadosDetalle.push(estadoDeDetalle_(d));
     });
   });
   escribirHoja_(ss, H.DETALLE,
     ['N° FICHA / PROCESO', 'SECCIÓN', 'CAMPO REVISADO', 'CÓDIGO ENCONTRADO',
-     '¿CUMPLE ESTRUCTURA?', '¿CAMPO COMPLETO?', 'OBSERVACIÓN ESPECÍFICA'], detalle);
+     '¿CUMPLE ESTRUCTURA?', '¿CAMPO COMPLETO?', 'OBSERVACIÓN ESPECÍFICA'],
+    detalle, estadosDetalle);
 
   /* Hoja 2 — Resumen ejecutivo */
   const resumen = resultado.fichas.map(function (f) {
@@ -1141,7 +1238,8 @@ function escribirResultado_(ss, resultado) {
   });
   const hojaResumen = escribirHoja_(ss, H.RESUMEN,
     ['N° FICHA / PROCESO', 'CÓDIGO', '¿COMPLETA?', '% DE AVANCE',
-     'CAMPOS/CELDAS FALTANTES', 'ERRORES DE CODIFICACIÓN', 'OBSERVACIONES Y CORRECCIONES'], resumen);
+     'CAMPOS/CELDAS FALTANTES', 'ERRORES DE CODIFICACIÓN', 'OBSERVACIONES Y CORRECCIONES'],
+    resumen, resultado.fichas.map(estadoDeFicha_));
   if (resumen.length) hojaResumen.getRange(2, 4, resumen.length, 1).setNumberFormat('0.0%');
 
   /* Hoja 3 — Dashboard */
@@ -1165,8 +1263,7 @@ function escribirResultado_(ss, resultado) {
   const inconsistencias = resultado.maestro.filter(function (m) { return m.consistente === 'No'; }).length;
   const sinAnexo1 = resultado.cotejo.filter(function (c) { return c.existe === 'No'; }).length;
 
-  escribirHoja_(ss, H.DASHBOARD,
-    ['INDICADOR', 'VALOR'], [
+  const indicadores = [
       ['Facultad', resultado.sigla + ' — formulario ' + (resultado.formulario || 'sin determinar')],
       ['Pestaña revisada', resultado.pestana],
       ['Fecha de la revisión', Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')],
@@ -1181,41 +1278,76 @@ function escribirResultado_(ss, resultado) {
       ['Códigos con uso inconsistente (reglas 2, 3 y 6)', inconsistencias],
       ['Salidas/registros ausentes del Anexo 1 (reglas 5 y 7)', sinAnexo1],
       ['Cotejo con el Anexo 1', resultado.anexo1.disponible ? 'Pestaña ' + resultado.anexo1.hoja : resultado.anexo1.motivo],
-      ['Excepción de nivel 2', resultado.permiteNivel2 ? 'Activa: se admiten códigos con un nivel adicional' : 'No aplica']
-    ]);
+      ['Excepción de nivel 2', resultado.permiteNivel2 ? 'Activa: se admiten códigos con un nivel adicional' : 'No aplica'],
+      ['', ''],
+      ['LEYENDA DEL SEMÁFORO', '']
+    ];
+
+  const leyenda = [
+    { clave: 'ok',         texto: 'La fila cumple: campo completo y codificación correcta.' },
+    { clave: 'incompleto', texto: 'Falta completar el campo, o el dato está por verificar contra el Anexo 1.' },
+    { clave: 'error',      texto: 'Hay algo que corregir: codificación fuera de estructura o fuente distinta de Arial.' },
+    { clave: 'neutro',     texto: 'Campo opcional (la firma va como imagen): no baja el porcentaje de avance.' }
+  ];
+
+  const hojaDashboard = escribirHoja_(ss, H.DASHBOARD, ['INDICADOR', 'VALOR'],
+    indicadores.concat(leyenda.map(function (l) {
+      return [CONFIG_A3.COLORES[l.clave].rotulo, l.texto];
+    })));
+
+  // La leyenda se pinta con los mismos colores que usan las demás hojas. Su
+  // primera fila se calcula, no se fija: encabezado + indicadores.
+  const filaLeyenda = indicadores.length + 1;
+  hojaDashboard.getRange(filaLeyenda, 1, 1, 2).setFontWeight('bold');
+  leyenda.forEach(function (l, i) {
+    const color = CONFIG_A3.COLORES[l.clave];
+    hojaDashboard.getRange(filaLeyenda + 1 + i, 1, 1, 2)
+                 .setBackground(color.fondo).setFontColor(color.texto);
+  });
 
   /* Hoja 4 — Registro maestro de códigos */
   escribirHoja_(ss, H.MAESTRO,
     ['TIPO', 'CÓDIGO', 'DENOMINACIÓN', 'FICHAS EN QUE APARECE', '¿DENOMINACIÓN CONSISTENTE?', 'OBSERVACIÓN'],
     resultado.maestro.map(function (m) {
       return [m.tipo, m.codigo, m.denominacion, m.fichas, m.consistente, m.observacion];
-    }));
+    }),
+    resultado.maestro.map(estadoDeMaestro_));
 
   /* Hoja 5 — Cotejo contra el Anexo 1 */
   escribirHoja_(ss, H.COTEJO,
     ['TIPO', 'CÓDIGO (ANEXO 3)', 'DENOMINACIÓN (ANEXO 3)', 'FICHAS', '¿EXISTE EN EL ANEXO 1?', 'OBSERVACIÓN'],
     resultado.cotejo.map(function (c) {
       return [c.tipo, c.codigo, c.denominacion, c.fichas, c.existe, c.observacion];
-    }));
+    }),
+    resultado.cotejo.map(estadoDeCotejo_));
 
   /* Hoja 6 — Solo observaciones */
   const soloErrores = [];
+  const estadosErrores = [];
+  function agregarHallazgo(fila, estado) { soloErrores.push(fila); estadosErrores.push(estado); }
+
   resultado.fichas.forEach(function (f) {
     f.detalle.forEach(function (d) {
-      if (d.completo === 'No' || d.estructura === 'No' || (d.observacion && d.seccion === 'Formato')) {
-        soloErrores.push([CONFIG_A3.HOJAS.DETALLE, f.numero + '. ' + f.nombre,
-                          d.seccion + ' › ' + d.campo, d.codigo, d.observacion]);
-      }
+      const estado = estadoDeDetalle_(d);
+      if (estado === 'ok' || estado === 'neutro') return;
+      agregarHallazgo([CONFIG_A3.HOJAS.DETALLE, f.numero + '. ' + f.nombre,
+                       d.seccion + ' › ' + d.campo, d.codigo, d.observacion], estado);
     });
   });
   resultado.maestro.forEach(function (m) {
-    if (m.consistente === 'No') soloErrores.push([CONFIG_A3.HOJAS.MAESTRO, m.fichas, m.tipo, m.codigo, m.observacion]);
+    if (estadoDeMaestro_(m) !== 'ok') {
+      agregarHallazgo([CONFIG_A3.HOJAS.MAESTRO, m.fichas, m.tipo, m.codigo, m.observacion], 'error');
+    }
   });
   resultado.cotejo.forEach(function (c) {
-    if (c.existe !== 'Sí') soloErrores.push([CONFIG_A3.HOJAS.COTEJO, c.fichas, c.tipo, c.codigo, c.observacion]);
+    const estado = estadoDeCotejo_(c);
+    if (estado !== 'ok') {
+      agregarHallazgo([CONFIG_A3.HOJAS.COTEJO, c.fichas, c.tipo, c.codigo, c.observacion], estado);
+    }
   });
   escribirHoja_(ss, H.ERRORES,
-    ['HOJA DE ORIGEN', 'FICHA(S)', 'SECCIÓN / TIPO', 'CÓDIGO', 'OBSERVACIÓN'], soloErrores);
+    ['HOJA DE ORIGEN', 'FICHA(S)', 'SECCIÓN / TIPO', 'CÓDIGO', 'OBSERVACIÓN'],
+    soloErrores, estadosErrores);
 
   // La hoja que crea Google por defecto sobra.
   const inicial = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1') || ss.getSheetByName('Hoja1');
