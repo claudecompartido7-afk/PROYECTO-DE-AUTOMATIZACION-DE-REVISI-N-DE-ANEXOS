@@ -32,6 +32,19 @@ pestañas.
 queda sin nombre completo, no se descarta. Las pestañas que no siguen el formato
 (`DASHBOARD`, `CONFIG_A3`…) se ignoran.
 
+**0.0.4 Número de fichas por hoja.** La plantilla trae **16** fichas técnicas,
+pero hay facultades cuyos procesos no llegan a 16 y cuya ficha sobrante se
+eliminó (la FDCP trabaja con 15). Que falten fichas **no es hallazgo**: el
+resumen informa `FICHAS` y `FICHAS ESPERADAS` y lo anota en la columna `NOTAS`,
+sin penalizar el avance. El número esperado se declara en
+`CONFIG_A3.FICHAS_ESPERADAS` (null para no informarlo).
+
+**0.0.5 Plantillas en blanco.** Una ficha sin nombre, sin código y sin una sola
+fila en la descripción es una plantilla que quedó de más, no una ficha a medio
+hacer: no se computa ni arrastra el porcentaje, y se informa aparte. No se
+reconoce por el conteo de campos completos, porque la plantilla suele venir con
+la unidad de elaboración ya escrita.
+
 **0.0.3** `CONFIG_A3.SOURCE_TAB_NAME` vacío = todas. Con texto, filtra por sigla,
 código o nombre de pestaña, separando por coma.
 
@@ -82,10 +95,24 @@ Proveedores (B) · Entradas (D) · Procesos (F) · Salidas (H) · Beneficiarios 
 Una columna sin ningún registro se reporta como campo faltante.
 
 **1.2.1 Producto final obligatorio (v2).** Toda ficha debe declarar **al menos
-un** producto final en la columna H ("Salidas"). Una ficha sin ninguno es
-hallazgo **CRÍTICO**: no describe qué produce el proceso, por completo que esté
-lo demás. No se computa como un campo más, para no diluirlo en el porcentaje;
-se cuenta aparte en la columna `SIN PRODUCTO` del resumen de las 20 facultades.
+un** producto final en la columna H ("Salidas").
+
+| Caso | Clasificación |
+|---|---|
+| Columna H sin ninguna celda con contenido | **Crítico** — la ficha no dice qué produce el proceso |
+| Columna H con productos escritos pero **sin código** | **Observación** — es un defecto de codificación (regla 5), no una ficha sin producto |
+
+No se computa como un campo más, para no diluirlo en el porcentaje: se cuenta
+aparte en las columnas `SIN PRODUCTO` y en la nota de productos sin codificar
+del resumen de las 20 facultades.
+
+**1.2.2 Código y denominación en celdas de varias líneas.** Las celdas de
+proveedores, entradas, salidas y beneficiarios traen **un código por línea**, y
+la celda contigua **una denominación por línea**. Cada código se empareja con la
+denominación de su misma posición. Cuando los conteos no coinciden, el código se
+queda **sin** denominación y no participa de la comprobación de consistencia:
+antes se le atribuía el texto entero de la celda, lo que hacía aparecer códigos
+distintos como si compartieran nombre y generaba inconsistencias falsas.
 
 ### 1.3 Ejecución del Proceso — 8 campos
 Recursos Humanos · Recursos Físicos · Equipos Tecnológicos · Sistemas
@@ -194,7 +221,7 @@ vienen en el orden F01 → F20.
 | Hoja | Contenido |
 |---|---|
 | `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
-| `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, completas, incompletas, críticas, sin producto, observaciones, % avance y estado |
+| `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, fichas esperadas, completas, incompletas, críticas, sin producto, observaciones, % avance, estado y notas |
 | `RESUMEN_EJECUTIVO` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
 | `DASHBOARD` | Consolidado de la facultad: fichas revisadas, completas vs. incompletas, avance global, errores, secciones con más faltantes |
 | `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |

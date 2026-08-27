@@ -32,7 +32,8 @@ module.exports = {
   construirMaestro_, construirCotejo_, revisarFicha_, letraColumna_,
   leerPestanaFacultad_, localizarFacultades_, filtrarFacultades_, detectarDuplicados_,
   peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
-  severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD
+  severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
+  emparejarCodigosYDenominaciones_, limpiarDenominacion_
 };
 `;
 
@@ -545,6 +546,60 @@ bloque("Clasificación de hallazgos — cuatro niveles", function () {
     }));
 });
 
+bloque("Código y denominación en celdas de varias líneas", function () {
+  // Tal como vienen en la hoja: los códigos en una celda, uno por línea, y las
+  // denominaciones en la celda contigua, también una por línea.
+  const pares = M.emparejarCodigosYDenominaciones_(
+    "BE.15_F02\nBE.16_F02\nBE.17_F02",
+    "- DOCENTES DE LA FACULTAD\n- ESTUDIANTES DE PREGRADO\n- EGRESADOS");
+
+  chequear("se recuperan los tres códigos", pares.length === 3);
+  chequear("cada uno se queda con SU denominación, no con la celda entera",
+    pares[0].denominacion === "DOCENTES DE LA FACULTAD" &&
+    pares[1].denominacion === "ESTUDIANTES DE PREGRADO" &&
+    pares[2].denominacion === "EGRESADOS");
+  chequear("la viñeta inicial se descarta", pares[0].denominacion.indexOf("-") !== 0);
+
+  const pegada = M.emparejarCodigosYDenominaciones_(
+    "PR.122_F02 OFICINA DE PLANES Y PROGRAMAS - OGPL", "");
+  chequear("la denominación pegada al código en la misma línea se respeta",
+    pegada[0].denominacion === "OFICINA DE PLANES Y PROGRAMAS OGPL");
+
+  const mezcla = M.emparejarCodigosYDenominaciones_(
+    "PR.01_F02 SINEACE\nPR.02_F02", "SINEACE\nOCCAA");
+  chequear("la línea con denominación propia la conserva",
+    mezcla[0].denominacion === "SINEACE");
+
+  const desparejo = M.emparejarCodigosYDenominaciones_(
+    "BE.15_F02\nBE.16_F02\nBE.17_F02", "- DOCENTES Y ESTUDIANTES");
+  chequear("si los conteos no cuadran no se adivina",
+    desparejo.every(function (p) { return p.denominacion === ""; }));
+  chequear("pero los códigos igual se recuperan", desparejo.length === 3);
+
+  const unaLinea = M.emparejarCodigosYDenominaciones_("BE.01_F02", "AUTORIDADES");
+  chequear("un código con una denominación se empareja", unaLinea[0].denominacion === "AUTORIDADES");
+  chequear("celda vacía no da pares", M.emparejarCodigosYDenominaciones_("", "X").length === 0);
+  chequear("la limpieza quita viñetas y puntos finales",
+    M.limpiarDenominacion_("  - DOCENTES DE LA FACULTAD.  ") === "DOCENTES DE LA FACULTAD");
+
+  // El falso positivo que motivó el arreglo: tres códigos distintos con tres
+  // nombres distintos no deben aparecer como "la misma denominación repetida".
+  const maestro = M.construirMaestro_(pares.map(function (par) {
+    return { tipo: "Beneficiarios", codigo: par.codigo, denominacion: par.denominacion, ficha: 1 };
+  }));
+  chequear("tres beneficiarios distintos no generan inconsistencia",
+    maestro.every(function (m) { return m.consistente === "Sí"; }));
+  chequear("y cada código conserva su nombre",
+    maestro.map(function (m) { return m.denominacion; }).join("|") ===
+      "DOCENTES DE LA FACULTAD|ESTUDIANTES DE PREGRADO|EGRESADOS");
+
+  const sinDenominacion = M.construirMaestro_(desparejo.map(function (par) {
+    return { tipo: "Beneficiarios", codigo: par.codigo, denominacion: par.denominacion, ficha: 1 };
+  }));
+  chequear("sin denominación no se inventa una inconsistencia",
+    sinDenominacion.every(function (m) { return m.consistente === "Sí"; }));
+});
+
 bloque("Producto final obligatorio", function () {
   chequear("la ficha con salidas las registra", F1.salidas.length === 2);
   chequear("y no genera hallazgo crítico por ese motivo",
@@ -566,6 +621,48 @@ bloque("Producto final obligatorio", function () {
   chequear("el hallazgo se cuenta en el contador de críticos", f.criticos >= 1);
   chequear("el mensaje nombra la columna H",
     f.detalle.some(function (d) { return d.observacion.indexOf("columna H") !== -1; }));
+
+  // Caso distinto: la ficha SÍ declara sus productos, pero sin codificarlos.
+  const sinCodigo = V.map(function (fila) { return fila.slice(); });
+  sinCodigo[9][7] = "- PLAN ESTRATÉGICO DE LA FACULTAD";
+  sinCodigo[10][7] = "- PLAN OPERATIVO DE LA FACULTAD";
+  const g = M.revisarFicha_(Object.assign({}, CTX, { valores: sinCodigo }), BLOQUES[0], 1);
+
+  chequear("los productos sin código se cuentan como declarados", g.salidasDeclaradas === 2);
+  chequear("pero ninguno queda codificado", g.salidas.length === 0);
+  chequear("no se dice que la ficha no declara productos",
+    !g.detalle.some(function (d) { return d.observacion.indexOf("ningún producto final") !== -1; }));
+  chequear("se observa que están sin codificar",
+    g.detalle.some(function (d) { return d.observacion.indexOf("ninguno lleva codificación") !== -1; }));
+  chequear("y no se marca como crítica por ese motivo",
+    !g.detalle.some(function (d) {
+      return d.severidad === "critico" && d.campo.indexOf("Productos finales") !== -1;
+    }));
+});
+
+bloque("Fichas de más y de menos en la plantilla", function () {
+  chequear("la plantilla trae 16 fichas", M.CONFIG_A3.FICHAS_ESPERADAS === 16);
+
+  // Una plantilla sobrante: conserva los rótulos, pero ni un dato.
+  const enBlanco = V.map(function (fila) { return fila.slice(); });
+  const ROTULOS = ["DESCRIPCIÓN DEL PROCESO", "EJECUCIÓN DEL PROCESO", "FORMALIZACIÓN DEL PROCESO",
+    "Nombre", "Codigo", "Responsable", "Tipo", "Alcance", "Versión", "Vinculación", "Objetivo",
+    "Proveedores", "Entradas", "Proceso", "Salidas", "Beneficiarios", "RECURSOS", "Humanos",
+    "Físicos", "Tecnológicos", "Informáticos", "Registros", "Riesgos", "Indicadores", "Controles",
+    "Unidad", "Cargo", "Nombre y Apellidos", "Firma", "Elaboración", "Revisión"];
+  for (let f = 2; f <= 20; f++) {
+    for (let c = 0; c < enBlanco[f].length; c++) {
+      const v = (enBlanco[f][c] || "").toString().trim();
+      if (ROTULOS.indexOf(v) === -1) enBlanco[f][c] = "";
+    }
+  }
+  const vacia = M.revisarFicha_(Object.assign({}, CTX, { valores: enBlanco }), BLOQUES[0], 1);
+  chequear("una ficha sin nada llenado se reconoce como plantilla en blanco",
+    vacia.vacia === true);
+  chequear("y se la señala como tal en el nombre",
+    vacia.nombre.indexOf("en blanco") !== -1);
+  chequear("la ficha con datos no se confunde con una plantilla", F1.vacia === false);
+  chequear("una ficha a medio llenar tampoco", F2.vacia === false);
 });
 
 bloque("Códigos duplicados dentro de la facultad", function () {
