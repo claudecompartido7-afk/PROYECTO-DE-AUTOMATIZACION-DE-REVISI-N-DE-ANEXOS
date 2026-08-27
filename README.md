@@ -9,18 +9,20 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 |---|---|
 | Anexo 1 — Inventario de productos y procesos | en desarrollo |
 | Anexo 2 — (migrado al Anexo 1) | fuera de alcance |
-| Anexo 3 — Ficha técnica | piloto FDCP en revisión |
+| Anexo 3 — Ficha técnica | en desarrollo — 20 facultades |
 
 ## Contenido
 
 ```
-apps-script/Anexo3_Revision.gs           Revisión de fichas técnicas del Anexo 3
+apps-script/Anexo3_Revision_v2.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
+apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
 apps-script/Anexo1_Auditoria_v6.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
 apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-3_reglas-v1.md              Reglas del Anexo 3 (piloto FDCP)
+reglas/ANEXO-3_reglas-v2.md              Reglas vigentes del Anexo 3
+reglas/ANEXO-3_reglas-v1.md              v1 (piloto FDCP), conservada como referencia
 reglas/ANEXO-1_reglas-v6.md              Reglas vigentes
 reglas/ANEXO-1_reglas-v5.md              Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
@@ -42,11 +44,12 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 164 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 205 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 regla de fuente exigida, el registro maestro de códigos, el cotejo con el Anexo 1
-la localización tolerante de la pestaña a revisar, el semáforo de estados y la
-ubicación (fila y celda) de cada campo revisado.
+la detección automática de las pestañas `F##_SIGLA`, el producto final
+obligatorio, los códigos duplicados, la clasificación en cuatro niveles, el
+semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
 
 ## Cómo se ejecuta
 
@@ -64,31 +67,39 @@ observaciones ya escritas viajen con ella.
 ## Anexo 3 — revisión de fichas técnicas
 
 1. Abrir el Anexo 3 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo3_Revision.gs`
-3. Revisar el bloque `CONFIG_A3` del inicio (pestaña de origen, carpeta de
-   salida, Anexo 1 para el cotejo). También puede configurarse desde una pestaña
-   `CONFIG_A3` del propio Anexo 3: columna A = clave, columna B = valor.
+2. Pegar el contenido de `apps-script/Anexo3_Revision_v2.gs`
+3. Revisar el bloque `CONFIG_A3` del inicio (carpeta de salida y Anexo 1 para el
+   cotejo). Las pestañas de facultad se detectan solas por su nombre
+   `F##_SIGLA`; deje `SOURCE_TAB_NAME` vacío para revisarlas todas, o escriba
+   siglas separadas por coma para revisar solo algunas. También puede
+   configurarse desde una pestaña `CONFIG_A3` del propio Anexo 3: columna A =
+   clave, columna B = valor.
 4. Ejecutar `ejecutarRevisionAnexo3` y autorizar los permisos
 
-Si el nombre de la pestaña no coincide, ejecute `listarPestanasA3`: escribe en el
-registro (Ver › Registro) el nombre exacto de cada pestaña, entre comillas para
-que se vean los espacios sobrantes.
+Si alguna facultad no aparece en el reporte, ejecute `listarPestanasA3`: escribe
+en el registro (Ver › Registro) cada pestaña y si se reconoce como facultad.
+Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
 
 En cada corrida se **crea** un Google Sheets nuevo dentro de la carpeta
-`OUTPUT_FOLDER_ID`, con el nombre `Revision_Anexo3_<SIGLA>_<fecha_hora>`, para no
-pisar corridas anteriores. Trae seis hojas: `DETALLE_REVISION`,
-`RESUMEN_EJECUTIVO`, `DASHBOARD`, `REGISTRO_MAESTRO_CODIGOS`, `COTEJO_ANEXO1` y
-`SOLO_OBSERVACIONES`.
+`OUTPUT_FOLDER_ID`, con el nombre `Revision_Anexo3_TODAS_<fecha_hora>`, para no
+pisar corridas anteriores. Trae siete hojas: `DETALLE_REVISION`,
+`RESUMEN_EJECUTIVO`, `RESUMEN_20_FACULTADES`, `DASHBOARD`,
+`REGISTRO_MAESTRO_CODIGOS`, `COTEJO_ANEXO1` y `SOLO_OBSERVACIONES`. Todas abren
+con el código y la sigla de la facultad, en el orden F01 → F20.
 
 Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
 por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese
 mismo estado se escribe en la columna `ESTADO`, de modo que la hoja se lea igual
 impresa en blanco y negro. El `DASHBOARD` cierra con la leyenda.
 
-El piloto corre sobre la pestaña `2.FDCP`. Para el resto de facultades basta con
-cambiar `SOURCE_TAB_NAME`, o ejecutar `revisarTodasLasFacultadesA3`, que deja un
-archivo por facultad. La FDCP trabaja procesos y productos de nivel 2: el nivel
-adicional de código se admite como excepción y se anota, no se marca como error.
+Los hallazgos se clasifican en cuatro niveles —**Correcto**, **Incompleto**,
+**Observación** y **Crítico**— y el resumen de las 20 facultades lleva semáforo
+de avance (95–100 verde, 80–94 ámbar, 60–79 naranja, 0–59 rojo). Una facultad
+con hallazgos críticos no se considera satisfactoria por alto que sea su
+porcentaje.
+
+La FDCP trabaja procesos y productos de nivel 2: el nivel adicional de código se
+admite como excepción y se anota, no se marca como error.
 
 ## Columna CONTRA OBSERVACIÓN
 

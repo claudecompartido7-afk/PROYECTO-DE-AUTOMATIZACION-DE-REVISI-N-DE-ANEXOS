@@ -13,10 +13,13 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo3_Revision.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo3_Revision_v2.gs");
 
 const SHIM = `
-var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
+var SpreadsheetApp = {
+  getUi: function () { throw new Error("sin interfaz"); },
+  getActiveSpreadsheet: function () { return null; }
+};
 var DriveApp = {};
 var Utilities = { formatDate: function () { return "2026-01-01 00:00"; } };
 var Session = { getScriptTimeZone: function () { return "America/Lima"; } };
@@ -27,7 +30,9 @@ module.exports = {
   siglaDePestana_, facultadPorSigla_, formularioDominante_, esInicioDeFicha_,
   localizarFichas_, buscarFilaEtiqueta_, valorDeEtiqueta_, catalogoDeEtiquetas_,
   construirMaestro_, construirCotejo_, revisarFicha_, letraColumna_,
-  localizarPestanaA3_, estadoDeDetalle_, estadoDeFicha_, estadoDeMaestro_, estadoDeCotejo_
+  leerPestanaFacultad_, localizarFacultades_, filtrarFacultades_, detectarDuplicados_,
+  peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
+  severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD
 };
 `;
 
@@ -170,38 +175,52 @@ bloque("Excepción de la FDCP — facultad de nivel 2", function () {
   chequear("el nivel normal sigue sin generar nota", dosNiveles.ok && !dosNiveles.excepcionNivel2);
 });
 
-bloque("Localización de la pestaña a revisar", function () {
+bloque("Detección automática de las pestañas de facultad", function () {
+  chequear("F01_FM se reconoce", M.leerPestanaFacultad_("F01_FM").sigla === "FM");
+  chequear("y trae su código", M.leerPestanaFacultad_("F01_FM").codigo === "F01");
+  chequear("y su orden numérico", M.leerPestanaFacultad_("F20_FII").orden === 20);
+  chequear("F02_FDCP se reconoce", M.leerPestanaFacultad_("F02_FDCP").sigla === "FDCP");
+  chequear("trae el nombre del catálogo",
+    M.leerPestanaFacultad_("F02_FDCP").nombre.indexOf("DERECHO") !== -1);
+  chequear("admite minúsculas", M.leerPestanaFacultad_("f03_flch").sigla === "FLCH");
+  chequear("admite guion y espacios", M.leerPestanaFacultad_(" F04 - FFB ").sigla === "FFB");
+  chequear("una sigla fuera del catálogo igual se acepta",
+    M.leerPestanaFacultad_("F17_FXX").sigla === "FXX");
+  chequear("y queda sin nombre en vez de inventarlo",
+    M.leerPestanaFacultad_("F17_FXX").nombre === "");
+  chequear("DASHBOARD no es facultad", M.leerPestanaFacultad_("DASHBOARD") === null);
+  chequear("CONFIG_A3 no es facultad", M.leerPestanaFacultad_("CONFIG_A3") === null);
+  chequear("el formato antiguo 2.FDCP ya no se toma por facultad",
+    M.leerPestanaFacultad_("2.FDCP") === null);
+
   function libroCon(nombres) {
-    const hojas = nombres.map(function (n) { return { getName: function () { return n; } }; });
     return {
-      getSheets: function () { return hojas; },
-      getSheetByName: function (n) {
-        let h = null;
-        hojas.forEach(function (x) { if (x.getName() === n) h = x; });
-        return h;
+      getSheets: function () {
+        return nombres.map(function (n) { return { getName: function () { return n; } }; });
       }
     };
   }
-  chequear("nombre exacto",
-    M.localizarPestanaA3_(libroCon(["1.FM", "2.FDCP"]), "2.FDCP").getName() === "2.FDCP");
-  chequear("espacio de más",
-    M.localizarPestanaA3_(libroCon(["2. FDCP"]), "2.FDCP").getName() === "2. FDCP");
-  chequear("espacio al final",
-    M.localizarPestanaA3_(libroCon(["2.FDCP "]), "2.FDCP").getName() === "2.FDCP ");
-  chequear("sin el número de orden",
-    M.localizarPestanaA3_(libroCon(["FDCP"]), "2.FDCP").getName() === "FDCP");
-  chequear("separador distinto",
-    M.localizarPestanaA3_(libroCon(["2-FDCP"]), "2.FDCP").getName() === "2-FDCP");
-  chequear("no confunde con otra facultad",
-    (function () {
-      try { M.localizarPestanaA3_(libroCon(["1.FM", "3.FLCH"]), "2.FDCP"); return false; }
-      catch (e) { return true; }
-    })());
-  chequear("el error enumera las pestañas disponibles",
-    (function () {
-      try { M.localizarPestanaA3_(libroCon(["1.FM"]), "2.FDCP"); return false; }
-      catch (e) { return e.message.indexOf('"1.FM"') !== -1; }
-    })());
+  const libro = libroCon(["DASHBOARD", "F03_FLCH", "F01_FM", "CONFIG_A3", "F20_FII", "F02_FDCP"]);
+  const detectadas = M.localizarFacultades_(libro);
+  chequear("se detectan solo las pestañas de facultad", detectadas.length === 4);
+  chequear("y se ordenan F01 → F20, no por el orden de las pestañas",
+    detectadas.map(function (f) { return f.codigo; }).join(",") === "F01,F02,F03,F20");
+  chequear("cada una conserva su hoja", typeof detectadas[0].hoja.getName === "function");
+
+  chequear("sin filtro se revisan todas",
+    M.filtrarFacultades_(detectadas, "").length === 4);
+  chequear("null también significa todas",
+    M.filtrarFacultades_(detectadas, null).length === 4);
+  chequear("se puede filtrar por sigla",
+    M.filtrarFacultades_(detectadas, "FDCP").map(function (f) { return f.sigla; }).join() === "FDCP");
+  chequear("por código de formulario",
+    M.filtrarFacultades_(detectadas, "F01").map(function (f) { return f.sigla; }).join() === "FM");
+  chequear("por nombre completo de la pestaña",
+    M.filtrarFacultades_(detectadas, "F03_FLCH").length === 1);
+  chequear("y por varias a la vez",
+    M.filtrarFacultades_(detectadas, "FDCP, F20_FII").length === 2);
+  chequear("un filtro que no coincide devuelve vacío",
+    M.filtrarFacultades_(detectadas, "FZZ").length === 0);
 });
 
 bloque("Facultad y formulario", function () {
@@ -478,60 +497,135 @@ bloque("Hoja 5 — cotejo contra el Anexo 1", function () {
   chequear("con las dos fichas listadas", repetida[0].fichas === "1, 3");
 });
 
-bloque("Semáforo — estado de cada fila", function () {
-  chequear("campo correcto en verde",
-    M.estadoDeDetalle_({ seccion: "Definición", estructura: "Sí", completo: "Sí" }) === "ok");
-  chequear("campo sin código a validar también en verde",
-    M.estadoDeDetalle_({ seccion: "Definición", estructura: "N/A", completo: "Sí" }) === "ok");
-  chequear("campo vacío en ámbar",
-    M.estadoDeDetalle_({ seccion: "Ejecución", estructura: "N/A", completo: "No" }) === "incompleto");
-  chequear("codificación fuera de estructura en rojo",
-    M.estadoDeDetalle_({ seccion: "Descripción", estructura: "No", completo: "Sí" }) === "error");
-  chequear("la fuente distinta de Arial es rojo, no ámbar",
-    M.estadoDeDetalle_({ seccion: "Formato", estructura: "N/A", completo: "No" }) === "error");
-  chequear("la firma queda en neutro",
-    M.estadoDeDetalle_({ seccion: "Formalización", estructura: "N/A", completo: "Opcional" }) === "neutro");
-  chequear("un campo con código mal escrito Y vacío pesa como error",
-    M.estadoDeDetalle_({ seccion: "Ejecución", estructura: "No", completo: "No" }) === "error");
+bloque("Clasificación de hallazgos — cuatro niveles", function () {
+  chequear("la escala va de menor a mayor",
+    M.ESCALA_SEVERIDAD.join() === "correcto,incompleto,observacion,critico");
+  chequear("manda la más grave", M.peorSeveridad_("incompleto", "critico") === "critico");
+  chequear("y da igual el orden de los argumentos",
+    M.peorSeveridad_("critico", "incompleto") === "critico");
+  chequear("observación pesa más que incompleto",
+    M.peorSeveridad_("observacion", "incompleto") === "observacion");
+  chequear("lo opcional no arrastra a la ficha",
+    M.peorSeveridad_("correcto", "opcional") === "correcto");
 
-  chequear("ficha sin hallazgos en verde",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 0, faltantes: [] }) === "ok");
-  chequear("ficha con campos pendientes en ámbar",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 0, faltantes: ["x"] }) === "incompleto");
-  chequear("ficha con error de codificación en rojo",
-    M.estadoDeFicha_({ erroresCodificacion: 1, fueraDeFuente: 0, faltantes: [] }) === "error");
-  chequear("ficha fuera de Arial en rojo",
-    M.estadoDeFicha_({ erroresCodificacion: 0, fueraDeFuente: 3, faltantes: [] }) === "error");
-  chequear("el error manda sobre lo incompleto",
-    M.estadoDeFicha_({ erroresCodificacion: 2, fueraDeFuente: 0, faltantes: ["x"] }) === "error");
+  chequear("campo correcto", M.severidadPorDefecto_("Sí", "Sí") === "correcto");
+  chequear("campo vacío es incompleto", M.severidadPorDefecto_("N/A", "No") === "incompleto");
+  chequear("codificación mal escrita es observación",
+    M.severidadPorDefecto_("No", "Sí") === "observacion");
+  chequear("la firma es opcional", M.severidadPorDefecto_("N/A", "Opcional") === "opcional");
 
-  chequear("código consistente en verde", M.estadoDeMaestro_({ consistente: "Sí" }) === "ok");
-  chequear("código inconsistente en rojo", M.estadoDeMaestro_({ consistente: "No" }) === "error");
+  chequear("un código con el formulario de otra facultad es crítico",
+    M.severidadDeErrorDeCodigo_([{ motivo: 'Sufijo de formulario "F05" distinto del de la facultad (F02).' }]) === "critico");
+  chequear("una errata de estructura se queda en observación",
+    M.severidadDeErrorDeCodigo_([{ motivo: 'El código "PR1" no sigue la estructura PR.XX_FYY.' }]) === "observacion");
 
-  chequear("salida que coincide con el Anexo 1 en verde",
-    M.estadoDeCotejo_({ existe: "Sí" }) === "ok");
-  chequear("salida ausente del Anexo 1 en rojo",
-    M.estadoDeCotejo_({ existe: "No" }) === "error");
-  chequear("denominación distinta en ámbar",
-    M.estadoDeCotejo_({ existe: "Sí (denominación distinta)" }) === "incompleto");
-  chequear("lo no verificable en ámbar, nunca en rojo",
-    M.estadoDeCotejo_({ existe: "No verificable" }) === "incompleto");
+  chequear("código consistente", M.severidadDeMaestro_({ consistente: "Sí" }) === "correcto");
+  chequear("código inconsistente es observación",
+    M.severidadDeMaestro_({ consistente: "No" }) === "observacion");
+  chequear("salida que coincide con el Anexo 1", M.severidadDeCotejo_({ existe: "Sí" }) === "correcto");
+  chequear("salida ausente del Anexo 1 es observación",
+    M.severidadDeCotejo_({ existe: "No" }) === "observacion");
+  chequear("lo no verificable no pesa como incumplimiento",
+    M.severidadDeCotejo_({ existe: "No verificable" }) === "incompleto");
 
-  chequear("la ficha completa del ejemplo sale verde", M.estadoDeFicha_(F1) === "ok");
-  chequear("la ficha con defectos del ejemplo sale roja", M.estadoDeFicha_(F2) === "error");
-  chequear("cada fila del detalle tiene un estado conocido",
+  chequear("la ficha correcta del ejemplo queda en correcto", F1.severidad === "correcto");
+  chequear("la ficha con defectos del ejemplo queda en crítico", F2.severidad === "critico");
+  chequear("porque su beneficiario lleva el formulario de otra facultad",
+    F2.detalle.some(function (d) {
+      return d.severidad === "critico" && d.observacion.indexOf("F05") !== -1;
+    }));
+  chequear("toda fila del detalle trae una clasificación conocida",
     F2.detalle.every(function (d) {
-      return ["ok", "incompleto", "error", "neutro"].indexOf(M.estadoDeDetalle_(d)) !== -1;
+      return ["correcto", "incompleto", "observacion", "critico", "opcional"].indexOf(d.severidad) !== -1;
     }));
-  chequear("hay filas de los tres colores en la ficha con defectos",
-    ["ok", "incompleto", "error"].every(function (e) {
-      return F2.detalle.some(function (d) { return M.estadoDeDetalle_(d) === e; });
-    }));
-  chequear("la paleta define fondo, texto y rótulo para los cuatro estados",
-    ["ok", "incompleto", "error", "neutro"].every(function (k) {
+  chequear("la paleta cubre los cinco rótulos",
+    ["correcto", "incompleto", "observacion", "critico", "opcional"].every(function (k) {
       const c = M.CONFIG_A3.COLORES[k];
       return c && c.fondo && c.texto && c.rotulo;
     }));
+});
+
+bloque("Producto final obligatorio", function () {
+  chequear("la ficha con salidas las registra", F1.salidas.length === 2);
+  chequear("y no genera hallazgo crítico por ese motivo",
+    !F1.detalle.some(function (d) { return d.observacion.indexOf("ningún producto final") !== -1; }));
+
+  // Misma ficha, pero con la columna de salidas vacía.
+  const sinSalida = V.map(function (fila) { return fila.slice(); });
+  sinSalida[9][7] = ""; sinSalida[9][8] = "";
+  sinSalida[10][7] = ""; sinSalida[10][8] = "";
+  const f = M.revisarFicha_(Object.assign({}, CTX, { valores: sinSalida }), BLOQUES[0], 1);
+
+  chequear("sin salidas no se registra ningún producto", f.salidas.length === 0);
+  chequear("se levanta el hallazgo crítico",
+    f.detalle.some(function (d) {
+      return d.severidad === "critico" && d.observacion.indexOf("ningún producto final") !== -1;
+    }));
+  chequear("la ficha entera pasa a crítica", f.severidad === "critico");
+  chequear("y deja de considerarse completa", f.completa === false);
+  chequear("el hallazgo se cuenta en el contador de críticos", f.criticos >= 1);
+  chequear("el mensaje nombra la columna H",
+    f.detalle.some(function (d) { return d.observacion.indexOf("columna H") !== -1; }));
+});
+
+bloque("Códigos duplicados dentro de la facultad", function () {
+  function fichaFalsa(numero, codigo, salidas) {
+    return {
+      numero: numero, nombre: "Ficha " + numero, codigo: codigo,
+      salidas: salidas.map(function (c) { return { codigo: c }; })
+    };
+  }
+  const hallazgos = M.detectarDuplicados_([
+    fichaFalsa(1, "PE.01_F02", ["PE.01.01.01_F02"]),
+    fichaFalsa(2, "PE.01_F02", ["PE.01.02.01_F02"]),
+    fichaFalsa(3, "PM.01_F02", ["PE.01.01.01_F02"])
+  ]);
+  const criticos = hallazgos.filter(function (h) { return h.severidad === "critico"; });
+  const observaciones = hallazgos.filter(function (h) { return h.severidad === "observacion"; });
+
+  chequear("el código de ficha repetido es crítico", criticos.length === 2);
+  chequear("y se reporta en las dos fichas implicadas",
+    criticos.map(function (h) { return h.ficha.numero; }).join() === "1,2");
+  chequear("el mensaje nombra las fichas",
+    criticos[0].observacion.indexOf("(1, 2)") !== -1);
+  chequear("una salida declarada por dos procesos es observación, no error",
+    observaciones.length === 2);
+  chequear("y se explica qué verificar",
+    observaciones[0].observacion.indexOf("un solo proceso") !== -1);
+
+  const sinDuplicados = M.detectarDuplicados_([
+    fichaFalsa(1, "PE.01_F02", ["PE.01.01.01_F02"]),
+    fichaFalsa(2, "PE.02_F02", ["PE.02.01.01_F02"])
+  ]);
+  chequear("sin duplicados no hay hallazgos", sinDuplicados.length === 0);
+
+  const repetidaEnLaMisma = M.detectarDuplicados_([
+    fichaFalsa(1, "PE.01_F02", ["PE.01.01.01_F02", "PE.01.01.01_F02"])
+  ]);
+  chequear("la misma salida repetida dentro de una ficha no es duplicado entre fichas",
+    repetidaEnLaMisma.length === 0);
+});
+
+bloque("Semáforo de avance por facultad", function () {
+  chequear("95% es satisfactorio", M.estadoDeFacultad_(95, 0).clave === "correcto");
+  chequear("100% también", M.estadoDeFacultad_(100, 0).rotulo === "Satisfactorio");
+  chequear("94% es aceptable", M.estadoDeFacultad_(94, 0).clave === "incompleto");
+  chequear("80% sigue siendo aceptable", M.estadoDeFacultad_(80, 0).clave === "incompleto");
+  chequear("79% está en proceso", M.estadoDeFacultad_(79, 0).clave === "observacion");
+  chequear("60% está en proceso", M.estadoDeFacultad_(60, 0).clave === "observacion");
+  chequear("59% es crítico", M.estadoDeFacultad_(59, 0).clave === "critico");
+  chequear("0% es crítico", M.estadoDeFacultad_(0, 0).clave === "critico");
+
+  const alto = M.estadoDeFacultad_(99, 3);
+  chequear("con hallazgos críticos, un 99% NO puede ser satisfactorio",
+    alto.clave !== "correcto");
+  chequear("baja a en proceso", alto.clave === "observacion");
+  chequear("y el rótulo dice cuántos son",
+    alto.rotulo.indexOf("3 hallazgo(s) crítico(s)") !== -1);
+  chequear("un tramo ya bajo no mejora por tener críticos",
+    M.estadoDeFacultad_(30, 2).clave === "critico");
+  chequear("y conserva el aviso",
+    M.estadoDeFacultad_(30, 2).rotulo.indexOf("crítico") !== -1);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
