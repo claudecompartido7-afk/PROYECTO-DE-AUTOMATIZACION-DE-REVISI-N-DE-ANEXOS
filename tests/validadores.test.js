@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v6.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v7.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -25,7 +25,7 @@ module.exports = {
   localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
-  TOTAL_CRITERIOS_PROCESO, celdaFormulario_
+  TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_
 };
 `;
 
@@ -611,7 +611,7 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
   const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   chequear("se encuentran los encabezados del resumen", enc !== null);
   const nEnc = contarElementos(enc);
-  chequear("el resumen declara 10 columnas", nEnc === 10);
+  chequear("el resumen declara 15 columnas", nEnc === 15);
 
   const construcciones = [];
   let desde = 0;
@@ -636,6 +636,71 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
     const n = contarElementos(c);
     chequear("la fila de resumen #" + (i + 1) + " tiene " + nEnc + " celdas (tiene " + n + ")", n === nEnc);
   });
+});
+
+
+bloque("Vocabulario único CONFORME / OBSERVADO", function () {
+  chequear("estadoGeneral_ al 100 % es CONFORME, no COMPLETO", M.estadoGeneral_(100) === "CONFORME");
+  chequear("75 % es AVANZADO", M.estadoGeneral_(75) === "AVANZADO");
+  chequear("40 % es EN DESARROLLO", M.estadoGeneral_(40) === "EN DESARROLLO");
+  chequear("39 % es CRÍTICO", M.estadoGeneral_(39) === "CRÍTICO");
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const cuerpo = fuente.replace(/VALORES_NULOS:[\s\S]*?\],/, "");
+  ["COMPLETO", "PARCIAL", "PENDIENTE"].forEach(function (t) {
+    chequear("ya no se usa el estado " + t, cuerpo.indexOf('"' + t + '"') === -1);
+  });
+  chequear("los colores cubren CONFORME y OBSERVADO",
+    /"CONFORME":/.test(fuente) && /"OBSERVADO":/.test(fuente));
+});
+
+bloque("Avance sobre criterios cumplidos", function () {
+  chequear("todo cumplido es 100 %", M.avanceSobreCriterios_([8, 8, 8], 8) === 100);
+  chequear("nada cumplido es 0 %", M.avanceSobreCriterios_([0, 0], 8) === 0);
+  chequear("mitad de criterios es 50 %", M.avanceSobreCriterios_([4, 4], 8) === 50);
+  chequear("sin filas devuelve 0", M.avanceSobreCriterios_([], 8) === 0);
+
+  // Lo que la ponderación por estado no distinguía: a un producto le falta un
+  // criterio y el otro está vacío. Ambos eran "observados"; ahora pesan distinto.
+  const casiCompleto = M.avanceSobreCriterios_([7], 8);
+  const vacio = M.avanceSobreCriterios_([1], 8);
+  chequear("un producto casi completo pesa mucho más que uno vacío",
+    casiCompleto === 88 && vacio === 13);
+
+  chequear("los procesos se miden sobre 5 criterios",
+    M.avanceSobreCriterios_([5, 5], M.TOTAL_CRITERIOS_PROCESO) === 100 &&
+    M.avanceSobreCriterios_([3], M.TOTAL_CRITERIOS_PROCESO) === 60);
+});
+
+bloque("Encabezados del RESUMEN_EJECUTIVO_A1 pedidos por el revisor", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const i = fuente.indexOf('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
+  const ini = fuente.indexOf("[", i);
+  let nivel = 0, fin = ini;
+  for (let j = ini; j < fuente.length; j++) {
+    if (fuente[j] === "[") nivel++;
+    else if (fuente[j] === "]") { nivel--; if (!nivel) { fin = j; break; } }
+  }
+  const bloqueTexto = fuente.slice(ini, fin + 1);
+
+  const esperados = [
+    "FACULTAD", "NOMBRE",
+    "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS",
+    "TOTAL PROCESOS", "PROCESOS CONFORMES", "PROCESOS OBSERVADOS",
+    "FORMULARIO"
+  ];
+  esperados.forEach(function (e) {
+    chequear("declara la columna " + e, bloqueTexto.indexOf('"' + e + '"') !== -1);
+  });
+
+  const cuenta = function (t) { return (bloqueTexto.match(new RegExp('"' + t + '"', "g")) || []).length; };
+  chequear("AVANCE aparece dos veces (productos y procesos)", cuenta("AVANCE") === 2);
+  chequear("ESTADO GENERAL aparece dos veces", cuenta("ESTADO GENERAL") === 2);
+  chequear("DIAGNÓSTICO aparece dos veces", cuenta("DIAGNÓSTICO") === 2);
+
+  chequear("CONTRA OBSERVACIÓN no se genera: la aporta el rescate de columnas",
+    bloqueTexto.indexOf("CONTRA OBSERVACIÓN") === -1 &&
+    M.CONFIG_A1.ENCABEZADO_CONTRA === "CONTRA OBSERVACIÓN");
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
