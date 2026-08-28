@@ -1,0 +1,563 @@
+// @ts-nocheck
+/**
+ * ============================================================
+ * SISTEMA DE ACTAS DE REUNIÓN - OGPL UNMSM
+ * Versión 2.5 - Final con Dashboard funcional
+ * ============================================================
+ */
+
+const CONFIG = {
+  FOLDER_ID: '1vaKJ-l-a5k3tLkkMsDXwdiEa24mdG560',
+  SPREADSHEET_ID: '1co-LOqTlvhs2bUDMPiL-n3BuKM_La-uLOX6hZMklr18',
+};
+// ==================== LISTA DE FERIADOS ====================
+const FERIADOS_PERU = [
+  '2026-01-01', // Año Nuevo
+  '2026-04-02', // Jueves Santo
+  '2026-04-03', // Viernes Santo
+  '2026-05-01', // Día del Trabajador
+  '2026-06-29', // San Pedro y San Pablo
+  '2026-07-28', // Fiestas Patrias
+  '2026-07-29', // Fiestas Patrias
+  '2026-08-06', // Batalla de Junín
+  '2026-08-30', // Santa Rosa de Lima
+  '2026-10-08', // Combate de Angamos
+  '2026-11-01', // Día de todos los Santos
+  '2026-12-08', // Inmaculada Concepción
+  '2026-12-09', // Batalla de Ayacucho
+  '2026-12-25'  // Navidad
+];
+// -------------------- UTILIDADES --------------------
+function getSpreadsheet() {
+  if (!CONFIG.SPREADSHEET_ID) throw new Error('No está configurado el SPREADSHEET_ID.');
+  try {
+    return SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  } catch(e) {
+    throw new Error('No se pudo abrir la base de datos. Error: ' + e.message);
+  }
+}
+
+function hashPassword(password, salt) {
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, password + salt);
+  return digest.map(function(b) { return (b < 0 ? b + 256 : b).toString(16).padStart(2, '0'); }).join('');
+}
+
+function generarToken(email) {
+  var random = Math.random().toString(36).substring(2);
+  var timestamp = new Date().getTime();
+  var token = hashPassword(email + timestamp + random, 'appscript_salt_2026');
+  CacheService.getScriptCache().put(token, email, 7200);
+  return token;
+}
+
+function verificarToken(token) {
+  if (!token) throw new Error('Token de sesión requerido.');
+  var email = CacheService.getScriptCache().get(token);
+  if (!email) throw new Error('Sesión expirada o inválida.');
+  return email;
+}
+
+function getUserByEmail(email) {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Usuarios');
+  if (!sheet) return null;
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === email) {
+      return { email: data[i][0], nombre: data[i][2], rol: data[i][3], unidad: data[i][4] };
+    }
+  }
+  return null;
+}
+
+function calcularFechaLimite(fechaBase, plazo, unidad) {
+  if (!unidad) return null;
+  var uni = unidad.toString().toLowerCase().trim();
+
+  // Si es un acuerdo de decisión sin tiempo asignado
+  if (uni === 'sin tiempo' || uni === 'n/a' || uni === 'sin plazo') {
+    return null;
+  }
+
+  var fecha = new Date(fechaBase);
+  var n = parseInt(plazo) || 0;
+
+  // Si la unidad es días hábiles, entramos al bucle de salto de fines de semana y feriados
+  if (uni === 'días hábiles' || uni === 'días') {
+    var diasAgregados = 0;
+
+    while (diasAgregados < n) {
+      fecha.setDate(fecha.getDate() + 1); // Suma 1 día natural
+      var day = fecha.getDay();
+
+      // Formateamos la fecha a YYYY-MM-DD para buscarla en el arreglo
+      var dateString = Utilities.formatDate(fecha, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      var esFeriado = FERIADOS_PERU.indexOf(dateString) !== -1;
+
+      // Si no es domingo (0), ni sábado (6), ni feriado, es un día hábil válido
+      if (day !== 0 && day !== 6 && !esFeriado) {
+        diasAgregados++;
+      }
+    }
+  } else {
+    // Lógica estándar para horas y meses
+    switch(uni) {
+      case 'horas': fecha.setHours(fecha.getHours() + n); break;
+      case 'meses': fecha.setMonth(fecha.getMonth() + n); break;
+      default:      fecha.setDate(fecha.getDate() + n);
+    }
+  }
+
+  return fecha;
+}
+
+// -------------------- INICIALIZACIÓN --------------------
+function inicializarSistema() {
+  var ss = getSpreadsheet();
+  var hojasRequeridas = [
+    { nombre: 'Usuarios', headers: ['Email','PasswordHash','Nombre','Rol','UnidadOficina','FechaRegistro'] },
+    { nombre: 'Actas',    headers: ['ID_Acta','Tema','Modalidad','Lugar','Fecha','HoraInicio','HoraFin','URL_PDF','RegistradoPor','Timestamp','CantidadAsistentes','CantidadFotos'] },
+    { nombre: 'Asistentes', headers: ['ID_Acta','Nombres','Apellidos','Cargo','Unidad','TieneFirma','Timestamp'] },
+    { nombre: 'Acuerdos', headers: ['ID_Acuerdo','ID_Acta','Acuerdo','Responsable','Plazo','UnidadPlazo','FechaLimite','Estado','FechaCumplimiento','DiasRestantes','Indicador','Timestamp'] }
+  ];
+
+  var creadas = 0;
+  hojasRequeridas.forEach(function(h) {
+    if (!ss.getSheetByName(h.nombre)) {
+      var sheet = ss.insertSheet(h.nombre);
+      sheet.appendRow(h.headers);
+      sheet.setFrozenRows(1);
+      sheet.getRange(1, 1, 1, h.headers.length).setFontWeight('bold').setBackground('#d9e2f3');
+      creadas++;
+    }
+  });
+
+  return '✅ Inicialización completa. Hojas creadas: ' + creadas;
+}
+
+function crearUsuarioAdmin() {
+  var ss = getSpreadsheet();
+  var sheet = ss.getSheetByName('Usuarios');
+  if (!sheet) return '❌ No existe la hoja "Usuarios".';
+
+  var email = 'admin@unmsm.edu.pe';
+  var password = 'admin123';
+
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === email) return '⚠️ El usuario ' + email + ' ya existe.';
+  }
+
+  var hash = hashPassword(password, email);
+  sheet.appendRow([email, hash, 'Administrador Principal', 'Admin', 'OGPL', new Date()]);
+  return '✅ Usuario creado: ' + email;
+}
+
+// -------------------- WEB APP --------------------
+function doGet() {
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('Sistema de Actas de Reunión - OGPL UNMSM')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// -------------------- API: AUTENTICACIÓN --------------------
+function login(credenciales) {
+  try {
+    var email = credenciales.email;
+    var password = credenciales.password;
+    var user = getUserByEmail(email);
+    if (!user) return { success: false, error: 'Usuario no encontrado en el sistema.' };
+
+    var hash = hashPassword(password, email);
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName('Usuarios');
+    var data = sheet.getDataRange().getValues();
+
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === email && data[i][1] === hash) {
+        var token = generarToken(email);
+        return { success: true, token: token, user: user };
+      }
+    }
+    return { success: false, error: 'Contraseña incorrecta.' };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+function getSessionUser(token) {
+  try {
+    var email = verificarToken(token);
+    var user = getUserByEmail(email);
+    if (!user) throw new Error('Usuario no encontrado en sesión activa.');
+    return { success: true, user: user };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+// -------------------- API: CREAR USUARIOS --------------------
+function crearUsuario(datos, token) {
+  try {
+    verificarToken(token);
+    var email = datos.email, password = datos.password, nombre = datos.nombre;
+    if (!email || !password || !nombre) {
+      return { success: false, error: 'Email, password y nombre son obligatorios.' };
+    }
+    if (getUserByEmail(email)) return { success: false, error: 'Ya existe un usuario con ese correo.' };
+
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName('Usuarios');
+    var hash = hashPassword(password, email);
+    sheet.appendRow([email, hash, nombre, datos.rol || 'Usuario', datos.unidad || 'OGPL', new Date()]);
+    return { success: true, message: 'Usuario creado: ' + email };
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
+
+// -------------------- API: GENERAR ACTA Y PDF --------------------
+
+function generarActaPDF(datos, token) {
+  // Instanciamos el LockService para evitar duplicidad de códigos correlativos
+  var lock = LockService.getScriptLock();
+
+  try {
+    var email = verificarToken(token);
+    var carpeta = DriveApp.getFolderById(CONFIG.FOLDER_ID);
+    var now = new Date();
+
+    // 1. Iniciamos un bloqueo de hasta 15 segundos en caso haya múltiples usuarios guardando a la vez
+    lock.waitLock(15000);
+
+    // 2. Calculamos el correlativo leyendo la Hoja "Actas"
+    var ss = getSpreadsheet();
+    var sheetActas = ss.getSheetByName('Actas');
+    // Si solo está la fila 1 (encabezado), getLastRow() devuelve 1. El siguiente acta tomará ese número como base.
+    var correlativo = sheetActas.getLastRow();
+    var numeroActa = correlativo.toString().padStart(3, '0'); // Rellena con ceros a la izquierda (ej. 001, 012)
+    var anio = now.getFullYear();
+
+    // 3. Creamos el nuevo ID de Acta con la codificación exacta solicitada
+    var idActa = 'Acta N° ' + numeroActa + '-' + anio + '-OR-OGPL/UNMSM';
+
+    var htmlStr = '<style>' +
+      '* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }' +
+      'table, th, td, li { font-size: 9px; }' +
+      '.page-break { page-break-before: always; }' +
+      '.foto-container { width: 48%; display: inline-block; margin: 1%; text-align: center; border: 0.5pt solid #ccc; padding: 5px; box-sizing: border-box; }' +
+      '</style>' +
+      '<div style="font-family: Verdana, sans-serif; font-size: 9px; margin: 0 auto; color: #000;">' +
+
+      '<table style="width: 100%; border-collapse: collapse; border: 0.5pt solid black; text-align: center; margin-bottom: 10px;">' +
+      '<tr>' +
+      '<td style="border: 0.5pt solid black; width: 13%; padding: 5px; font-weight: bold; font-size: 9px; text-align: center; vertical-align: middle;">' +
+      'CÓDIGO: <br>OGPL-OR-01<br>VERSIÓN: 2.0<br></td>' +
+      // 4. Modificamos el título para que el código dinámico se imprima visualmente en el centro de la cabecera
+      '<td style="border: 0.5pt solid black; width: 60%; font-weight: bold; font-size: 25px; vertical-align: middle;">ACTA DE REUNIÓN<br><span style="font-size: 14px; font-weight: normal;">' + idActa + '</span></td>' +
+      '<td style="border: 0.5pt solid black; width: 10%; padding: 5px; vertical-align: middle;">' +
+      '<img src="' + LOGO_UNMSM + '" style="max-height: 50px; max-width: 100%;" alt="Logo"/></td></tr></table>' +
+
+      '<table style="width: 100%; border-collapse: collapse; border: 0.5pt solid black; margin-bottom: 10px;">' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold; width: 14%;">Tema:</td>' +
+      '<td style="border: 0.5pt solid black; padding: 5px; width: 80%;">' + datos.tema + '</td></tr>' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold;">Modalidad:</td>' +
+      '<td style="border: 0.5pt solid black; padding: 5px;">' + datos.modalidad + '</td></tr>' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold;">Fecha:</td>' +
+      '<td style="border: 0.5pt solid black; padding: 5px;">' + datos.fecha + '</td></tr>' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold;">Lugar de reunión:</td>' +
+      '<td style="border: 0.5pt solid black; padding: 5px;">' + datos.lugar + '</td></tr>' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold;">Horario:</td>' +
+      '<td style="border: 0.5pt solid black; padding: 5px;">' + datos.horaInicio + ' - ' + datos.horaFin + '</td></tr>' +
+      '</table>' +
+
+      '<table style="width: 100%; border-collapse: collapse; border: 0.5pt solid black; margin-bottom: 10px; text-align: center;">' +
+      '<thead><tr bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important;">' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 5%;">N°</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 35%;">Nombre Y Apellidos</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 25%;">Cargo / Unidad</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 35%;">Firma</th>' +
+      '</tr></thead><tbody>';
+
+    datos.asistentes.forEach(function(asis, index) {
+      var firmaContent = '';
+
+      // Si el asistente solicitó Firma Digital Automática
+      if (asis.usarFirmaDigital) {
+        // 1. Apellidos todo en MAYÚSCULAS
+        var apellidosMayus = asis.apellidos.toUpperCase();
+
+        // 2. Nombres con solo la primera letra mayúscula (Capitalizados)
+        var nombresCap = asis.nombres.split(' ').map(function(w){
+          return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
+        }).join(' ');
+
+        // 3. Capturar Fecha y Hora de la firma (momento de la generación)
+        var fechaStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'dd/MM/yy');
+        var horaStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'HH:mm:ss');
+
+        // 4. Estructura HTML de la Firma (Logo a la izq, texto a la der)
+        firmaContent = '<table style="width:100%; border:none; font-size:6.5px; text-align:left; margin:0; padding:0;"><tr>' +
+                       '<td style="width:30%; border:none; padding:1px; vertical-align:middle; text-align:center;">' +
+                       '<img src="' + LOGO_UNMSM + '" style="max-height:28px;"/></td>' +
+                       '<td style="width:70%; border:none; padding:1px; vertical-align:middle; line-height:1.2; color:#222;">' +
+                       'Firmado digitalmente por <br>' + apellidosMayus + ' ' + nombresCap + '<br>' +
+                       'Motivo: Soy el Autor de la Firma<br>' +
+                       'Fecha: ' + fechaStr + ' Hora: ' + horaStr +
+                       '</td></tr></table>';
+      }
+      // Si usó firma manual o imagen subida
+      else if (asis.firma) {
+        firmaContent = '<img src="' + asis.firma + '" style="max-height: 35px; max-width: 100%; display: block; margin: auto;"/>';
+      }
+
+      htmlStr += '<tr>' +
+        '<td style="border: 0.5pt solid black; padding: 5px;">' + (index + 1) + '</td>' +
+        '<td style="border: 0.5pt solid black; padding: 5px; text-align: left;">' + asis.nombres + ' ' + asis.apellidos + '</td>' +
+        '<td style="border: 0.5pt solid black; padding: 5px;">' + asis.cargo + '<br><small>' + asis.unidad + '</small></td>' +
+        '<td style="border: 0.5pt solid black; padding: 2px; vertical-align: middle;">' + firmaContent + '</td></tr>';
+    });
+
+    htmlStr += '</tbody></table>' +
+
+      '<table style="width: 100%; border-collapse: collapse; border: 0.5pt solid black; margin-bottom: 10px;">' +
+      '<tr><td bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important; border: 0.5pt solid black; padding: 5px; font-weight: bold; text-align: left;">Agenda a tratar:</td></tr>' +
+      '<tr><td style="border: 0.5pt solid black; padding: 10px; vertical-align: top; min-height: 80px;">' +
+      '<ol style="margin: 0; padding-left: 20px;">' +
+      (datos.agenda.length > 0 ? datos.agenda.map(function(item) { return '<li style="margin-bottom: 4px;">' + item + '</li>'; }).join('') : '<li>---</li>') +
+      '</ol></td></tr></table>' +
+
+      '<table style="width: 100%; border-collapse: collapse; border: 0.5pt solid black; margin-bottom: 10px;">' +
+      '<thead><tr bgcolor="#d9e2f3" style="background-color: #d9e2f3 !important;">' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 5%;">N°</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 40%;">Acuerdo / Compromiso</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 25%;">Responsable</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 15%;">Plazo</th>' +
+      '<th style="border: 0.5pt solid black; padding: 5px; width: 15%;">Fecha Límite</th>' +
+      '</tr></thead><tbody>';
+
+    if (datos.acuerdos.length > 0) {
+      datos.acuerdos.forEach(function(ac, idx) {
+        var fLimite = calcularFechaLimite(now, ac.plazo, ac.unidad);
+
+        // Asignamos textos dinámicos dependiendo de si tiene fecha límite o es solo decisión
+        var fStr = fLimite ? Utilities.formatDate(fLimite, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm') : 'N/A';
+        var textoPlazo = fLimite ? (ac.plazo + ' ' + ac.unidad) : 'Sin tiempo';
+
+        htmlStr += '<tr>' +
+          '<td style="border: 0.5pt solid black; padding: 5px; text-align: center;">' + (idx + 1) + '</td>' +
+          '<td style="border: 0.5pt solid black; padding: 5px;">' + ac.texto + '</td>' +
+          '<td style="border: 0.5pt solid black; padding: 5px; text-align: center;">' + ac.responsable + '</td>' +
+          '<td style="border: 0.5pt solid black; padding: 5px; text-align: center;">' + textoPlazo + '</td>' +
+          '<td style="border: 0.5pt solid black; padding: 5px; text-align: center;">' + fStr + '</td>' +
+          '</tr>';
+      });
+    } else {
+      htmlStr += '<tr><td colspan="5" style="border: 0.5pt solid black; padding: 5px; text-align: center;">---</td></tr>';
+    }
+
+    htmlStr += '</tbody></table>';
+
+    if (datos.fotos && datos.fotos.length > 0) {
+      htmlStr += '<div class="page-break"></div>' +
+        '<h3 style="text-align: center; border-bottom: 1pt solid #000; padding-bottom: 5px;">ANEXO FOTOGRÁFICO DE LA REUNIÓN</h3>' +
+        '<div style="width: 100%;">';
+      datos.fotos.forEach(function(foto, idx) {
+        htmlStr += '<div class="foto-container">' +
+          '<img src="' + foto + '" style="max-width: 100%; max-height: 250px; display: block; margin-bottom: 5px; margin-left: auto; margin-right: auto;"/>' +
+          '<span style="font-size: 8px; color: #666;">Evidencia N° ' + (idx + 1) + '</span>' +
+          '</div>';
+      });
+      htmlStr += '</div>';
+    }
+
+    htmlStr += '<div style="text-align: center; font-size: 10px; color: #555; margin-top: 40px; border-top: 0.5pt solid #eee; padding-top: 10px;">' +
+      'Documento generado digitalmente por el sistema de actas digitales de la OGPL - Racionalización - UNMSM' +
+      '</div></div>';
+
+    var blob = HtmlService.createHtmlOutput(htmlStr).getAs(MimeType.PDF);
+    // 5. El PDF se guarda en Drive con la nueva nomenclatura limpia
+    blob.setName(idActa + ' - ' + datos.tema + '.pdf');
+    var archivo = carpeta.createFile(blob);
+    var urlPDF = archivo.getUrl();
+
+    // 6. Al enviar 'idActa' a tu BD, Google Sheets registrará "Acta N° 001-..."
+    guardarActaEnBD(idActa, datos, urlPDF, email);
+
+    // Liberamos el sistema de la concurrencia
+    lock.releaseLock();
+
+    return { success: true, url: urlPDF, idActa: idActa };
+
+  } catch (error) {
+    if (lock.hasLock()) lock.releaseLock();
+    return { success: false, error: error.toString() };
+  }
+}
+
+function guardarActaEnBD(idActa, datos, urlPDF, email) {
+  var ss = getSpreadsheet();
+  var now = new Date();
+
+  var sheetActas = ss.getSheetByName('Actas');
+  sheetActas.appendRow([
+    idActa, datos.tema, datos.modalidad, datos.lugar, datos.fecha,
+    datos.horaInicio, datos.horaFin, urlPDF, email, now,
+    datos.asistentes.length, (datos.fotos || []).length
+  ]);
+
+  var sheetAsist = ss.getSheetByName('Asistentes');
+  datos.asistentes.forEach(function(a) {
+    sheetAsist.appendRow([idActa, a.nombres, a.apellidos, a.cargo, a.unidad, a.firma ? 'Sí' : 'No', now]);
+  });
+
+  var sheetAcuerdos = ss.getSheetByName('Acuerdos');
+  datos.acuerdos.forEach(function(ac, idx) {
+    var idAcuerdo = idActa + '_AC' + (idx + 1).toString().padStart(3, '0');
+    var fechaLimite = calcularFechaLimite(now, ac.plazo, ac.unidad);
+
+    // Variables dinámicas para el registro en Sheets
+    var dbPlazo = fechaLimite ? ac.plazo : '-';
+    var dbUnidad = ac.unidad || 'Sin tiempo';
+    var dbFechaLimite = fechaLimite || 'N/A';
+    var estado = fechaLimite ? 'Pendiente' : 'Decisión';
+    var indicador = fechaLimite ? 'PENDIENTE' : 'INFORMATIVO';
+
+    sheetAcuerdos.appendRow([
+      idAcuerdo, idActa, ac.texto, ac.responsable, dbPlazo, dbUnidad,
+      dbFechaLimite, estado, '', '', indicador, now
+    ]);
+  });
+}
+
+// -------------------- API: DASHBOARD FINAL --------------------
+function obtenerAcuerdos(token, filtroOficina) {
+  try {
+    verificarToken(token);
+    var ss = getSpreadsheet();
+    var sheet = ss.getSheetByName('Acuerdos');
+
+    if (!sheet) {
+      return { success: false, error: 'No existe la hoja Acuerdos.' };
+    }
+
+    var data = sheet.getDataRange().getValues();
+    var ahora = new Date();
+    var resultados = [];
+
+    if (data.length <= 1) {
+      return { success: true, acuerdos: [] };
+    }
+
+    // AQUÍ INICIA EL BUCLE FOR QUE EVITA EL ERROR DE "ILLEGAL CONTINUE"
+    for (var i = 1; i < data.length; i++) {
+      try {
+        var row = data[i];
+
+        // Verificar fila completa
+        if (!row || row.length < 12) continue;
+
+        var idAcuerdo = row[0];
+        var idActa = row[1];
+        var acuerdoTexto = row[2];
+        var responsable = row[3];
+        var plazo = row[4];
+        var unidadPlazo = row[5];
+        var fechaLimiteRaw = row[6];
+        var estado = row[7];
+        var indicador = row[10];
+
+        if (!idAcuerdo) continue;
+        if (filtroOficina && responsable !== filtroOficina) continue;
+
+        // Identificar si es un acuerdo sin tiempo
+        var esSinTiempo = (fechaLimiteRaw === 'N/A' || fechaLimiteRaw === '-' || estado === 'Decisión' || indicador === 'INFORMATIVO');
+        var fechaLimite = null;
+
+        if (!esSinTiempo) {
+          if (fechaLimiteRaw instanceof Date) {
+            fechaLimite = fechaLimiteRaw;
+          } else if (typeof fechaLimiteRaw === 'string' && fechaLimiteRaw.trim() !== '') {
+            var partes = fechaLimiteRaw.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})/);
+            if (partes) {
+              fechaLimite = new Date(
+                parseInt(partes[3]), parseInt(partes[2]) - 1, parseInt(partes[1]),
+                parseInt(partes[4]), parseInt(partes[5]), parseInt(partes[6])
+              );
+            } else {
+              fechaLimite = new Date(fechaLimiteRaw);
+              if (isNaN(fechaLimite.getTime())) fechaLimite = new Date();
+            }
+          } else {
+            fechaLimite = new Date();
+          }
+        }
+
+        var estadoFinal = estado || 'Pendiente';
+        var indicadorFinal = indicador || 'PENDIENTE';
+        var diasRestantesStr = '';
+        var clase = 'azul';
+        var fechaLimiteStr = 'N/A';
+
+        if (esSinTiempo) {
+          estadoFinal = 'Decisión';
+          indicadorFinal = 'INFORMATIVO';
+          clase = 'azul';
+          diasRestantesStr = '-';
+        } else if (estadoFinal === 'Cumplido') {
+          indicadorFinal = 'CUMPLIDO';
+          clase = 'verde';
+          fechaLimiteStr = Utilities.formatDate(fechaLimite, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+        } else if (ahora > fechaLimite) {
+          estadoFinal = 'Vencido';
+          indicadorFinal = 'NO CUMPLIDO';
+          clase = 'rojo';
+          fechaLimiteStr = Utilities.formatDate(fechaLimite, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+        } else {
+          var diffMs = fechaLimite - ahora;
+          var diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+          var diffHoras = Math.ceil(diffMs / (1000 * 60 * 60));
+
+          diasRestantesStr = diffDias < 1 ? diffHoras + 'h restantes' : diffDias + ' días';
+
+          if (diffDias <= 1) {
+            indicadorFinal = 'URGENTE';
+            clase = 'amarillo';
+          } else {
+            indicadorFinal = 'EN PLAZO';
+            clase = 'azul';
+          }
+          fechaLimiteStr = Utilities.formatDate(fechaLimite, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm');
+        }
+
+        resultados.push({
+          idAcuerdo: String(idAcuerdo),
+          idActa: String(idActa || ''),
+          acuerdo: String(acuerdoTexto || 'Sin descripción'),
+          responsable: String(responsable || 'No asignado'),
+          plazo: esSinTiempo ? 'Sin tiempo' : String(plazo || '0') + ' ' + String(unidadPlazo || ''),
+          fechaLimite: fechaLimiteStr,
+          estado: estadoFinal,
+          indicador: indicadorFinal,
+          clase: clase,
+          diasRestantes: diasRestantesStr
+        });
+
+      } catch (rowError) {
+        // Continuar con siguiente fila
+      }
+    }
+    // FIN DEL BUCLE FOR
+
+    // Ordenar (Se añade "INFORMATIVO" para que los acuerdos sin plazo queden al final y no interfieran con las urgencias)
+    var orden = { 'Vencido': 1, 'URGENTE': 2, 'EN PLAZO': 3, 'CUMPLIDO': 4, 'INFORMATIVO': 5 };
+    resultados.sort(function(a, b) {
+      return (orden[a.indicador] || 6) - (orden[b.indicador] || 6);
+    });
+
+    return { success: true, acuerdos: resultados };
+
+  } catch (e) {
+    return { success: false, error: e.toString() };
+  }
+}
