@@ -543,6 +543,13 @@ aplica a todo el bloque de datos de las tres hojas y alinea las celdas arriba.
 No basta con ajustar la última columna: el resumen lleva sus dos `DIAGNÓSTICO`
 en medio de la tabla.
 
+**Las observaciones de corridas anteriores no se convierten solas.** El formato
+lo decide quien escribe la celda, de modo que las que quedaron con `||` siguen
+así hasta que se vuelva a auditar. Para no tener que reauditar solo por eso, el
+menú **Auditoría OGPL** incluye *Convertir observaciones antiguas a renglones*,
+que reescribe únicamente las columnas `OBSERVACIONES…` y `DIAGNÓSTICO` de las
+tres hojas y deja intactas las del revisor.
+
 **9.bis.1 Cierre de los productos sin registro — NUEVA en v9.** Un producto con
 las columnas C a I vacías recibe las ocho observaciones de columna y cierra con:
 

@@ -878,6 +878,17 @@ bloque("Ajuste de texto en las hojas del dashboard", function () {
   chequear("las celdas se alinean arriba", /setVerticalAlignment\("top"\)/.test(fuente));
 });
 
+
+bloque("Conversor de observaciones antiguas", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("existe la función de conversión", /function convertirSeparadorAntiguo\(\)/.test(fuente));
+  chequear("está en el menú", /Convertir observaciones antiguas a renglones/.test(fuente));
+  chequear("solo toca las columnas generadas",
+    /indexOf\("OBSERVACIONES"\) === 0 \|\| .*indexOf\("DIAGNOSTICO"\) === 0/.test(fuente));
+  chequear("reaplica el ajuste de texto tras convertir",
+    /setValues\(datos\);[\s\S]{0,220}setWrap\(true\)/.test(fuente));
+});
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 console.log("\n" + (fallas === 0

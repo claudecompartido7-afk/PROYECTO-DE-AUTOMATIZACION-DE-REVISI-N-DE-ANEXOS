@@ -1267,10 +1267,64 @@ function escribirLeyenda_(hoja, numFilas) {
 function onOpen() {
   try {
     SpreadsheetApp.getUi().createMenu("Auditoría OGPL")
-      .addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1").addToUi();
+      .addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1")
+      .addSeparator()
+      .addItem("Convertir observaciones antiguas a renglones", "convertirSeparadorAntiguo")
+      .addToUi();
   } catch (e) {
     // Sin interfaz disponible: no hay menú que crear.
   }
+}
+
+/**
+ * Convierte al vuelo las observaciones que quedaron de una corrida anterior,
+ * encadenadas con " || ", a un renglón por observación.
+ *
+ * Es un atajo para no tener que volver a auditar solo por el formato: la
+ * auditoría completa ya las escribe así. No toca las columnas del revisor.
+ */
+function convertirSeparadorAntiguo() {
+  const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
+  const hojas = ["DETALLADO_PRODUCTOS_A1", CONFIG_A1.HOJA_PROCESOS, "RESUMEN_EJECUTIVO_A1"];
+  let convertidas = 0;
+
+  hojas.forEach(function (nombre) {
+    const hoja = ss.getSheetByName(nombre);
+    if (!hoja || hoja.getLastRow() < 2) return;
+
+    const rango = hoja.getRange(1, 1, hoja.getLastRow(), hoja.getLastColumn());
+    const datos = rango.getValues();
+    const cabecera = datos[0].map(function (c) { return normalizarTexto_(c); });
+
+    // Solo las columnas que genera el script: las del revisor no se tocan.
+    const columnas = [];
+    cabecera.forEach(function (t, i) {
+      if (t.indexOf("OBSERVACIONES") === 0 || t.indexOf("DIAGNOSTICO") === 0) columnas.push(i);
+    });
+    if (!columnas.length) return;
+
+    let cambio = false;
+    for (let r = 1; r < datos.length; r++) {
+      columnas.forEach(function (c) {
+        const v = datos[r][c];
+        if (typeof v === "string" && v.indexOf("||") !== -1) {
+          datos[r][c] = v.split(/\s*\|\|\s*/).join(SEPARADOR_OBS);
+          cambio = true;
+          convertidas++;
+        }
+      });
+    }
+
+    if (cambio) {
+      rango.setValues(datos);
+      hoja.getRange(2, 1, datos.length - 1, hoja.getLastColumn())
+          .setWrap(true).setVerticalAlignment("top");
+    }
+  });
+
+  notificar_(convertidas
+    ? "Se convirtieron " + convertidas + " celdas al formato de un renglón por observación."
+    : "No quedaban observaciones con el separador antiguo.");
 }
 
 function notificar_(mensaje) {
