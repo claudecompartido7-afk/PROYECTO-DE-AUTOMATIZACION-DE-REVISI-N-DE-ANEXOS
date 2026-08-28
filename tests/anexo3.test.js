@@ -33,7 +33,7 @@ module.exports = {
   leerPestanaFacultad_, localizarFacultades_, filtrarFacultades_, detectarDuplicados_,
   peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
-  emparejarCodigosYDenominaciones_, limpiarDenominacion_
+  emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_
 };
 `;
 
@@ -638,6 +638,65 @@ bloque("Producto final obligatorio", function () {
     !g.detalle.some(function (d) {
       return d.severidad === "critico" && d.campo.indexOf("Productos finales") !== -1;
     }));
+});
+
+bloque("Coherencia fila por fila de la descripción", function () {
+  function conFila(cambios) {
+    const W = V.map(function (fila) { return fila.slice(); });
+    Object.keys(cambios).forEach(function (col) { W[9][Number(col)] = cambios[col]; });
+    return M.revisarFicha_(Object.assign({}, CTX, { valores: W }), BLOQUES[0], 1);
+  }
+  function hallazgo(ficha, campo) {
+    let d = null;
+    ficha.detalle.forEach(function (x) { if (!d && x.campo === campo) d = x; });
+    return d;
+  }
+
+  chequear("una fila con las cinco columnas llenas no genera hallazgos",
+    !hallazgo(F1, "Entrada del proveedor") && !hallazgo(F1, "Producto final del proceso"));
+
+  // Proveedor sin entrada: el caso de D314/E314.
+  const sinEntrada = conFila({ 3: "", 4: "" });
+  chequear("proveedor sin entrada se detecta", !!hallazgo(sinEntrada, "Entrada del proveedor"));
+  chequear("se clasifica como incompleto",
+    hallazgo(sinEntrada, "Entrada del proveedor").severidad === "incompleto");
+  chequear("y apunta a la celda vacía, no a la del proveedor",
+    hallazgo(sinEntrada, "Entrada del proveedor").celda === "D10");
+  chequear("el mensaje explica la correspondencia",
+    hallazgo(sinEntrada, "Entrada del proveedor").observacion.indexOf("todo proveedor") !== -1);
+  chequear("baja el avance de la ficha", sinEntrada.avance < 100);
+
+  const sinProveedor = conFila({ 1: "", 2: "" });
+  chequear("entrada sin proveedor se detecta", !!hallazgo(sinProveedor, "Proveedor de la entrada"));
+  chequear("y apunta a la celda del proveedor",
+    hallazgo(sinProveedor, "Proveedor de la entrada").celda === "B10");
+
+  // Proceso sin producto final: el caso de H114, H431, H436 y H437.
+  const sinSalida = conFila({ 7: "", 8: "" });
+  chequear("proceso sin producto final se detecta",
+    !!hallazgo(sinSalida, "Producto final del proceso"));
+  chequear("y es crítico",
+    hallazgo(sinSalida, "Producto final del proceso").severidad === "critico");
+  chequear("apunta a la celda H de esa fila",
+    hallazgo(sinSalida, "Producto final del proceso").celda === "H10");
+  chequear("cita la regla 5",
+    hallazgo(sinSalida, "Producto final del proceso").observacion.indexOf("Regla 5") !== -1);
+  chequear("la ficha entera pasa a crítica", sinSalida.severidad === "critico");
+  chequear("aunque la columna Salidas tenga otros registros",
+    sinSalida.salidasDeclaradas === 1);
+  chequear("y ya no puede llegar al 100%", sinSalida.avance < 100);
+
+  const salidaHuerfana = conFila({ 5: "", 6: "" });
+  chequear("un producto sin proceso se observa",
+    !!hallazgo(salidaHuerfana, "Proceso de la salida"));
+  chequear("pero no es crítico",
+    hallazgo(salidaHuerfana, "Proceso de la salida").severidad === "observacion");
+
+  const filaVacia = conFila({ 1: "", 2: "", 3: "", 4: "", 5: "", 6: "", 7: "", 8: "", 9: "", 10: "" });
+  chequear("una fila totalmente vacía no genera hallazgos",
+    !hallazgo(filaVacia, "Entrada del proveedor") &&
+    !hallazgo(filaVacia, "Producto final del proceso") &&
+    !hallazgo(filaVacia, "Proveedor de la entrada"));
 });
 
 bloque("Fichas de más y de menos en la plantilla", function () {

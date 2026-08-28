@@ -26,9 +26,9 @@
  *      además detecta códigos duplicados, códigos de otra facultad, fichas sin
  *      producto final y denominaciones inconsistentes.
  *   4. Coteja salidas y registros contra el Anexo 1.
- *   5. Crea un Google Sheets nuevo en la carpeta de salida con siete hojas:
- *      detalle, resumen ejecutivo, resumen de las 20 facultades, dashboard,
- *      registro maestro de códigos, cotejo con el Anexo 1 y solo observaciones.
+ *   5. Crea un Google Sheets nuevo en la carpeta de salida con cuatro hojas:
+ *      DETALLE_REVISION, RESUMEN_FICHAS, RESUMEN_20_FACULTADES y
+ *      REGISTRO_MAESTRO_CODIGOS.
  *
  *  Uso
  *  ─────────────────────────────────────────────────────────────────────────────
@@ -62,7 +62,7 @@ const CONFIG_A3 = {
   /** Carpeta de Drive "Revisión Interna de Avances del A3". */
   OUTPUT_FOLDER_ID: '1zSwJCoMFhI1J2jg7Aq7qroLHjT0QLwTA',
 
-  /** Anexo 1, para el cotejo de salidas y registros (hoja 5). */
+  /** Anexo 1, para cotejar salidas y registros (reglas 5 y 7). */
   ANEXO1_SHEET_ID:  '1SUMuS32zUweN_o7WfdBhXq-ipvvaFXYTcxKF1hmhPww',
   /** Pestaña del Anexo 1; null = se localiza por la sigla de la facultad. */
   ANEXO1_TAB_NAME:  null,
@@ -93,12 +93,9 @@ const CONFIG_A3 = {
 
   HOJAS: {
     DETALLE:    'DETALLE_REVISION',
-    RESUMEN:    'RESUMEN_EJECUTIVO',
+    RESUMEN:    'RESUMEN_FICHAS',
     RESUMEN_20: 'RESUMEN_20_FACULTADES',
-    DASHBOARD:  'DASHBOARD',
-    MAESTRO:   'REGISTRO_MAESTRO_CODIGOS',
-    COTEJO:    'COTEJO_ANEXO1',
-    ERRORES:   'SOLO_OBSERVACIONES'
+    MAESTRO:    'REGISTRO_MAESTRO_CODIGOS'
   },
 
   /**
@@ -696,6 +693,85 @@ function catalogoDeEtiquetas_() {
    REVISIÓN DE UNA FICHA TÉCNICA
    ═══════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Comprueba, fila por fila, que las cinco columnas de la descripción se
+ * correspondan entre sí. Cada fila con datos aporta dos criterios al avance:
+ * el par proveedor ↔ entrada y el par proceso ↔ salida.
+ *
+ *  · Proveedor sin entrada, o entrada sin proveedor → Incompleto. Un proveedor
+ *    entrega algo; si la celda de al lado está vacía, falta ese algo.
+ *  · Proceso sin producto final → Crítico. Es la regla 5: todo proceso entrega
+ *    un producto, y esa celda vacía es la que la revisión anterior no veía.
+ *  · Salida sin proceso → Observación: hay un producto que no cuelga de ningún
+ *    proceso de la fila.
+ */
+function revisarFilasDeDescripcion_(V, filaEnc, finDesc, columnas, ficha, anotar, faltante) {
+  const col = {
+    proveedor:    columnas['Proveedores'],
+    entrada:      columnas['Entradas'],
+    proceso:      columnas['Procesos'],
+    salida:       columnas['Salidas'],
+    beneficiario: columnas['Beneficiarios']
+  };
+
+  const lleno = function (fila, c) {
+    return c !== undefined && c !== null && !esVacio_(V[fila][c]);
+  };
+
+  for (let f = filaEnc + 1; f <= finDesc && f < V.length; f++) {
+    const hay = {
+      proveedor:    lleno(f, col.proveedor),
+      entrada:      lleno(f, col.entrada),
+      proceso:      lleno(f, col.proceso),
+      salida:       lleno(f, col.salida),
+      beneficiario: lleno(f, col.beneficiario)
+    };
+    // Una fila totalmente vacía es separación de la tabla, no un hueco.
+    if (!hay.proveedor && !hay.entrada && !hay.proceso && !hay.salida && !hay.beneficiario) continue;
+
+    /* Par proveedor ↔ entrada */
+    if (hay.proveedor || hay.entrada) {
+      ficha.campos++;
+      if (hay.proveedor && hay.entrada) {
+        ficha.completos++;
+      } else if (hay.proveedor) {
+        faltante('Descripción › Entrada del proveedor', { fila: f, col: col.entrada });
+        anotar('Descripción', 'Entrada del proveedor', recortarA3_(V[f][col.proveedor], 60),
+               'N/A', 'No',
+               'La fila registra un proveedor pero deja vacía la ENTRADA. A todo proveedor le ' +
+               'corresponde al menos una entrada, y a toda entrada su proveedor: la celda no ' +
+               'puede quedar en blanco.', { fila: f, col: col.entrada }, 'incompleto');
+      } else {
+        faltante('Descripción › Proveedor de la entrada', { fila: f, col: col.proveedor });
+        anotar('Descripción', 'Proveedor de la entrada', recortarA3_(V[f][col.entrada], 60),
+               'N/A', 'No',
+               'La fila registra una entrada pero deja vacío el PROVEEDOR. A toda entrada le ' +
+               'corresponde el proveedor que la entrega.', { fila: f, col: col.proveedor }, 'incompleto');
+      }
+    }
+
+    /* Par proceso ↔ salida */
+    if (hay.proceso || hay.salida) {
+      ficha.campos++;
+      if (hay.proceso && hay.salida) {
+        ficha.completos++;
+      } else if (hay.proceso) {
+        faltante('Descripción › Producto final del proceso', { fila: f, col: col.salida });
+        anotar('Descripción', 'Producto final del proceso', recortarA3_(V[f][col.proceso], 60),
+               'N/A', 'No',
+               'CRÍTICO: la fila registra un proceso pero deja vacía la SALIDA. Regla 5: todo ' +
+               'proceso debe consignar su producto final con la codificación y denominación ' +
+               'del Anexo 1.', { fila: f, col: col.salida }, 'critico');
+      } else {
+        anotar('Descripción', 'Proceso de la salida', recortarA3_(V[f][col.salida], 60),
+               'N/A', 'Sí',
+               'La fila registra un producto final pero deja vacío el PROCESO que lo genera.',
+               { fila: f, col: col.proceso }, 'observacion');
+      }
+    }
+  }
+}
+
 /** Severidad de una fila del detalle cuando no se declara una explícita. */
 function severidadPorDefecto_(estructura, completo) {
   if (estructura === 'No') return 'observacion';
@@ -924,6 +1000,19 @@ function revisarFicha_(ctx, bloque, numero) {
                { rango: (filaEnc + 2) + '–' + (finDesc + 1) });
       }
     });
+
+    /* Coherencia FILA POR FILA de la tabla de la descripción.
+     *
+     * Revisar cada columna por separado deja pasar el defecto más común: la
+     * columna tiene registros —así que "está completa"— pero a un proveedor no
+     * le corresponde ninguna entrada, o a un proceso ningún producto final. Es
+     * lo que hace que una ficha con huecos evidentes llegue al 100 %. Aquí se
+     * revisa cada fila como lo que es: una relación proveedor → entrada →
+     * proceso → salida → beneficiario.
+     */
+    if (filaEnc !== -1) {
+      revisarFilasDeDescripcion_(V, filaEnc, finDesc, columnas, ficha, anotar, faltante);
+    }
   }
 
   /* ── Criterio obligatorio: al menos un producto final ───────────────── */
@@ -1310,7 +1399,11 @@ function leerCatalogoAnexo1_(sigla) {
   }
 }
 
-/** Cotejo de salidas y registros contra el Anexo 1 (reglas 5 y 7). */
+/**
+ * Cotejo de salidas y registros contra el Anexo 1 (reglas 5 y 7). Ya no tiene
+ * hoja propia: sus hallazgos se vuelcan al detalle, junto a la ficha donde
+ * aparece cada código.
+ */
 function construirCotejo_(entradas, anexo1) {
   const vistos = {};
   const filas = [];
@@ -1575,9 +1668,28 @@ function revisarFacultad_(facultad) {
     f.cotejo.forEach(function (e) { cotejoEntradas.push(e); });
   });
 
-  const anexo1 = leerCatalogoAnexo1_(facultad.sigla);
   const maestro = construirMaestro_(maestroEntradas);
-  const cotejo = construirCotejo_(cotejoEntradas, anexo1);
+
+  // El cotejo con el Anexo 1 ya no tiene hoja propia, pero la comprobación se
+  // conserva: sus hallazgos (reglas 5 y 7) se vuelcan al detalle, en la ficha
+  // donde aparece cada código.
+  const anexo1 = leerCatalogoAnexo1_(facultad.sigla);
+  const porNumero = {};
+  fichas.forEach(function (f) { porNumero[f.numero] = f; });
+  construirCotejo_(cotejoEntradas, anexo1).forEach(function (c) {
+    const sev = severidadDeCotejo_(c);
+    if (sev === 'correcto') return;
+    const primera = parseInt((c.fichas || '').toString().split(',')[0], 10);
+    const ficha = porNumero[primera];
+    if (!ficha) return;
+    ficha.detalle.push({
+      ficha: ficha.numero, nombre: ficha.nombre, seccion: 'Anexo 1',
+      campo: c.tipo + ' no cotejada', fila: '', celda: '',
+      codigo: c.codigo, estructura: 'N/A', completo: 'Sí',
+      observacion: c.observacion, severidad: sev
+    });
+    ficha.severidad = peorSeveridad_(ficha.severidad, sev);
+  });
 
   // Las plantillas que quedaron en blanco no son fichas a medio hacer: no
   // entran en los conteos ni arrastran el porcentaje de la facultad.
@@ -1601,21 +1713,33 @@ function revisarFacultad_(facultad) {
     efectivas: efectivas,
     vacias: vacias.length,
     maestro: maestro,
-    cotejo: cotejo,
-    anexo1: anexo1,
     campos: campos,
     completos: completos,
     avance: avance,
     criticos: criticos,
-    sinProducto: efectivas.filter(function (f) { return f.salidasDeclaradas === 0; }).length,
+    // "Sin producto" cuenta FICHAS; "otros críticos" cuenta el resto de
+    // hallazgos críticos (código de otra facultad, código duplicado, sección
+    // ausente). Se separan para que ninguna fila se cuente dos veces.
+    sinProducto: efectivas.filter(function (f) {
+      return f.salidasDeclaradas === 0 ||
+             f.detalle.some(function (d) {
+               return d.severidad === 'critico' && d.campo === 'Producto final del proceso';
+             });
+    }).length,
+    otrosCriticos: efectivas.reduce(function (a, f) {
+      return a + f.detalle.filter(function (d) {
+        return d.severidad === 'critico' &&
+               d.campo !== 'Producto final del proceso' &&
+               d.campo.indexOf('Productos finales') === -1;
+      }).length;
+    }, 0),
     sinCodificar: efectivas.filter(function (f) {
       return f.salidasDeclaradas > 0 && f.salidas.length < CONFIG_A3.MIN_SALIDAS_POR_FICHA;
     }).length,
     completas: efectivas.filter(function (f) { return f.completa; }).length,
     observaciones: efectivas.reduce(function (a, f) {
       return a + f.detalle.filter(function (d) { return d.severidad === 'observacion'; }).length;
-    }, 0) + maestro.filter(function (m) { return severidadDeMaestro_(m) !== 'correcto'; }).length +
-       cotejo.filter(function (c) { return severidadDeCotejo_(c) === 'observacion'; }).length,
+    }, 0) + maestro.filter(function (m) { return severidadDeMaestro_(m) !== 'correcto'; }).length,
     estado: estadoDeFacultad_(avance, criticos)
   };
 }
@@ -1635,9 +1759,8 @@ function escribirResultado_(ss, facultades) {
   facultades.forEach(function (fac) {
     fac.fichas.forEach(function (f) {
       f.detalle.forEach(function (d) {
-        detalle.push([fac.codigo, fac.sigla, fac.pestana, f.numero + '. ' + f.nombre,
-                      d.seccion, d.campo, d.fila, d.celda, d.codigo,
-                      d.estructura, d.completo,
+        detalle.push([fac.sigla, fac.nombre, f.numero + '. ' + f.nombre,
+                      d.seccion, d.campo, d.fila, d.celda, d.codigo, d.completo,
                       (CONFIG_A3.COLORES[d.severidad] || CONFIG_A3.COLORES.correcto).rotulo,
                       d.observacion]);
         sevDetalle.push(d.severidad);
@@ -1645,9 +1768,9 @@ function escribirResultado_(ss, facultades) {
     });
   });
   escribirHoja_(ss, H.DETALLE,
-    ['CÓDIGO FACULTAD', 'SIGLA_FACULTAD', 'PESTAÑA', 'N° FICHA / PROCESO', 'SECCIÓN',
+    ['FACULTAD', 'NOMBRE', 'N° FICHA / PROCESO', 'SECCIÓN',
      'CAMPO REVISADO', 'N° DE FILA', 'CELDA', 'CÓDIGO ENCONTRADO',
-     '¿CUMPLE ESTRUCTURA?', '¿CAMPO COMPLETO?', 'CLASIFICACIÓN', 'OBSERVACIÓN ESPECÍFICA'],
+     '¿CAMPO COMPLETO?', 'CLASIFICACIÓN', 'OBSERVACIÓN ESPECÍFICA'],
     detalle, sevDetalle);
 
   /* Hoja 2 — Resumen ejecutivo por ficha técnica */
@@ -1667,7 +1790,7 @@ function escribirResultado_(ss, facultades) {
       }
       if (f.notas.length) sugerencias.push('Excepción de nivel 2 admitida: ' + f.notas.slice(0, 3).join('; ') + '.');
       if (!sugerencias.length) sugerencias.push('Sin observaciones.');
-      resumen.push([fac.codigo, fac.sigla, f.numero + '. ' + f.nombre, f.codigo,
+      resumen.push([fac.sigla, fac.nombre, f.numero + '. ' + f.nombre, f.codigo,
                     f.completa ? 'Sí' : 'No', f.avance / 100, f.salidas.length,
                     f.faltantes.join('\n') || '—', f.erroresCodificacion, f.criticos,
                     (CONFIG_A3.COLORES[f.severidad] || CONFIG_A3.COLORES.correcto).rotulo,
@@ -1676,7 +1799,7 @@ function escribirResultado_(ss, facultades) {
     });
   });
   const hojaResumen = escribirHoja_(ss, H.RESUMEN,
-    ['CÓDIGO FACULTAD', 'SIGLA_FACULTAD', 'N° FICHA / PROCESO', 'CÓDIGO', '¿COMPLETA?',
+    ['FACULTAD', 'NOMBRE', 'N° FICHA / PROCESO', 'CÓDIGO', '¿COMPLETA?',
      '% DE AVANCE', 'PRODUCTOS FINALES', 'CAMPOS/CELDAS FALTANTES',
      'ERRORES DE CODIFICACIÓN', 'HALLAZGOS CRÍTICOS', 'CLASIFICACIÓN',
      'OBSERVACIONES Y CORRECCIONES'],
@@ -1701,164 +1824,56 @@ function escribirResultado_(ss, facultades) {
     if (fac.sinCodificar) {
       nota.push(fac.sinCodificar + ' ficha(s) con productos declarados pero sin codificar.');
     }
-    return [fac.codigo, fac.sigla, fac.nombre || '(sin nombre en el catálogo)',
+    return [fac.sigla, fac.nombre || '(sin nombre en el catálogo)',
             encontradas, esperadas || '—', fac.completas, encontradas - fac.completas,
-            fac.criticos, fac.sinProducto, fac.observaciones,
-            fac.avance / 100, fac.estado.rotulo, nota.join(' ')];
+            fac.sinProducto, fac.otrosCriticos, fac.observaciones,
+            fac.estado.rotulo, nota.join(' '), fac.avance / 100];
   });
+
+  // Fila de cierre: cómo va el Anexo 3 en conjunto. Es el promedio PONDERADO
+  // por campos revisados, no el promedio de los porcentajes: una facultad con
+  // 16 fichas no puede pesar lo mismo que una con 12.
+  const camposTotal = facultades.reduce(function (a, f) { return a + f.campos; }, 0);
+  const completosTotal = facultades.reduce(function (a, f) { return a + f.completos; }, 0);
+  const avanceTotal = camposTotal ? Math.round(completosTotal * 1000 / camposTotal) / 10 : 0;
+  const criticosTotal = facultades.reduce(function (a, f) { return a + f.criticos; }, 0);
+  filas20.push(['TOTAL', 'ANEXO 3 — LAS ' + facultades.length + ' FACULTADES',
+    facultades.reduce(function (a, f) { return a + f.efectivas.length; }, 0),
+    CONFIG_A3.FICHAS_ESPERADAS ? CONFIG_A3.FICHAS_ESPERADAS * facultades.length : '—',
+    facultades.reduce(function (a, f) { return a + f.completas; }, 0),
+    facultades.reduce(function (a, f) { return a + (f.efectivas.length - f.completas); }, 0),
+    facultades.reduce(function (a, f) { return a + f.sinProducto; }, 0),
+    facultades.reduce(function (a, f) { return a + f.otrosCriticos; }, 0),
+    facultades.reduce(function (a, f) { return a + f.observaciones; }, 0),
+    estadoDeFacultad_(avanceTotal, criticosTotal).rotulo,
+    'Promedio ponderado por campos revisados.', avanceTotal / 100]);
+
   const hoja20 = escribirHoja_(ss, H.RESUMEN_20,
-    ['CÓDIGO', 'SIGLA', 'FACULTAD', 'FICHAS', 'FICHAS ESPERADAS', 'COMPLETAS', 'INCOMPLETAS',
-     'CRÍTICAS', 'SIN PRODUCTO', 'OBSERVACIONES', '% AVANCE', 'ESTADO', 'NOTAS'],
-    filas20, facultades.map(function (fac) { return fac.estado.clave; }));
+    ['SIGLA', 'FACULTAD', 'FICHAS', 'FICHAS ESPERADAS', 'COMPLETAS', 'INCOMPLETAS',
+     'SIN PRODUCTO', 'OTROS CRÍTICOS', 'OBSERVACIONES', 'ESTADO', 'NOTAS', '% AVANCE'],
+    filas20,
+    facultades.map(function (fac) { return fac.estado.clave; })
+              .concat([estadoDeFacultad_(avanceTotal, criticosTotal).clave]));
   if (filas20.length) {
-    hoja20.getRange(2, 11, filas20.length, 1).setNumberFormat('0.0%');
-    aplicarSemaforoDeAvance_(hoja20, 11, filas20.length);
+    hoja20.getRange(2, 12, filas20.length, 1).setNumberFormat('0.0%');
+    aplicarSemaforoDeAvance_(hoja20, 12, filas20.length);
+    hoja20.getRange(filas20.length + 1, 1, 1, 13).setFontWeight('bold');
   }
 
-  /* Hoja 4 — Dashboard general */
-  const totalFichas = facultades.reduce(function (a, f) { return a + f.efectivas.length; }, 0);
-  const totalVacias = facultades.reduce(function (a, f) { return a + f.vacias; }, 0);
-  const totalCompletas = facultades.reduce(function (a, f) { return a + f.completas; }, 0);
-  const campos = facultades.reduce(function (a, f) { return a + f.campos; }, 0);
-  const completos = facultades.reduce(function (a, f) { return a + f.completos; }, 0);
-  const criticos = facultades.reduce(function (a, f) { return a + f.criticos; }, 0);
-  const sinProducto = facultades.reduce(function (a, f) { return a + f.sinProducto; }, 0);
-  const errores = facultades.reduce(function (a, f) {
-    return a + f.fichas.reduce(function (b, x) { return b + x.erroresCodificacion; }, 0);
-  }, 0);
-  const fueraDeFuente = facultades.reduce(function (a, f) {
-    return a + f.fichas.reduce(function (b, x) { return b + x.fueraDeFuente; }, 0);
-  }, 0);
-
-  const porSeccion = {};
-  facultades.forEach(function (fac) {
-    fac.fichas.forEach(function (f) {
-      f.faltantes.forEach(function (x) {
-        const sec = x.split(' › ')[0];
-        porSeccion[sec] = (porSeccion[sec] || 0) + 1;
-      });
-    });
-  });
-  const top = Object.keys(porSeccion).sort(function (a, b) { return porSeccion[b] - porSeccion[a]; })
-    .map(function (s) { return s + ' (' + porSeccion[s] + ')'; }).join(', ') || '—';
-
-  const inconsistencias = facultades.reduce(function (a, f) {
-    return a + f.maestro.filter(function (m) { return m.consistente === 'No'; }).length;
-  }, 0);
-  const sinAnexo1 = facultades.reduce(function (a, f) {
-    return a + f.cotejo.filter(function (c) { return c.existe === 'No'; }).length;
-  }, 0);
-  const sinCotejo = facultades.filter(function (f) { return !f.anexo1.disponible; })
-                              .map(function (f) { return f.sigla; });
-
-  const indicadores = [
-    ['Facultades revisadas', facultades.length + ' (' +
-      facultades.map(marcaFacultad).join(', ') + ')'],
-    ['Fecha de la revisión', Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm')],
-    ['Fichas técnicas revisadas', totalFichas],
-    ['Fichas completas', totalCompletas],
-    ['Fichas incompletas', totalFichas - totalCompletas],
-    ['% de avance global', campos ? (Math.round(completos * 1000 / campos) / 10) + '%' : '0%'],
-    ['Campos aplicables / completos', campos + ' / ' + completos],
-    ['Hallazgos críticos', criticos],
-    ['Fichas sin producto final', sinProducto],
-    ['Fichas con productos sin codificar',
-      facultades.reduce(function (a, f) { return a + f.sinCodificar; }, 0)],
-    ['Plantillas en blanco (no computadas)', totalVacias],
-    ['Errores de codificación', errores],
-    ['Celdas fuera de ' + CONFIG_A3.FUENTE_OBLIGATORIA + ' (regla 1)', fueraDeFuente],
-    ['Secciones con más campos faltantes', top],
-    ['Códigos con uso inconsistente (reglas 2, 3 y 6)', inconsistencias],
-    ['Salidas/registros ausentes del Anexo 1 (reglas 5 y 7)', sinAnexo1],
-    ['Facultades sin cotejo con el Anexo 1', sinCotejo.length ? sinCotejo.join(', ') : 'ninguna'],
-    ['Excepción de nivel 2', CONFIG_A3.FACULTADES_NIVEL_2.join(', ') || 'no aplica'],
-    ['', ''],
-    ['LEYENDA DE LA CLASIFICACIÓN', '']
-  ];
-
-  const leyenda = [
-    { clave: 'correcto',    texto: 'Campo completo y codificación correcta.' },
-    { clave: 'incompleto',  texto: 'Falta completar un campo obligatorio, o el dato está por verificar contra el Anexo 1.' },
-    { clave: 'observacion', texto: 'Hay algo escrito pero mal: codificación fuera de estructura, fuente indebida, denominación inconsistente o salida duplicada.' },
-    { clave: 'critico',     texto: 'Compromete la ficha: sin producto final, código de otra facultad, código duplicado o sección ausente.' },
-    { clave: 'opcional',    texto: 'Campo opcional (la firma va como imagen): no baja el porcentaje de avance.' }
-  ];
-
-  const hojaDashboard = escribirHoja_(ss, H.DASHBOARD, ['INDICADOR', 'VALOR'],
-    indicadores.concat(leyenda.map(function (l) {
-      return [CONFIG_A3.COLORES[l.clave].rotulo, l.texto];
-    })));
-
-  const filaLeyenda = indicadores.length + 1;
-  hojaDashboard.getRange(filaLeyenda, 1, 1, 2).setFontWeight('bold');
-  leyenda.forEach(function (l, i) {
-    const color = CONFIG_A3.COLORES[l.clave];
-    hojaDashboard.getRange(filaLeyenda + 1 + i, 1, 1, 2)
-                 .setBackground(color.fondo).setFontColor(color.texto);
-  });
-
-  /* Hoja 5 — Registro maestro de códigos */
+  /* Hoja 4 — Registro maestro de códigos */
   const maestro = [];
   const sevMaestro = [];
   facultades.forEach(function (fac) {
     fac.maestro.forEach(function (m) {
-      maestro.push([fac.codigo, fac.sigla, m.tipo, m.codigo, m.denominacion,
+      maestro.push([fac.sigla, fac.nombre, m.tipo, m.codigo, m.denominacion,
                     m.fichas, m.consistente, m.observacion]);
       sevMaestro.push(severidadDeMaestro_(m));
     });
   });
   escribirHoja_(ss, H.MAESTRO,
-    ['CÓDIGO FACULTAD', 'SIGLA_FACULTAD', 'TIPO', 'CÓDIGO', 'DENOMINACIÓN',
+    ['FACULTAD', 'NOMBRE', 'TIPO', 'CÓDIGO', 'DENOMINACIÓN',
      'FICHAS EN QUE APARECE', '¿DENOMINACIÓN CONSISTENTE?', 'OBSERVACIÓN'],
     maestro, sevMaestro);
-
-  /* Hoja 6 — Cotejo contra el Anexo 1 */
-  const cotejo = [];
-  const sevCotejo = [];
-  facultades.forEach(function (fac) {
-    fac.cotejo.forEach(function (c) {
-      cotejo.push([fac.codigo, fac.sigla, c.tipo, c.codigo, c.denominacion,
-                   c.fichas, c.existe, c.observacion]);
-      sevCotejo.push(severidadDeCotejo_(c));
-    });
-  });
-  escribirHoja_(ss, H.COTEJO,
-    ['CÓDIGO FACULTAD', 'SIGLA_FACULTAD', 'TIPO', 'CÓDIGO (ANEXO 3)', 'DENOMINACIÓN (ANEXO 3)',
-     'FICHAS', '¿EXISTE EN EL ANEXO 1?', 'OBSERVACIÓN'],
-    cotejo, sevCotejo);
-
-  /* Hoja 7 — Solo observaciones */
-  const soloErrores = [];
-  const sevErrores = [];
-  function agregarHallazgo(fila, sev) { soloErrores.push(fila); sevErrores.push(sev); }
-
-  facultades.forEach(function (fac) {
-    fac.fichas.forEach(function (f) {
-      f.detalle.forEach(function (d) {
-        if (d.severidad === 'correcto' || d.severidad === 'opcional') return;
-        agregarHallazgo([fac.codigo, fac.sigla, CONFIG_A3.HOJAS.DETALLE,
-                         f.numero + '. ' + f.nombre, d.seccion + ' › ' + d.campo,
-                         d.celda || d.fila, d.codigo,
-                         CONFIG_A3.COLORES[d.severidad].rotulo, d.observacion], d.severidad);
-      });
-    });
-    fac.maestro.forEach(function (m) {
-      const sev = severidadDeMaestro_(m);
-      if (sev === 'correcto') return;
-      agregarHallazgo([fac.codigo, fac.sigla, CONFIG_A3.HOJAS.MAESTRO, m.fichas, m.tipo, '',
-                       m.codigo, CONFIG_A3.COLORES[sev].rotulo, m.observacion], sev);
-    });
-    fac.cotejo.forEach(function (c) {
-      const sev = severidadDeCotejo_(c);
-      if (sev === 'correcto') return;
-      agregarHallazgo([fac.codigo, fac.sigla, CONFIG_A3.HOJAS.COTEJO, c.fichas, c.tipo, '',
-                       c.codigo, CONFIG_A3.COLORES[sev].rotulo, c.observacion], sev);
-    });
-  });
-  escribirHoja_(ss, H.ERRORES,
-    ['CÓDIGO FACULTAD', 'SIGLA_FACULTAD', 'HOJA DE ORIGEN', 'FICHA(S)', 'SECCIÓN / TIPO',
-     'FILA / CELDA', 'CÓDIGO', 'CLASIFICACIÓN', 'OBSERVACIÓN'],
-    soloErrores, sevErrores);
 
   // La hoja que crea Google por defecto sobra.
   const inicial = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1') || ss.getSheetByName('Hoja1');

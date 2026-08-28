@@ -44,11 +44,12 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 228 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 246 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 regla de fuente exigida, el registro maestro de códigos, el cotejo con el Anexo 1
 la detección automática de las pestañas `F##_SIGLA`, el producto final
-obligatorio, el emparejado de código y denominación por líneas, los códigos duplicados, la clasificación en cuatro niveles, el
+obligatorio, el emparejado de código y denominación por líneas, la coherencia fila por
+fila de la descripción, los códigos duplicados, la clasificación en cuatro niveles, el
 semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
 
 ## Cómo se ejecuta
@@ -82,10 +83,9 @@ Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
 
 En cada corrida se **crea** un Google Sheets nuevo dentro de la carpeta
 `OUTPUT_FOLDER_ID`, con el nombre `Revision_Anexo3_TODAS_<fecha_hora>`, para no
-pisar corridas anteriores. Trae siete hojas: `DETALLE_REVISION`,
-`RESUMEN_EJECUTIVO`, `RESUMEN_20_FACULTADES`, `DASHBOARD`,
-`REGISTRO_MAESTRO_CODIGOS`, `COTEJO_ANEXO1` y `SOLO_OBSERVACIONES`. Todas abren
-con el código y la sigla de la facultad, en el orden F01 → F20.
+pisar corridas anteriores. Trae cuatro hojas: `DETALLE_REVISION`,
+`RESUMEN_FICHAS`, `RESUMEN_20_FACULTADES` y `REGISTRO_MAESTRO_CODIGOS`. Todas
+abren con la sigla y el nombre de la facultad, en el orden F01 → F20.
 
 Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
 por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese

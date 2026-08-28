@@ -106,6 +106,21 @@ No se computa como un campo más, para no diluirlo en el porcentaje: se cuenta
 aparte en las columnas `SIN PRODUCTO` y en la nota de productos sin codificar
 del resumen de las 20 facultades.
 
+**1.2.3 Coherencia fila por fila (v2.1).** Revisar cada columna por separado
+deja pasar el defecto más frecuente: la columna *tiene* registros —así que
+"está completa"— pero a un proveedor no le corresponde ninguna entrada, o a un
+proceso ningún producto final. Cada fila con datos aporta **dos criterios** al
+avance:
+
+| Situación | Clasificación |
+|---|---|
+| Proveedor con la entrada vacía | **Incompleto** |
+| Entrada con el proveedor vacío | **Incompleto** |
+| Proceso con la salida vacía | **Crítico** (regla 5) |
+| Salida sin proceso que la genere | **Observación** |
+
+Una fila enteramente vacía es separación de la tabla, no un hueco.
+
 **1.2.2 Código y denominación en celdas de varias líneas.** Las celdas de
 proveedores, entradas, salidas y beneficiarios traen **un código por línea**, y
 la celda contigua **una denominación por línea**. Cada código se empareja con la
@@ -215,18 +230,26 @@ una celda con dos códigos mal escritos suma dos.
 
 ## 6. Hojas del archivo de salida
 
-Todas las hojas abren con `CÓDIGO FACULTAD` y `SIGLA_FACULTAD`, y las filas
-vienen en el orden F01 → F20.
+Cuatro hojas. Todas abren con `FACULTAD` (sigla) y `NOMBRE`, y las filas vienen
+en el orden F01 → F20.
+
+El cotejo contra el Anexo 1 (reglas 5 y 7) ya no tiene hoja propia: sus
+hallazgos se vuelcan al `DETALLE_REVISION`, en la sección `Anexo 1` de la ficha
+donde aparece cada código.
+
+En `RESUMEN_20_FACULTADES`, `SIN PRODUCTO` cuenta **fichas** con algún proceso
+sin producto final; `OTROS CRÍTICOS` cuenta el **resto** de hallazgos críticos
+(código de otra facultad, código duplicado, sección ausente). Se separan para
+que ninguna fila se cuente dos veces. La hoja cierra con una fila `TOTAL` cuyo
+`% AVANCE` es el promedio **ponderado por campos revisados**, no el promedio de
+los porcentajes.
 
 | Hoja | Contenido |
 |---|---|
 | `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
 | `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, fichas esperadas, completas, incompletas, críticas, sin producto, observaciones, % avance, estado y notas |
-| `RESUMEN_EJECUTIVO` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
-| `DASHBOARD` | Consolidado de la facultad: fichas revisadas, completas vs. incompletas, avance global, errores, secciones con más faltantes |
+| `RESUMEN_FICHAS` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
 | `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |
-| `COTEJO_ANEXO1` | Salidas y registros contra el Anexo 1 |
-| `SOLO_OBSERVACIONES` | Extracto de las tres hojas anteriores, solo filas con hallazgos |
 
 **6.1 Ubicación de cada hallazgo.** El detalle indica dónde está el dato en la
 pestaña revisada: `N° DE FILA` con la fila tal como se ve en la hoja (base 1) y
