@@ -1,11 +1,13 @@
 # ANEXO 1 (A1) — Inventario de Productos y Procesos
-## Reglas de validación consolidadas — v6
+## Reglas de validación consolidadas — v8
 
 > **Origen.** v1 = hoja `REGLAS DE AUTOMATIZACIÓN` (solo filas de Anexo 1).
 > v2 = script `Anexo1_Auditoria.gs`. v3 = consolidación verificada contra la
 > estructura real. v4 = incorpora las contra observaciones del revisor. v5 =
-> puntúa cada proceso en una fila. **v6 = fija el catálogo oficial de facultades
-> y separa el defecto de hoja del defecto de fila.**
+> puntúa cada proceso en una fila. v6 = fija el catálogo oficial de facultades.
+> v7 = unifica el vocabulario en CONFORME / OBSERVADO. **v8 = cambia el prefijo
+> de las observaciones, separa los productos sin registro y abre el bloque de
+> procesos en Nivel 0 y subprocesos.**
 >
 > **Criterio de autoridad:** cuando la hoja de reglas y la hoja real se
 > contradicen, manda la **hoja real**. La hoja de reglas v1 quedó desactualizada
@@ -200,22 +202,89 @@ El criterio estricto de la v3 queda disponible en
 
 ---
 
-## 5. Estados y avance — *sin cambios*
+## 5. Estados y avance — *reescrita en v7*
 
-| Estado del producto | Condición |
+**5.1 Dos estados, los mismos para productos y para procesos.**
+
+| Estado | Condición |
 |---|---|
-| COMPLETO | 8/8 criterios |
-| PENDIENTE | Solo col B; C–I vacías |
-| PARCIAL | Cualquier otro caso |
+| CONFORME | cumple todos sus criterios (8 en productos, 5 en procesos) |
+| OBSERVADO | cualquier otro caso |
 
-`Avance % = (COMPLETOS + 0,5 × PARCIALES) / TOTAL`
+Desaparecen `COMPLETO`, `PARCIAL` y `PENDIENTE`. Un producto **sin registrar**
+—columnas C a I vacías— es OBSERVADO como cualquier otro; su condición se
+declara en la observación:
 
-| Estado de la facultad | Avance |
+> PRODUCTO SIN REGISTRAR: las columnas C a I están vacías. No hay nada que
+> validar más allá del código.
+
+Así el dato no se pierde al retirarse el estado PENDIENTE, y el resumen informa
+cuántos observados están en esa situación.
+
+Los procesos conservan además `FALTANTE` (Nivel 0 obligatorio ausente) y
+`NO APLICA` (PE.03 y PS.08 ausentes), que no son estados de cumplimiento sino de
+existencia.
+
+**5.2 El avance se mide sobre criterios cumplidos, no sobre estados.**
+
+```
+Avance % = Σ criterios cumplidos / (nº de filas × criterios por fila)
+```
+
+Productos sobre 8 criterios, procesos sobre 5. La fórmula anterior repartía
+medio punto a cada parcial; con dos estados eso daría lo mismo a un producto al
+que le falta un criterio que a uno enteramente vacío. Medido sobre criterios,
+un producto con 7 de 8 aporta 88 % y uno con 1 de 8 aporta 13 %.
+
+**5.3 Estado general de la facultad**
+
+| Estado | Avance |
 |---|---|
-| COMPLETO | 100 % |
+| CONFORME | 100 % |
 | AVANZADO | ≥ 75 % |
 | EN DESARROLLO | ≥ 40 % |
 | CRÍTICO | < 40 % |
+
+---
+
+## 5.bis Hoja `RESUMEN_EJECUTIVO_A1` — *reestructurada en v8*
+
+| # | Columna | | # | Columna |
+|---|---|---|---|---|
+| 1 | FACULTAD | | 10 | TOTAL PROCESOS |
+| 2 | NOMBRE | | 11 | PROCESOS NIVEL 0 CONFORMES |
+| 3 | TOTAL PRODUCTOS | | 12 | PROCESOS NIVEL 0 OBSERVADOS |
+| 4 | PRODUCTOS CONFORMES | | 13 | SUBPROCESOS CONFORMES |
+| 5 | PRODUCTOS OBSERVADOS | | 14 | SUBPROCESOS OBSERVADOS |
+| 6 | PRODUCTOS SIN REGISTRO | | 15 | AVANCE |
+| 7 | AVANCE | | 16 | ESTADO GENERAL |
+| 8 | ESTADO GENERAL | | 17 | DIAGNÓSTICO |
+| 9 | DIAGNÓSTICO | | 18 | CÓDIGO DE LA HOJA |
+| | | | 19 | CONTRAOBSERVACIÓN |
+
+La última columna no la genera el script: la aporta el rescate de columnas
+manuales (regla 8), con el nombre que el revisor le haya puesto.
+
+**`PRODUCTOS SIN REGISTRO` es un desglose, no una tercera categoría.** Son los
+productos observados que además tienen vacías las columnas C a I, de modo que
+`TOTAL PRODUCTOS = CONFORMES + OBSERVADOS` sigue cumpliéndose y los sin registro
+están contenidos en los observados.
+
+`TOTAL PROCESOS` excluye los `NO APLICA`, que no se puntúan. Los `FALTANTE`
+cuentan como observados de Nivel 0, y el diagnóstico los enumera aparte.
+
+---
+
+## 5.ter Leyenda al pie del resumen — *NUEVA en v8*
+
+Debajo de la tabla, separada por una fila en blanco, la hoja cierra con cuatro
+bloques de leyenda: **tipos de producto** (Final / Salida y Parcial / Registro,
+con su destino en el Anexo 3), **estado de un producto o proceso**, **estado
+general de la facultad** y **código de la hoja**.
+
+La leyenda no interfiere con el rescate de columnas manuales: sus filas no
+llevan nada en las columnas del revisor, y el rescate descarta toda fila cuyas
+celdas manuales estén vacías.
 
 ---
 
@@ -392,6 +461,20 @@ fusionan. **Una fila por proceso, puntuada**: los 16 de Nivel 0 de cada facultad
 Nivel 0 obligatorio ausente (0/5); `NO APLICA` para `PE.03` y `PS.08` ausentes,
 que no se puntúan.
 
+
+---
+
+## 9.bis Redacción de las observaciones — *NUEVA en v8*
+
+Toda observación se encabeza con la columna a la que se refiere, en el formato:
+
+```
+Columna B --> CODIFICACIÓN ERRÓNEA. El código que abre la celda...
+Columna D --> Sigla incorrecta "AEI". La regla 3.1 del Anexo 1 normaliza...
+```
+
+Sustituye al formato `Col B — ...` de las versiones anteriores, a pedido del
+revisor. Se aplica a las ocho columnas validadas.
 
 ---
 

@@ -3,27 +3,29 @@
  *  AUDITORÍA AUTOMÁTICA DEL ANEXO 1 — INVENTARIO DE PRODUCTOS Y PROCESOS
  *  Oficina de Racionalización — OGPL (UNMSM)
  *
- *  VERSIÓN 6
+ *  VERSIÓN 13
  *  ─────────────────────────────────────────────────────────────────────────────
- *   [C18] Se declaran el nombre oficial y el formulario oficial de cada
- *         facultad. El sufijo `_F##` deja de inferirse de la mayoría cuando hay
- *         un valor oficial declarado.
- *   [C19] Distinción entre dos defectos que antes se confundían:
- *         · pestaña con el formulario de OTRA facultad  → hallazgo de hoja,
- *           reportado una vez en el resumen;
- *         · filas sueltas que se apartan del sufijo dominante → observación por
- *           fila.
- *         Así una pestaña entera mal numerada no genera cientos de
- *         observaciones repetidas.
+ *   Único cambio respecto de la v12: el menú "Auditoría OGPL" incorpora la
+ *   revisión del Anexo 3. La lógica de auditoría del Anexo 1 no se toca.
  *
- *  Arrastra de la v5: hoja de procesos puntuada, diagnóstico de codificación
- *  errónea, códigos de hasta tres dígitos.
+ *   El menú se define aquí y NO en el archivo del Anexo 3: dos funciones
+ *   `onOpen` en el mismo proyecto se pisan entre sí y uno de los dos menús
+ *   desaparecería.
+ *
+ *  VERSIÓN 12
+ *  ─────────────────────────────────────────────────────────────────────────────
+ *   [C34] Columna S del resumen: AVANCE GENERAL DEL ANEXO 1. Combina productos y
+ *         procesos ponderando por criterios evaluados, no promediando los dos
+ *         porcentajes.
+ *
+ *  Arrastra de la v11: hoja `dashboard` con descenso al detalle, una
+ *  observación por renglón, resumen con productos sin registro.
  *
  *  Arrastra de la v4: profundidad de código variable, Nivel 0 por código
  *  embebido o denominación, columna E que admite NINGUNO, y la regla de
  *  MAYÚSCULAS en la denominación de los procesos.
  *
- *  Especificación: reglas/ANEXO-1_reglas-v6.md
+ *  Especificación: reglas/ANEXO-1_reglas-v12.md
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -125,9 +127,26 @@ const CONFIG_A1 = {
     { codigo: "PS.10", nombre: "GESTIÓN DE LA COMUNICACIÓN" }
   ],
 
+  /**
+   * [C26] Catalogaciones: encabezan cada grupo de procesos de Nivel 0. No son
+   * productos ni procesos, y no les corresponde codificación. Se comparan por su
+   * esqueleto, de modo que "PROCESO MISIONAL" y "PROCESOS MISIONALES" son la
+   * misma cosa y el código que algunas facultades les antepusieron no estorba.
+   */
   CATEGORIAS_NO_PRODUCTO: [
     "PROCESOS ESTRATÉGICOS", "PROCESOS MISIONALES", "PROCESOS DE SOPORTE"
   ],
+
+  /**
+   * [C27] Una denominación que abre con estas palabras nombra un proceso.
+   *
+   * Solo en SINGULAR. El plural describe entregables —"PROCESOS DE ADQUISICIÓN
+   * TRAMITADOS" es un producto de la FO—, mientras que el singular nombra la
+   * actividad: "PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR". Los plurales que sí
+   * son catalogación (PROCESOS MISIONALES y compañía) los atrapa antes
+   * `esCatalogacion_`.
+   */
+  PREFIJOS_DE_PROCESO: ["PROCESO", "SUBPROCESO", "SUB PROCESO"],
 
   TIPOS_ENTREGABLE:      ["Regulación", "Servicio", "Bien"],
   ROLES_INSTITUCIONALES: ["Ente rector", "Calidad"],
@@ -217,6 +236,7 @@ const CONFIG_A1 = {
   ENCABEZADO_CONTRA: "CONTRA OBSERVACIÓN",
 
   HOJA_PROCESOS: "OBSERVACIONES_DE_PROCESO_A1",
+  HOJA_TABLERO: "dashboard",
 
   // [C14] Nombres que tuvo la hoja de procesos. Se renombran al vigente para no
   // perder las contra observaciones ya escritas.
@@ -236,6 +256,11 @@ const CONFIG_A1 = {
     "CUMPLIMIENTO", "CUMPLIMIENTO (%)", "CRITERIOS", "AVANCE", "AVANCE (%)",
     "TOTAL PRODUCTOS", "COMPLETOS", "COMPLETOS (100%)", "PARCIALES",
     "PARCIALES (CON OBS.)", "PENDIENTES", "PENDIENTES (VACÍOS)",
+    "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS", "PRODUCTOS SIN REGISTRO",
+    "TOTAL PROCESOS", "PROCESOS CONFORMES", "PROCESOS OBSERVADOS",
+    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "CÓDIGO DE LA HOJA",
+    "AVANCE GENERAL DEL ANEXO 1",
     "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"
   ]
 };
@@ -251,6 +276,20 @@ const CRITERIOS_PROCESO = [
 const TOTAL_CRITERIOS_PROCESO = CRITERIOS_PROCESO.length;
 
 const TOTAL_CRITERIOS = 8;
+
+/**
+ * [C30] Separador entre observaciones de una misma fila.
+ *
+ * Un salto de línea dentro de la celda: cada observación queda en su renglón.
+ * Las hojas del dashboard se escriben con `setWrap(true)` en esa columna, que es
+ * lo que hace visible el salto.
+ */
+const SEPARADOR_OBS = "\n";
+
+/** Une las observaciones de una fila respetando el orden en que se pasaron. */
+function unirObservaciones_(obs, siNoHay) {
+  return obs.length ? obs.join(SEPARADOR_OBS) : siNoHay;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    UTILIDADES DE TEXTO
@@ -295,7 +334,41 @@ const NIVEL0_ESQUELETOS = CONFIG_A1.PROCESOS_NIVEL0.map(function (p) {
   return { proceso: p, tokens: esqueleto_(p.nombre) };
 });
 
-const CATEGORIAS_NORM = CONFIG_A1.CATEGORIAS_NO_PRODUCTO.map(normalizarTexto_);
+/** Reduce plurales simples para que "MISIONAL" y "MISIONALES" coincidan. */
+function singularizar_(t) {
+  return t.replace(/ES$/, "").replace(/S$/, "");
+}
+
+const CATEGORIAS_ESQUELETOS = CONFIG_A1.CATEGORIAS_NO_PRODUCTO.map(function (c) {
+  return esqueleto_(c).map(singularizar_);
+});
+
+/**
+ * [C26] ¿La denominación es una de las tres catalogaciones raíz?
+ *
+ * Se descarta un token de formulario suelto: la FE registró la suya como
+ * "F06 PROCESOS MISIONALES", con el número de formulario pegado delante y sin
+ * un código que `extraerCodigos_` pueda retirar.
+ */
+function esCatalogacion_(denominacion) {
+  const t = esqueleto_(denominacion)
+    .filter(function (x) { return !/^F\d{1,2}$/.test(x); })
+    .map(singularizar_);
+  if (!t.length) return false;
+  return CATEGORIAS_ESQUELETOS.some(function (c) {
+    return c.length === t.length && c.every(function (x, i) { return x === t[i]; });
+  });
+}
+
+/** [C27] ¿La denominación abre nombrando un proceso? */
+function abrePorProceso_(denominacion) {
+  const t = esqueleto_(denominacion);
+  if (t.length < 2) return false;
+  return CONFIG_A1.PREFIJOS_DE_PROCESO.some(function (pre) {
+    const pt = esqueleto_(pre);
+    return empiezaPor_(t, pt);
+  });
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ANÁLISIS DE LA COLUMNA B  [C9][C10][C13]
@@ -395,13 +468,34 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
 
   if (!texto) return { tipo: "vacia", observaciones: [], checks: checks };
 
-  if (CATEGORIAS_NORM.indexOf(normalizarTexto_(texto)) !== -1) {
-    return { tipo: "categoria", observaciones: [], checks: checks };
-  }
-
   const codigos = extraerCodigos_(texto);
   const denominacion = denominacionDe_(texto, codigos);
   const obs = [];
+
+  // [C26] Catalogación: encabeza un grupo de procesos y no le corresponde código.
+  if (esCatalogacion_(denominacion)) {
+    // La FE dejó el número de formulario suelto delante ("F06 PROCESOS
+    // MISIONALES"): no es un código que extraerCodigos_ pueda retirar, pero es
+    // igualmente una codificación que no corresponde.
+    const sueltoF = denominacion.match(/\bF\d{1,2}\b/);
+    if (codigos.length || sueltoF) {
+      checks.unico = false;
+      const registrado = codigos.length ? codigos[0].completo : sueltoF[0];
+      obs.push('Columna B --> NO LE CORRESPONDE UNA CODIFICACIÓN. "' +
+               denominacion.replace(/\bF\d{1,2}\b\s*/, "").trim() +
+               '" no es un producto ni un proceso: es la catalogación que encabeza un ' +
+               'grupo de procesos de Nivel 0. Retire "' + registrado +
+               '" y deje solo la denominación.');
+    }
+    if (denominacion && denominacion !== denominacion.toUpperCase()) {
+      checks.mayusculas = false;
+      obs.push('Columna B --> La catalogación debe escribirse íntegramente en MAYÚSCULAS. ' +
+               'Registrada como "' + recortar_(denominacion) + '".');
+    }
+    return { tipo: "categoria", codigo: codigos.length ? codigos[0].completo : null,
+             codigoRegistrado: codigos.length ? codigos[0].completo : "(sin código)",
+             denominacion: denominacion, sufijo: null, checks: checks, observaciones: obs };
+  }
 
   const n0PorNombre = buscarNivel0PorNombre_(denominacion);
   let n0PorCodigo = null;
@@ -413,23 +507,40 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
     }
   }
 
-  const principal = codigos.length ? codigos[0] : null;
+  // [C28] Cuando la celda arrastra varios códigos, el más superficial indica el
+  // nivel real de la fila: "PE.02.01.05_F04 PE.02.01_04 ASEGURAMIENTO DE LA
+  // CALIDAD" es el subproceso PE.02.01, no un producto de cuatro niveles.
+  let principal = codigos.length ? codigos[0] : null;
+  for (let i = 1; i < codigos.length; i++) {
+    if (codigos[i].profundidad < principal.profundidad) principal = codigos[i];
+  }
   const esNivel0 = !!(n0PorNombre || n0PorCodigo);
   const elegido = n0PorNombre || n0PorCodigo;
 
   // ── [C15] Codificación errónea: la celda arrastra un código que no toca ──
   if (codigos.length > 1) {
     checks.unico = false;
-    if (esNivel0 && codigoN0 && principal && principal.base !== codigoN0.base) {
+
+    // El código que sobra es el que NO es el del proceso de Nivel 0. Ojo: desde
+    // [C28] `principal` ya es el más superficial, que suele ser el correcto, así
+    // que el sobrante hay que buscarlo aparte.
+    let sobrante = null;
+    if (codigoN0) {
+      for (let i = 0; i < codigos.length; i++) {
+        if (codigos[i].base !== codigoN0.base) { sobrante = codigos[i]; break; }
+      }
+    }
+
+    if (esNivel0 && codigoN0 && sobrante) {
       const sufijoSugerido = sufijoOficial || sufijoDominante;
       const correcto = elegido.codigo + (sufijoSugerido ? "_" + sufijoSugerido : "_F##");
-      obs.push('Col B — CODIFICACIÓN ERRÓNEA. El código que abre la celda, "' +
-               principal.completo + '", no corresponde a esta fila: la denominación "' +
-               recortar_(denominacion) + '" es la del proceso de Nivel 0 ' + elegido.codigo +
+      obs.push('Columna B --> CODIFICACIÓN ERRÓNEA. El código "' + sobrante.completo +
+               '" no corresponde a esta fila: la denominación "' + recortar_(denominacion) +
+               '" es la del proceso de Nivel 0 ' + elegido.codigo +
                ', y ese código aparece también dentro de la misma celda ("' + codigoN0.completo +
                '"). Debe quedar un único código: ' + correcto + ' ' + denominacion.toUpperCase() + '.');
     } else {
-      obs.push('Col B — La celda arrastra ' + codigos.length + ' códigos ("' +
+      obs.push('Columna B --> La celda arrastra ' + codigos.length + ' códigos ("' +
                codigos.map(function (c) { return c.completo; }).join('", "') +
                '"). Debe quedar un único código seguido de la denominación.');
     }
@@ -438,7 +549,7 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   // ── Coherencia entre el código y la denominación ──
   if (n0PorNombre && n0PorCodigo && n0PorNombre.codigo !== n0PorCodigo.codigo) {
     checks.coherente = false;
-    obs.push('Col B — Discrepancia entre código y denominación: el código "' +
+    obs.push('Columna B --> Discrepancia entre código y denominación: el código "' +
              n0PorCodigo.codigo + '" corresponde a "' + n0PorCodigo.nombre +
              '", pero la denominación registrada es la de "' + n0PorNombre.codigo +
              ' ' + n0PorNombre.nombre + '". Se toma la denominación; corrija el código.');
@@ -448,17 +559,21 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   const sufijo = principal ? sufijoDe_(principal.completo) : null;
   if (sufijoDominante && sufijo && sufijo !== sufijoDominante) {
     checks.sufijo = false;
-    obs.push('Col B — Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
+    obs.push('Columna B --> Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
              '" y el resto de la pestaña usa "_' + sufijoDominante + '". El sufijo ' +
              'identifica el formulario de la facultad y debe ser el mismo en todos ' +
              'los códigos de la hoja.');
   }
 
   // ── [C11] Denominación de proceso en MAYÚSCULAS ──
+  // [C27] La denominación también decide: "PROCESO DE COBERTURA Y SOPORTE
+  // PROTOCOLAR" nombra un proceso aunque su código no tenga descendientes.
+  const esProcesoPorNombre = abrePorProceso_(denominacion);
   const esProcesoPorCodigo = principal && (esPadre(principal.base) || principal.profundidad < 2);
-  if ((esNivel0 || esProcesoPorCodigo) && denominacion && denominacion !== denominacion.toUpperCase()) {
+  if ((esNivel0 || esProcesoPorCodigo || esProcesoPorNombre) &&
+      denominacion && denominacion !== denominacion.toUpperCase()) {
     checks.mayusculas = false;
-    obs.push('Col B — La denominación del proceso debe escribirse íntegramente en ' +
+    obs.push('Columna B --> La denominación del proceso debe escribirse íntegramente en ' +
              'MAYÚSCULAS. Registrada como "' + recortar_(denominacion) + '"; ' +
              'corresponde "' + recortar_(denominacion.toUpperCase()) + '".');
   }
@@ -475,7 +590,14 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
              denominacion: texto, sufijo: null, checks: checks, observaciones: obs };
   }
 
-  if (esProcesoPorCodigo) {
+  if (esProcesoPorCodigo || esProcesoPorNombre) {
+    if (esProcesoPorNombre && !esProcesoPorCodigo) {
+      checks.coherente = false;
+      obs.push('Columna B --> CODIFICACIÓN A CORREGIR. "' + recortar_(denominacion) +
+               '" nombra un proceso, no un producto, pero está codificado como producto ' +
+               '("' + principal.completo + '"). Debe llevar el código del nivel que le ' +
+               'corresponde dentro de su proceso de Nivel 0.');
+    }
     return { tipo: "proceso", codigo: principal.completo, codigoRegistrado: principal.completo,
              denominacion: denominacion, sufijo: sufijo, checks: checks, observaciones: obs };
   }
@@ -492,7 +614,7 @@ function validarCodigo_(clasificacion) {
   if (clasificacion.codigo) return { ok: true, obs: "" };
   return {
     ok: false,
-    obs: 'Col B — Código ausente. El producto debe llevar su código jerárquico ' +
+    obs: 'Columna B --> Código ausente. El producto debe llevar su código jerárquico ' +
          '(PE|PM|PS seguido de los niveles y del sufijo _F##) delante de la denominación, ' +
          'p. ej. PE.01.01.01_F01 PLAN ESTRATÉGICO APROBADO.'
   };
@@ -500,41 +622,41 @@ function validarCodigo_(clasificacion) {
 
 function validarTipoProducto_(colC) {
   if (!colC) {
-    return { ok: false, obs: 'Col C — Tipo de producto vacío. Debe indicarse "Final / Salida" o "Parcial / Registro".' };
+    return { ok: false, obs: 'Columna C --> Tipo de producto vacío. Debe indicarse "Final / Salida" o "Parcial / Registro".' };
   }
   const c = colC.toLowerCase();
   if (c.indexOf("final") !== -1 || c.indexOf("parcial") !== -1) return { ok: true, obs: "" };
   return {
     ok: false,
-    obs: 'Col C — "' + recortar_(colC) + '" no identifica el tipo de producto. ' +
+    obs: 'Columna C --> "' + recortar_(colC) + '" no identifica el tipo de producto. ' +
          'Debe contener "Final" (producto de salida del proceso) o "Parcial" (registro intermedio).'
   };
 }
 
 function validarAccionEstrategica_(colD) {
   if (!colD) {
-    return { ok: false, obs: 'Col D — Acción Estratégica vacía. Debe registrarse el código AE.##.## seguido de la descripción de la acción.' };
+    return { ok: false, obs: 'Columna D --> Acción Estratégica vacía. Debe registrarse el código AE.##.## seguido de la descripción de la acción.' };
   }
   if (esValorNulo_(colD)) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" es un marcador de vacío, no una Acción ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" es un marcador de vacío, no una Acción ' +
            'Estratégica. Todo producto se alinea a una AE del PEI; registre AE.##.## + descripción.'
     };
   }
   for (let i = 0; i < CONFIG_A1.SIGLAS_INVALIDAS_D.length; i++) {
     const s = CONFIG_A1.SIGLAS_INVALIDAS_D[i];
-    if (s.regex.test(colD)) return { ok: false, obs: 'Col D — ' + s.motivo + ' CORRECCIÓN: ' + s.correccion };
+    if (s.regex.test(colD)) return { ok: false, obs: 'Columna D --> ' + s.motivo + ' CORRECCIÓN: ' + s.correccion };
   }
 
   const m = colD.match(CONFIG_A1.REGEX_AE_PARSE);
   if (!m) {
-    return { ok: false, obs: 'Col D — "' + recortar_(colD) + '" no corresponde a una Acción Estratégica. Formato exigido: AE.##.## seguido de su descripción.' };
+    return { ok: false, obs: 'Columna D --> "' + recortar_(colD) + '" no corresponde a una Acción Estratégica. Formato exigido: AE.##.## seguido de su descripción.' };
   }
   if (!m[2]) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" tiene numeración incompleta. La Acción ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" tiene numeración incompleta. La Acción ' +
            'Estratégica requiere dos niveles: AE.<objetivo>.<acción>, p. ej. AE.02.01. ' +
            'Un solo nivel identifica el objetivo, no la acción que deriva de él.'
     };
@@ -543,7 +665,7 @@ function validarAccionEstrategica_(colD) {
   if (!CONFIG_A1.REGEX_LETRA.test(descripcion)) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" registra el código pero omite la descripción. ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" registra el código pero omite la descripción. ' +
            'La regla 3.1 exige el código AE.##.## SEGUIDO del texto de la acción ' +
            '(ej. "AE.02.01 Formación académica de calidad").'
     };
@@ -560,30 +682,30 @@ function validarAccionEstrategica_(colD) {
  */
 function validarActividadOperativa_(colE) {
   if (!colE) {
-    return { ok: false, obs: 'Col E — Actividad Operativa vacía. Registre la actividad operativa del POI que ejecuta este producto.' };
+    return { ok: false, obs: 'Columna E --> Actividad Operativa vacía. Registre la actividad operativa del POI que ejecuta este producto.' };
   }
   if (CONFIG_A1.RECHAZAR_NULOS_EN_E && esValorNulo_(colE)) {
     return {
       ok: false,
-      obs: 'Col E — "' + recortar_(colE) + '" es un marcador de vacío, no una Actividad Operativa.'
+      obs: 'Columna E --> "' + recortar_(colE) + '" es un marcador de vacío, no una Actividad Operativa.'
     };
   }
   if (/^AE[\s.\-]?\d/i.test(colE)) {
     return {
       ok: false,
-      obs: 'Col E — Contiene una Acción Estratégica ("' + recortar_(colE) + '"), que ' +
+      obs: 'Columna E --> Contiene una Acción Estratégica ("' + recortar_(colE) + '"), que ' +
            'corresponde a la columna D. La columna E espera la Actividad Operativa en texto libre.'
     };
   }
   if (colE.length <= 2) {
-    return { ok: false, obs: 'Col E — "' + recortar_(colE) + '" es demasiado breve para ser una Actividad Operativa.' };
+    return { ok: false, obs: 'Columna E --> "' + recortar_(colE) + '" es demasiado breve para ser una Actividad Operativa.' };
   }
   return { ok: true, obs: "" };
 }
 
 function validarListaCerrada_(valor, lista, etiquetaCol, etiquetaCampo) {
   if (!valor) {
-    return { ok: false, obs: etiquetaCol + ' — ' + etiquetaCampo + ' vacío. Valores admitidos: ' + lista.join(" · ") + '.' };
+    return { ok: false, obs: etiquetaCol + ' --> ' + etiquetaCampo + ' vacío. Valores admitidos: ' + lista.join(" · ") + '.' };
   }
   const v = normalizarTexto_(valor);
   if (lista.some(function (x) { return normalizarTexto_(x) === v; })) return { ok: true, obs: "" };
@@ -595,7 +717,7 @@ function validarListaCerrada_(valor, lista, etiquetaCol, etiquetaCampo) {
 
 function validarListaAbierta_(valor, lista, etiquetaCol, etiquetaCampo) {
   if (!valor || esValorNulo_(valor)) {
-    return { ok: false, obs: etiquetaCol + ' — ' + etiquetaCampo + ' sin registrar. Debe aparecer al menos uno de: ' + lista.join(" · ") + '.' };
+    return { ok: false, obs: etiquetaCol + ' --> ' + etiquetaCampo + ' sin registrar. Debe aparecer al menos uno de: ' + lista.join(" · ") + '.' };
   }
   const v = normalizarTexto_(valor);
   if (lista.some(function (x) { return v.indexOf(normalizarTexto_(x)) !== -1; })) return { ok: true, obs: "" };
@@ -656,9 +778,12 @@ function ejecutarAuditoriaAnexo1() {
   CONFIG_A1.FACULTADES.forEach(function (fac) {
     const hoja = localizarHoja_(hojas, fac, yaAsignadas);
     if (!hoja) {
-      resumen.push([fac.sigla, fac.nombre, 0, 0, 0, 0, "0%", "NO INICIADO",
-        "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja cuyo nombre contenga la sigla " + fac.sigla + ".",
-        fac.formulario || "—"]);
+      const sinHoja = "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja " +
+                      "cuyo nombre contenga la sigla " + fac.sigla + ".";
+      resumen.push([fac.sigla, fac.nombre,
+                    0, 0, 0, 0, "0%", "NO INICIADO", sinHoja,
+                    0, 0, 0, 0, 0, "0%", "NO INICIADO", sinHoja,
+                    fac.formulario || "—", "0%"]);
       procesos = procesos.concat(filasNivel0_(fac.sigla, {}));
       return;
     }
@@ -700,7 +825,7 @@ function filaDeProceso_(sigla, codigo, denominacion, nivel, exigencia, fila, cls
   return [sigla, codigo, denominacion, nivel, exigencia, fila, estado,
           Math.round((puntos / TOTAL_CRITERIOS_PROCESO) * 100) + "%",
           puntos + "/" + TOTAL_CRITERIOS_PROCESO,
-          obs.length ? obs.join("  ||  ") : "Sin observaciones."];
+          unirObservaciones_(obs, "Sin observaciones.")];
 }
 
 /** Las 16 filas de Nivel 0 de una facultad, presentes o no. */
@@ -738,10 +863,12 @@ function procesarFacultad_(hoja, fac) {
   const ultimaFila = hoja.getLastRow();
 
   if (ultimaFila < CONFIG_A1.FILA_INICIO) {
+    const vacia = "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + ".";
     return {
-      resumenFila: [sigla, fac.nombre, 0, 0, 0, 0, "0%", "VACÍO",
-                    "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + ".",
-                    fac.formulario || "—"],
+      resumenFila: [sigla, fac.nombre,
+                    0, 0, 0, 0, "0%", "VACÍO", vacia,
+                    0, 0, 0, 0, 0, "0%", "VACÍO", vacia,
+                    fac.formulario || "—", "0%"],
       detalleFilas: [], procesoFilas: filasNivel0_(sigla, {})
     };
   }
@@ -797,7 +924,14 @@ function procesarFacultad_(hoja, fac) {
     if (!colB && !colC && !colD && !colE && !colF && !colG && !colH && !colI) continue;
 
     const cls = clasificarFila_(colB, esPadre, sufijoDominante, fac.formulario);
-    if (cls.tipo === "vacia" || cls.tipo === "categoria") continue;
+    if (cls.tipo === "vacia") continue;
+
+    // [C26] La catalogación no se puntúa como producto, pero sí se reporta.
+    if (cls.tipo === "categoria") {
+      subprocesos.push(filaDeProceso_(sigla, cls.codigo || "(sin código)", cls.denominacion,
+                                      "Catalogación", "—", filaReal, cls));
+      continue;
+    }
 
     if (cls.tipo === "nivel0") {
       const k = normalizarCodigo_(cls.nivel0.codigo);
@@ -819,71 +953,147 @@ function procesarFacultad_(hoja, fac) {
       validarTipoProducto_(colC),
       validarAccionEstrategica_(colD),
       validarActividadOperativa_(colE),
-      validarListaCerrada_(colF, CONFIG_A1.TIPOS_ENTREGABLE,      "Col F", "Clasificación"),
-      validarListaCerrada_(colG, CONFIG_A1.ROLES_INSTITUCIONALES, "Col G", "Atributo institucional"),
-      validarListaAbierta_(colH, CONFIG_A1.VARIABLES_CALIDAD,     "Col H", "Variables de calidad"),
-      validarListaAbierta_(colI, CONFIG_A1.CRITERIOS_IMPACTO,     "Col I", "Criterios de validación")
+      validarListaCerrada_(colF, CONFIG_A1.TIPOS_ENTREGABLE,      "Columna F", "Clasificación"),
+      validarListaCerrada_(colG, CONFIG_A1.ROLES_INSTITUCIONALES, "Columna G", "Atributo institucional"),
+      validarListaAbierta_(colH, CONFIG_A1.VARIABLES_CALIDAD,     "Columna H", "Variables de calidad"),
+      validarListaAbierta_(colI, CONFIG_A1.CRITERIOS_IMPACTO,     "Columna I", "Criterios de validación")
     ];
 
     const correctos = checks.filter(function (c) { return c.ok; }).length;
-    const obs = checks.filter(function (c) { return !c.ok; }).map(function (c) { return c.obs; })
-                      .concat(cls.observaciones);
 
-    const todoVacio = !colC && !colD && !colE && !colF && !colG && !colH && !colI;
-    let estado;
-    if (correctos === TOTAL_CRITERIOS && !cls.observaciones.length) estado = "COMPLETO";
-    else if (todoVacio) estado = "PENDIENTE";
-    else estado = "PARCIAL";
+    // [C30] Orden de lectura: la columna B primero —es la que identifica la
+    // fila—, después de la C a la I en el orden de la hoja, y el cierre al final.
+    const obs = cls.observaciones.concat(
+      checks.filter(function (c) { return !c.ok; }).map(function (c) { return c.obs; }));
+
+    // [C20] Dos estados, los mismos que usan los procesos. Un producto sin
+    // registrar es OBSERVADO como cualquier otro; que esté enteramente vacío se
+    // dice en la observación, así el dato no se pierde al desaparecer PENDIENTE.
+    const sinRegistro = !colC && !colD && !colE && !colF && !colG && !colH && !colI;
+    if (sinRegistro) {
+      // [C29] El hecho ya se cuenta en la columna PRODUCTOS SIN REGISTRO del
+      // resumen; aquí cierra la recomendación operativa.
+      obs.push("Observación final --> Para las columnas C a I utilice los desplegables de la hoja.");
+    }
+
+    const conforme = correctos === TOTAL_CRITERIOS && !cls.observaciones.length;
+    const estado = conforme ? "CONFORME" : "OBSERVADO";
 
     productos.push({
       estado: estado,
+      correctos: correctos,
+      sinRegistro: sinRegistro,
       fila: [sigla, filaReal, procN0Actual, cls.codigo || "(sin código)", cls.denominacion,
              colC || "(vacío)", estado, Math.round((correctos / TOTAL_CRITERIOS) * 100) + "%",
              correctos + "/" + TOTAL_CRITERIOS,
-             obs.length ? obs.join("  ||  ") : "Cumple los 8 criterios."]
+             unirObservaciones_(obs, "Cumple los 8 criterios.")]
     });
   }
 
-  const total      = productos.length;
-  const completos  = productos.filter(function (p) { return p.estado === "COMPLETO"; }).length;
-  const parciales  = productos.filter(function (p) { return p.estado === "PARCIAL"; }).length;
-  const pendientes = productos.filter(function (p) { return p.estado === "PENDIENTE"; }).length;
+  // ── Bloque de PRODUCTOS ──
+  const totalProd = productos.length;
+  const prodConformes = productos.filter(function (p) { return p.estado === "CONFORME"; }).length;
+  const prodObservados = totalProd - prodConformes;
+  // [C24] Un producto sin registro es el que no tiene NADA en las columnas C a I.
+  // Se marca en la validación, no se deduce del puntaje.
+  const sinRegistro = productos.filter(function (p) { return p.sinRegistro; }).length;
 
-  const avance = total > 0 ? Math.round(((completos + parciales * 0.5) / total) * 100) : 0;
-  let estadoGeneral;
-  if (avance === 100) estadoGeneral = "COMPLETO";
-  else if (avance >= 75) estadoGeneral = "AVANZADO";
-  else if (avance >= 40) estadoGeneral = "EN DESARROLLO";
-  else estadoGeneral = "CRÍTICO";
+  const cumplidosProd = productos.map(function (p) { return p.correctos; });
+  const avanceProd = avanceSobreCriterios_(cumplidosProd, TOTAL_CRITERIOS);
 
+  let diagProd = prodConformes + " conformes y " + prodObservados + " observados de " +
+                 totalProd + " productos.";
+  if (sinRegistro) {
+    diagProd += " De los observados, " + sinRegistro +
+                " están sin registro (columnas C a I vacías).";
+  }
+
+  // ── Bloque de PROCESOS ──
   const nivel0 = filasNivel0_(sigla, n0Encontrados);
-  const faltantes = nivel0.filter(function (f) { return f[6] === "FALTANTE"; });
-  const observados = nivel0.concat(subprocesos).filter(function (f) { return f[6] === "OBSERVADO"; });
+  const procesos = nivel0.concat(subprocesos);
+  // Los NO APLICA (PE.03 y PS.08 ausentes) no se puntúan ni se cuentan.
+  const n0Evaluables = nivel0.filter(function (f) { return f[6] !== "NO APLICA"; });
+  const evaluables = n0Evaluables.concat(subprocesos);
 
-  let diagnostico = completos + " completos, " + parciales + " con observaciones, " + pendientes + " pendientes.";
+  const n0Conformes = n0Evaluables.filter(function (f) { return f[6] === "CONFORME"; }).length;
+  const n0Observados = n0Evaluables.length - n0Conformes;
+  const subConformes = subprocesos.filter(function (f) { return f[6] === "CONFORME"; }).length;
+  const subObservados = subprocesos.length - subConformes;
+
+  const faltantes = nivel0.filter(function (f) { return f[6] === "FALTANTE"; });
+
+  const cumplidosProc = evaluables.map(function (f) { return parseInt(f[8], 10) || 0; });
+  const avanceProc = avanceSobreCriterios_(cumplidosProc, TOTAL_CRITERIOS_PROCESO);
+
+  // [C34] Avance general del Anexo 1 para esta facultad.
+  const avanceGeneral = avanceCombinado_([
+    { cumplidos: cumplidosProd, porFila: TOTAL_CRITERIOS },
+    { cumplidos: cumplidosProc, porFila: TOTAL_CRITERIOS_PROCESO }
+  ]);
+
+  let diagProc = "Nivel 0: " + n0Conformes + " conformes y " + n0Observados + " observados de " +
+                 n0Evaluables.length + ". Subprocesos: " + subConformes + " conformes y " +
+                 subObservados + " observados de " + subprocesos.length + ".";
   if (faltantes.length) {
-    diagnostico += " Faltan " + faltantes.length + " procesos de Nivel 0 obligatorios: " +
-                   faltantes.map(function (f) { return f[1]; }).join(", ") + ".";
-  }
-  if (observados.length) {
-    diagnostico += " " + observados.length + " procesos con observaciones de codificación o formato.";
-  }
-  if (!fac.formulario && sufijoDominante) {
-    diagnostico += " Formulario oficial sin declarar para " + sigla +
-                   "; se toma el dominante de la pestaña (_" + sufijoDominante + ").";
+    diagProc += " Faltan " + faltantes.length + " procesos de Nivel 0 obligatorios: " +
+                faltantes.map(function (f) { return f[1]; }).join(", ") + ".";
   }
   if (hojaConFormularioAjeno) {
-    diagnostico += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
-                   sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
-                   sigla + " es _" + fac.formulario + ". Debe corregirse en toda la hoja.";
+    diagProc += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
+                sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
+                sigla + " es _" + fac.formulario + ". Debe corregirse en toda la hoja.";
   }
 
   return {
-    resumenFila: [sigla, fac.nombre, total, completos, parciales, pendientes, avance + "%",
-                  estadoGeneral, diagnostico, celdaFormulario_(fac, sufijoDominante)],
+    resumenFila: [sigla, fac.nombre,
+                  totalProd, prodConformes, prodObservados, sinRegistro,
+                  avanceProd + "%", estadoGeneral_(avanceProd), diagProd,
+                  evaluables.length, n0Conformes, n0Observados, subConformes, subObservados,
+                  avanceProc + "%", estadoGeneral_(avanceProc), diagProc,
+                  celdaFormulario_(fac, sufijoDominante),
+                  avanceGeneral + "%"],
     detalleFilas: productos.map(function (p) { return p.fila; }),
-    procesoFilas: nivel0.concat(subprocesos)
+    procesoFilas: procesos
   };
+}
+
+/**
+ * [C22] Avance sobre los criterios realmente cumplidos, no sobre una
+ * ponderación por estado. Con dos estados —conforme y observado— repartir medio
+ * punto a todo lo observado daría lo mismo a un producto al que le falta un
+ * criterio que a uno enteramente vacío.
+ */
+function avanceSobreCriterios_(cumplidos, porFila) {
+  if (!cumplidos.length) return 0;
+  const suma = cumplidos.reduce(function (a, b) { return a + b; }, 0);
+  return Math.round((suma / (cumplidos.length * porFila)) * 100);
+}
+
+/**
+ * [C34] Avance general: el mismo método aplicado a productos y procesos a la vez.
+ *
+ * Se suman los criterios cumplidos de ambos bloques y se dividen entre todos los
+ * criterios que había que cumplir. NO es el promedio de los dos porcentajes:
+ * promediarlos daría el mismo peso a los 206 productos de la FDCP que a sus
+ * pocos procesos, y una facultad con un inventario grande y bien llenado
+ * quedaría arrastrada por un puñado de procesos observados.
+ *
+ * `bloques` es una lista de { cumplidos: number[], porFila: number }.
+ */
+function avanceCombinado_(bloques) {
+  let suma = 0, tope = 0;
+  bloques.forEach(function (b) {
+    suma += b.cumplidos.reduce(function (a, x) { return a + x; }, 0);
+    tope += b.cumplidos.length * b.porFila;
+  });
+  return tope ? Math.round((suma / tope) * 100) : 0;
+}
+
+function estadoGeneral_(avance) {
+  if (avance === 100) return "CONFORME";
+  if (avance >= 75) return "AVANZADO";
+  if (avance >= 40) return "EN DESARROLLO";
+  return "CRÍTICO";
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -891,10 +1101,9 @@ function procesarFacultad_(hoja, fac) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const COLORES_ESTADO = {
-  "COMPLETO": "#d9ead3", "AVANZADO": "#cfe2f3", "EN DESARROLLO": "#fff2cc",
-  "CRÍTICO": "#f4cccc", "PARCIAL": "#fff2cc", "PENDIENTE": "#fce5cd",
+  "CONFORME": "#d9ead3", "AVANZADO": "#cfe2f3", "EN DESARROLLO": "#fff2cc",
+  "OBSERVADO": "#fff2cc", "CRÍTICO": "#f4cccc",
   "NO INICIADO": "#f4cccc", "VACÍO": "#f4cccc",
-  "CONFORME": "#d9ead3", "OBSERVADO": "#fff2cc",
   "NO APLICA": "#efefef", "FALTANTE": "#f4cccc"
 };
 
@@ -910,12 +1119,73 @@ function migrarNombreHoja_(ss, nombresAnteriores, nombreNuevo) {
   }
 }
 
+/**
+ * [C33] Orden de las hojas de detalle: por facultad, y dentro de cada facultad
+ * los conformes antes que los observados.
+ *
+ * No es cosmético. Es lo que hace que cada número del tablero pueda apuntar a
+ * una fila concreta: los conformes de una facultad empiezan donde empieza su
+ * bloque, y los observados justo después.
+ */
+function ordenarPorFacultadYEstado_(filas, idxSigla, idxEstado, idxFila, grupoDe) {
+  const orden = {};
+  CONFIG_A1.FACULTADES.forEach(function (f, i) { orden[f.sigla] = i; });
+  const rangoEstado = { "CONFORME": 0, "OBSERVADO": 1, "FALTANTE": 2, "NO APLICA": 3 };
+
+  return filas.slice().sort(function (a, b) {
+    const fa = orden[a[idxSigla]], fb = orden[b[idxSigla]];
+    if (fa !== fb) return (fa === undefined ? 99 : fa) - (fb === undefined ? 99 : fb);
+    if (grupoDe) {
+      const ga = grupoDe(a), gb = grupoDe(b);
+      if (ga !== gb) return ga - gb;
+    }
+    const ea = rangoEstado[a[idxEstado]], eb = rangoEstado[b[idxEstado]];
+    if (ea !== eb) return (ea === undefined ? 9 : ea) - (eb === undefined ? 9 : eb);
+    return (parseInt(a[idxFila], 10) || 0) - (parseInt(b[idxFila], 10) || 0);
+  });
+}
+
+/**
+ * Dónde empieza cada bloque dentro de una hoja de detalle ya ordenada.
+ * Devuelve { SIGLA: { inicio, conformes, observados, total } } en números de
+ * fila de la hoja, contando que los datos arrancan en la fila 2.
+ */
+function indexarBloques_(filas, idxSigla, idxEstado, filtro) {
+  const idx = {};
+  filas.forEach(function (f, i) {
+    if (filtro && !filtro(f)) return;
+    const s = f[idxSigla];
+    if (!idx[s]) idx[s] = { inicio: i + 2, conformes: 0, otros: 0 };
+    if (f[idxEstado] === "CONFORME") idx[s].conformes++;
+    else idx[s].otros++;
+  });
+  Object.keys(idx).forEach(function (s) {
+    idx[s].filaConformes = idx[s].inicio;
+    idx[s].filaObservados = idx[s].inicio + idx[s].conformes;
+    idx[s].total = idx[s].conformes + idx[s].otros;
+  });
+  return idx;
+}
+
 function escribirEnDashboard_(resumen, detalle, procesos) {
   const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
 
+  detalle = ordenarPorFacultadYEstado_(detalle, 0, 6, 1, null);
+  procesos = ordenarPorFacultadYEstado_(procesos, 0, 6, 5, function (f) {
+    return f[3] === "Nivel 0" ? 0 : (f[3] === "Subproceso" ? 1 : 2);
+  });
+
   volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1",
-    ["FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "COMPLETOS", "PARCIALES", "PENDIENTES", "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"],
+    ["FACULTAD", "NOMBRE",
+     "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS", "PRODUCTOS SIN REGISTRO",
+     "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO",
+     "TOTAL PROCESOS", "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+     "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS",
+     "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO",
+     "CÓDIGO DE LA HOJA",
+     "AVANCE GENERAL DEL ANEXO 1"],
     resumen, 7, "#1c4587", function (f) { return f[0]; });
+  escribirLeyenda_(ss.getSheetByName("RESUMEN_EJECUTIVO_A1"), resumen.length);
 
   volcarHoja_(ss, "DETALLADO_PRODUCTOS_A1",
     ["FACULTAD", "FILA", "PROCESO NIVEL 0", "CÓDIGO PRODUCTO", "NOMBRE PRODUCTO", "TIPO", "ESTADO", "CUMPLIMIENTO", "CRITERIOS", "OBSERVACIONES Y CORRECCIONES"],
@@ -929,6 +1199,8 @@ function escribirEnDashboard_(resumen, detalle, procesos) {
     procesos, 6, "#3d2b56",
     function (f) { return f[0] + "␟" + normalizarCodigo_(f[1]); },
     function (f) { return f[0] + "␟" + normalizarTexto_(f[2]); });
+
+  construirTablero_(ss, resumen, detalle, procesos);
 }
 
 /**
@@ -1010,7 +1282,11 @@ function volcarHoja_(ss, nombre, encabezados, filas, idxEstado, colorCabecera, c
       return new Array(nCols).fill(COLORES_ESTADO[f[idxEstado]] || "#ffffff");
     });
     hoja.getRange(2, 1, filas.length, nCols).setBackgrounds(fondos);
-    hoja.getRange(2, nGen, filas.length, 1 + manuales.length).setWrap(true);
+    // [C30] El salto de línea dentro de la celda solo se ve con el ajuste de
+    // texto activado. Se aplica a todo el bloque de datos porque las columnas
+    // largas no están siempre al final: el resumen lleva dos DIAGNÓSTICO en
+    // medio de la tabla.
+    hoja.getRange(2, 1, filas.length, nCols).setWrap(true).setVerticalAlignment("top");
   }
 
   hoja.setFrozenRows(1);
@@ -1019,17 +1295,347 @@ function volcarHoja_(ss, nombre, encabezados, filas, idxEstado, colorCabecera, c
   for (let i = 0; i < manuales.length; i++) hoja.setColumnWidth(nGen + 1 + i, 340);
 }
 
+/**
+ * [C25] Leyenda al pie del resumen ejecutivo.
+ *
+ * Se escribe debajo de la tabla, separada por una fila en blanco. No estorba al
+ * rescate de columnas manuales: sus filas no llevan nada en las columnas del
+ * revisor, y el rescate descarta toda fila cuyas celdas manuales estén vacías.
+ */
+function escribirLeyenda_(hoja, numFilas) {
+  if (!hoja) return;
+
+  const bloques = [
+    ["TIPOS DE PRODUCTO", "Se registran en la columna C del Anexo 1.", [
+      ["Final / Salida",
+       "Producto que sale del proceso y llega al beneficiario. En el Anexo 3 va en las Salidas de la ficha SIPOC."],
+      ["Parcial / Registro",
+       "Producto intermedio que documenta la ejecución: informes, actas, listas. En el Anexo 3 va en la sección de Registros."]
+    ]],
+    ["ESTADO DE UN PRODUCTO O PROCESO", "Columnas ESTADO de las hojas de detalle.", [
+      ["CONFORME", "Cumple todos sus criterios: 8 en un producto, 5 en un proceso."],
+      ["OBSERVADO", "Incumple al menos un criterio. La fila explica cuál y cómo corregirlo."],
+      ["SIN REGISTRO", "Producto observado que además tiene vacías las columnas C a I. Se cuenta aparte en el resumen."],
+      ["FALTANTE", "Proceso de Nivel 0 obligatorio que no está registrado en la pestaña."],
+      ["NO APLICA", "PE.03 y PS.08 ausentes. No se puntúan ni cuentan como incumplimiento."]
+    ]],
+    ["ESTADO GENERAL DE LA FACULTAD", "Se calcula sobre los criterios cumplidos, no sobre el número de filas conformes.", [
+      ["CONFORME", "Avance del 100 %."],
+      ["AVANZADO", "Avance igual o mayor al 75 %."],
+      ["EN DESARROLLO", "Avance igual o mayor al 40 %."],
+      ["CRÍTICO", "Avance menor al 40 %."]
+    ]],
+    ["CÓMO SE CALCULAN LOS TRES AVANCES", "Ninguno cuenta filas conformes: todos miden criterios cumplidos.", [
+      ["Avance (productos)",
+       "Suma de criterios cumplidos por los productos ÷ (nº de productos × 8). Los 8 criterios son las columnas B a I."],
+      ["Avance (procesos)",
+       "Suma de criterios cumplidos por los procesos ÷ (nº de procesos × 5). Entran los de Nivel 0, los subprocesos y las catalogaciones; quedan fuera los NO APLICA."],
+      ["Avance general del Anexo 1",
+       "(criterios cumplidos de productos + de procesos) ÷ (nº productos × 8 + nº procesos × 5). No es el promedio de los dos avances: pondera cada bloque por lo que había que revisar en él."]
+    ]],
+    ["CÓDIGO DE LA HOJA", "Sufijo _F## que deben llevar todos los códigos de la pestaña.", [
+      ["F##", "Coincide con el formulario oficial de la facultad."],
+      ["F## (la hoja usa F@@)", "La pestaña usa el formulario de otra facultad. Debe corregirse en toda la hoja."]
+    ]]
+  ];
+
+  let fila = numFilas + 3;
+  hoja.getRange(fila, 1).setValue("LEYENDA")
+      .setFontWeight("bold").setFontSize(12);
+  fila += 2;
+
+  bloques.forEach(function (b) {
+    hoja.getRange(fila, 1, 1, 3).merge().setValue(b[0])
+        .setFontWeight("bold").setBackground("#1c4587").setFontColor("#ffffff");
+    fila++;
+    hoja.getRange(fila, 1, 1, 3).merge().setValue(b[1])
+        .setFontStyle("italic").setFontColor("#666666");
+    fila++;
+
+    const filas = b[2];
+    hoja.getRange(fila, 1, filas.length, 2).setValues(filas);
+    hoja.getRange(fila, 1, filas.length, 1).setFontWeight("bold");
+    hoja.getRange(fila, 2, filas.length, 1).setWrap(true);
+    fila += filas.length + 1;
+  });
+
+  hoja.setColumnWidth(2, Math.max(hoja.getColumnWidth(2), 520));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOJA `dashboard`  [C31][C32]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const TABLERO = {
+  COLS: 15,
+  AZUL: "#2a78d6",      // conformes
+  NARANJA: "#eb6834",   // observados
+  AGUA: "#1baf7a",      // subprocesos conformes
+  AMBAR: "#eda100",     // subprocesos observados
+  ROJO: "#d03b3b",
+  TINTA: "#101319",
+  SUAVE: "#6b7280",
+  BORDE: "#dfe3ec",
+  FONDO: "#f7f8fb"
+};
+
+/**
+ * Enlace interno a una fila concreta de otra hoja del mismo libro.
+ *
+ * El separador de argumentos va con COMA: `setValues` interpreta las fórmulas en
+ * notación estadounidense y las traduce al idioma de la hoja al mostrarlas. Con
+ * punto y coma la fórmula se rompe en los libros con configuración regional que
+ * usa la coma decimal.
+ */
+function enlaceA_(gid, fila, etiqueta) {
+  if (!gid || !fila) return etiqueta;
+  return '=HYPERLINK("#gid=' + gid + '&range=A' + fila + '", ' + etiqueta + ')';
+}
+
+function construirTablero_(ss, resumen, detalle, procesos) {
+  const hojaDet = ss.getSheetByName("DETALLADO_PRODUCTOS_A1");
+  const hojaProc = ss.getSheetByName(CONFIG_A1.HOJA_PROCESOS);
+  const gidDet = hojaDet ? hojaDet.getSheetId() : null;
+  const gidProc = hojaProc ? hojaProc.getSheetId() : null;
+
+  const idxDet = indexarBloques_(detalle, 0, 6, null);
+  const idxN0 = indexarBloques_(procesos, 0, 6, function (f) { return f[3] === "Nivel 0"; });
+  const idxSub = indexarBloques_(procesos, 0, 6, function (f) { return f[3] === "Subproceso"; });
+
+  let hoja = ss.getSheetByName(CONFIG_A1.HOJA_TABLERO);
+  if (!hoja) hoja = ss.insertSheet(CONFIG_A1.HOJA_TABLERO, 0);
+  hoja.getCharts().forEach(function (c) { hoja.removeChart(c); });
+  hoja.clear();
+  hoja.clearFormats();
+
+  const suma = function (i) {
+    return resumen.reduce(function (a, f) { return a + (parseInt(f[i], 10) || 0); }, 0);
+  };
+  const totProd = suma(2), totConf = suma(3), totObs = suma(4), totSin = suma(5);
+  const totN0C = suma(10), totN0O = suma(11), totSubC = suma(12), totSubO = suma(13);
+  const pct = function (n, d) { return d ? Math.round(n * 100 / d) + " %" : "—"; };
+
+  /* ── Cabecera ─────────────────────────────────────────────────────────── */
+  hoja.getRange(2, 1, 1, TABLERO.COLS).merge()
+      .setValue("AUDITORÍA DEL ANEXO 1")
+      .setFontSize(20).setFontWeight("bold").setFontColor(TABLERO.TINTA);
+  hoja.getRange(3, 1, 1, TABLERO.COLS).merge()
+      .setValue("Inventario de productos y procesos · Oficina de Racionalización, OGPL · " +
+                "Actualizado el " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "dd/MM/yyyy HH:mm"))
+      .setFontColor(TABLERO.SUAVE);
+
+  /* ── Tablero de cifras ────────────────────────────────────────────────── */
+  const tarjetas = [
+    ["Productos evaluados", totProd, "en " + CONFIG_A1.FACULTADES.length + " facultades", TABLERO.TINTA],
+    ["Conformes", totConf, pct(totConf, totProd) + " del inventario", TABLERO.AZUL],
+    ["Observados", totObs, totSin + " sin registrar del todo", TABLERO.NARANJA],
+    ["Productos sin registro", totSin, "columnas C a I vacías", TABLERO.NARANJA],
+    ["Procesos Nivel 0 conformes", totN0C, pct(totN0C, totN0C + totN0O) + " de los evaluables", TABLERO.AZUL],
+    ["Procesos Nivel 0 observados", totN0O, "incluye los faltantes", TABLERO.ROJO]
+  ];
+
+  tarjetas.forEach(function (t, i) {
+    const fila = 5 + Math.floor(i / 3) * 4;
+    const col = 1 + (i % 3) * 5;
+    hoja.getRange(fila, col, 3, 5).setBackground("#ffffff")
+        .setBorder(true, true, true, true, false, false, TABLERO.BORDE, SpreadsheetApp.BorderStyle.SOLID);
+    hoja.getRange(fila, col, 1, 5).merge().setValue(t[0].toUpperCase())
+        .setFontSize(9).setFontColor(TABLERO.SUAVE).setVerticalAlignment("middle");
+    hoja.getRange(fila + 1, col, 1, 5).merge().setValue(t[1])
+        .setFontSize(26).setFontWeight("bold").setFontColor(t[3]).setVerticalAlignment("middle");
+    hoja.getRange(fila + 2, col, 1, 5).merge().setValue(t[2])
+        .setFontSize(10).setFontColor(TABLERO.SUAVE).setVerticalAlignment("top");
+  });
+
+  /* ── Datos de los gráficos, en columnas ocultas ───────────────────────── */
+  const COL_DATOS = 18; // R
+  const cab = [["SIGLA", "PROD. CONFORMES", "PROD. OBSERVADOS",
+                "N0 CONFORMES", "N0 OBSERVADOS", "SUB. CONFORMES", "SUB. OBSERVADOS"]];
+  const datos = resumen.map(function (f) {
+    return [f[0], parseInt(f[3], 10) || 0, parseInt(f[4], 10) || 0,
+            parseInt(f[10], 10) || 0, parseInt(f[11], 10) || 0,
+            parseInt(f[12], 10) || 0, parseInt(f[13], 10) || 0];
+  });
+  hoja.getRange(5, COL_DATOS, 1, 7).setValues(cab);
+  if (datos.length) hoja.getRange(6, COL_DATOS, datos.length, 7).setValues(datos);
+
+  /* ── Gráficos ─────────────────────────────────────────────────────────── */
+  const rangoSiglas = hoja.getRange(5, COL_DATOS, datos.length + 1, 1);
+
+  const g1 = hoja.newChart().setChartType(Charts.ChartType.COLUMN)
+    .addRange(rangoSiglas)
+    .addRange(hoja.getRange(5, COL_DATOS + 1, datos.length + 1, 2))
+    .setPosition(14, 1, 0, 0)
+    .setOption("title", "Productos por facultad")
+    .setOption("isStacked", true)
+    .setOption("legend", { position: "top" })
+    .setOption("colors", [TABLERO.AZUL, TABLERO.NARANJA])
+    .setOption("width", 640).setOption("height", 320)
+    .setOption("hAxis", { slantedText: true, slantedTextAngle: 60 })
+    .build();
+  hoja.insertChart(g1);
+
+  const g2 = hoja.newChart().setChartType(Charts.ChartType.COLUMN)
+    .addRange(rangoSiglas)
+    .addRange(hoja.getRange(5, COL_DATOS + 3, datos.length + 1, 4))
+    .setPosition(14, 8, 0, 0)
+    .setOption("title", "Procesos de Nivel 0 y subprocesos por facultad")
+    .setOption("isStacked", true)
+    .setOption("legend", { position: "top" })
+    .setOption("colors", [TABLERO.AZUL, TABLERO.NARANJA, TABLERO.AGUA, TABLERO.AMBAR])
+    .setOption("width", 640).setOption("height", 320)
+    .setOption("hAxis", { slantedText: true, slantedTextAngle: 60 })
+    .build();
+  hoja.insertChart(g2);
+
+  /* ── Detalle por facultad ─────────────────────────────────────────────── */
+  const FILA_TITULO = 32;
+  hoja.getRange(FILA_TITULO, 1, 1, TABLERO.COLS).merge()
+      .setValue("Detalle por facultad")
+      .setFontSize(14).setFontWeight("bold").setFontColor(TABLERO.TINTA);
+  hoja.getRange(FILA_TITULO + 1, 1, 1, TABLERO.COLS).merge()
+      .setValue("Los procesos de Nivel 0 faltantes se cuentan sobre los 14 obligatorios; " +
+                "PE.03 y PS.08 no aplican a todas las facultades y no se computan como incumplimiento. " +
+                "Cada número enlaza con la fila donde empieza ese bloque en su hoja de detalle.")
+      .setFontColor(TABLERO.SUAVE).setWrap(true);
+  hoja.setRowHeight(FILA_TITULO + 1, 34);
+
+  const FILA_CAB = FILA_TITULO + 3;
+  hoja.getRange(FILA_CAB, 1, 1, TABLERO.COLS).setValues([[
+    "SIGLA", "FACULTAD",
+    "PRODUCTOS", "CONFORMES", "OBSERVADOS", "% CONF.",
+    "PROCESOS N0", "CONFORMES", "OBSERVADOS", "%",
+    "SUBPROCESOS", "CONFORMES", "OBSERVADOS", "%",
+    "CÓDIGO DE LA HOJA"
+  ]]).setFontWeight("bold").setFontColor("#ffffff").setBackground("#1c4587")
+     .setWrap(true).setVerticalAlignment("middle");
+
+  const filas = [];
+  resumen.forEach(function (f) {
+    const sigla = f[0];
+    const d = idxDet[sigla] || {}, n0 = idxN0[sigla] || {}, sub = idxSub[sigla] || {};
+    const prodT = parseInt(f[2], 10) || 0, prodC = parseInt(f[3], 10) || 0, prodO = parseInt(f[4], 10) || 0;
+    const n0C = parseInt(f[10], 10) || 0, n0O = parseInt(f[11], 10) || 0;
+    const subC = parseInt(f[12], 10) || 0, subO = parseInt(f[13], 10) || 0;
+
+    filas.push([
+      sigla, f[1],
+      enlaceA_(gidDet, d.inicio, prodT),
+      enlaceA_(gidDet, d.filaConformes, prodC),
+      enlaceA_(gidDet, d.filaObservados, prodO),
+      pct(prodC, prodT),
+      enlaceA_(gidProc, n0.inicio, n0C + n0O),
+      enlaceA_(gidProc, n0.filaConformes, n0C),
+      enlaceA_(gidProc, n0.filaObservados, n0O),
+      pct(n0C, n0C + n0O),
+      enlaceA_(gidProc, sub.inicio, subC + subO),
+      enlaceA_(gidProc, sub.filaConformes, subC),
+      enlaceA_(gidProc, sub.filaObservados, subO),
+      pct(subC, subC + subO),
+      f[17]
+    ]);
+  });
+
+  filas.push(["—", "Total", totProd, totConf, totObs, pct(totConf, totProd),
+              totN0C + totN0O, totN0C, totN0O, pct(totN0C, totN0C + totN0O),
+              totSubC + totSubO, totSubC, totSubO, pct(totSubC, totSubC + totSubO), ""]);
+
+  if (filas.length) {
+    const rango = hoja.getRange(FILA_CAB + 1, 1, filas.length, TABLERO.COLS);
+    rango.setValues(filas);
+    rango.setVerticalAlignment("middle");
+    hoja.getRange(FILA_CAB + 1, 3, filas.length, 12).setHorizontalAlignment("right");
+    hoja.getRange(FILA_CAB + filas.length, 1, 1, TABLERO.COLS)
+        .setFontWeight("bold").setBorder(true, null, null, null, null, null,
+                                         TABLERO.TINTA, SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+    // Franjas suaves para leer la tabla de izquierda a derecha.
+    for (let i = 0; i < filas.length - 1; i += 2) {
+      hoja.getRange(FILA_CAB + 1 + i, 1, 1, TABLERO.COLS).setBackground(TABLERO.FONDO);
+    }
+  }
+
+  /* ── Acabado ──────────────────────────────────────────────────────────── */
+  hoja.hideColumns(COL_DATOS, 7);
+  hoja.setColumnWidth(1, 70);
+  hoja.setColumnWidth(2, 210);
+  for (let c = 3; c <= TABLERO.COLS; c++) hoja.setColumnWidth(c, c === TABLERO.COLS ? 150 : 92);
+  hoja.setFrozenRows(FILA_CAB);
+  hoja.setHiddenGridlines(true);
+  ss.setActiveSheet(hoja);
+  ss.moveActiveSheet(1);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    ENTRADA DESDE LA INTERFAZ
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function onOpen() {
   try {
-    SpreadsheetApp.getUi().createMenu("Auditoría OGPL")
-      .addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1").addToUi();
+    const menu = SpreadsheetApp.getUi().createMenu("Auditoría OGPL")
+      .addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1");
+
+    // El ítem del Anexo 3 solo aparece si su archivo está en el proyecto, para
+    // que el menú no ofrezca una opción que fallaría al pulsarla.
+    if (typeof ejecutarRevisionAnexo3 === "function") {
+      menu.addItem("Ejecutar revisión del Anexo 3", "ejecutarRevisionAnexo3");
+    }
+    menu.addSeparator()
+      .addItem("Convertir observaciones antiguas a renglones", "convertirSeparadorAntiguo")
+      .addToUi();
   } catch (e) {
     // Sin interfaz disponible: no hay menú que crear.
   }
+}
+
+/**
+ * Convierte al vuelo las observaciones que quedaron de una corrida anterior,
+ * encadenadas con " || ", a un renglón por observación.
+ *
+ * Es un atajo para no tener que volver a auditar solo por el formato: la
+ * auditoría completa ya las escribe así. No toca las columnas del revisor.
+ */
+function convertirSeparadorAntiguo() {
+  const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
+  const hojas = ["DETALLADO_PRODUCTOS_A1", CONFIG_A1.HOJA_PROCESOS, "RESUMEN_EJECUTIVO_A1"];
+  let convertidas = 0;
+
+  hojas.forEach(function (nombre) {
+    const hoja = ss.getSheetByName(nombre);
+    if (!hoja || hoja.getLastRow() < 2) return;
+
+    const rango = hoja.getRange(1, 1, hoja.getLastRow(), hoja.getLastColumn());
+    const datos = rango.getValues();
+    const cabecera = datos[0].map(function (c) { return normalizarTexto_(c); });
+
+    // Solo las columnas que genera el script: las del revisor no se tocan.
+    const columnas = [];
+    cabecera.forEach(function (t, i) {
+      if (t.indexOf("OBSERVACIONES") === 0 || t.indexOf("DIAGNOSTICO") === 0) columnas.push(i);
+    });
+    if (!columnas.length) return;
+
+    let cambio = false;
+    for (let r = 1; r < datos.length; r++) {
+      columnas.forEach(function (c) {
+        const v = datos[r][c];
+        if (typeof v === "string" && v.indexOf("||") !== -1) {
+          datos[r][c] = v.split(/\s*\|\|\s*/).join(SEPARADOR_OBS);
+          cambio = true;
+          convertidas++;
+        }
+      });
+    }
+
+    if (cambio) {
+      rango.setValues(datos);
+      hoja.getRange(2, 1, datos.length - 1, hoja.getLastColumn())
+          .setWrap(true).setVerticalAlignment("top");
+    }
+  });
+
+  notificar_(convertidas
+    ? "Se convirtieron " + convertidas + " celdas al formato de un renglón por observación."
+    : "No quedaban observaciones con el separador antiguo.");
 }
 
 function notificar_(mensaje) {

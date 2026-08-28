@@ -13,11 +13,15 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v6.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v13.gs");
 
 const SHIM = `
-var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
+var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
+                       openById: function () { return null; }, BorderStyle: {} };
 var Logger = { log: function () {} };
+var Utilities = { formatDate: function () { return ""; } };
+var Session = { getScriptTimeZone: function () { return "UTC"; } };
+var Charts = { ChartType: { COLUMN: "COLUMN" } };
 module.exports = {
   CONFIG_A1, validarCodigo_, validarTipoProducto_, validarAccionEstrategica_,
   validarActividadOperativa_, validarListaCerrada_, validarListaAbierta_,
@@ -25,7 +29,9 @@ module.exports = {
   localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
-  TOTAL_CRITERIOS_PROCESO, celdaFormulario_
+  TOTAL_CRITERIOS, TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
+  esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
+  ordenarPorFacultadYEstado_, indexarBloques_, enlaceA_, TABLERO, avanceCombinado_
 };
 `;
 
@@ -96,7 +102,7 @@ bloque("Columna D — el diagnóstico explica el error", function () {
   chequear("OE indica la corrección concreta", /AE\.02\.01/.test(oe));
 
   const ao = M.validarAccionEstrategica_("AO. Gestión del Planeamiento").obs;
-  chequear("AO señala la columna correcta", /COLUMNA E/.test(ao));
+  chequear("AO señala la columna correcta", /COLUMNA E/i.test(ao));
 
   const as = M.validarAccionEstrategica_("AS.06.01").obs;
   chequear("AS indica el formato exigido", /AE\.##\.##/.test(as));
@@ -450,9 +456,9 @@ bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
     padreEntre(["PS.10"]), fo.formulario);
   chequear("_F05 no se marca", propio.checks.sufijo === true);
 
-  // Pestañas cuyo uso observado no coincide con el formulario oficial declarado.
-  // FPSIC, FIEE y FISI quedan fuera: su formulario oficial aún no está declarado.
-  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17" };
+  // Pestañas cuyo uso observado no coincide con el formulario oficial.
+  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17",
+                    FPSIC: "F18", FIEE: "F17", FISI: "F02" };
   Object.keys(desfase).forEach(function (sigla) {
     const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
     chequear(sigla + ": el uso observado (" + desfase[sigla] + ") difiere del oficial (" + f.formulario + ")",
@@ -507,21 +513,24 @@ bloque("Formularios oficiales por facultad", function () {
   const oficiales = {
     FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
     FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
-    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20"
+    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20",
+    FPSIC: "F17", FIEE: "F18", FISI: "F19"
   };
   Object.keys(oficiales).forEach(function (sigla) {
     chequear(sigla + " = " + oficiales[sigla], F(sigla).formulario === oficiales[sigla]);
   });
 
-  ["FPSIC", "FIEE", "FISI"].forEach(function (sigla) {
-    chequear(sigla + " queda sin formulario declarado", F(sigla).formulario === null);
-  });
+  chequear("los 20 formularios están declarados",
+    M.CONFIG_A1.FACULTADES.every(function (f) { return !!f.formulario; }));
+  chequear("la numeración no es posicional: FII lleva F20",
+    F("FII").formulario === "F20" && M.CONFIG_A1.FACULTADES.indexOf(F("FII")) === 16);
 
-  chequear("no hay dos facultades con el mismo formulario", (function () {
-    const usados = M.CONFIG_A1.FACULTADES
-      .map(function (f) { return f.formulario; })
-      .filter(Boolean);
-    return new Set(usados).size === usados.length;
+  chequear("los 20 formularios son distintos",
+    new Set(M.CONFIG_A1.FACULTADES.map(function (f) { return f.formulario; })).size === 20);
+  chequear("cubren F01..F20 sin huecos", (function () {
+    const n = M.CONFIG_A1.FACULTADES.map(function (f) { return parseInt(f.formulario.slice(1), 10); })
+      .sort(function (a, b) { return a - b; });
+    return n.every(function (v, i) { return v === i + 1; });
   })());
 
   chequear("los nombres oficiales están en mayúsculas",
@@ -608,7 +617,7 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
   const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   chequear("se encuentran los encabezados del resumen", enc !== null);
   const nEnc = contarElementos(enc);
-  chequear("el resumen declara 10 columnas", nEnc === 10);
+  chequear("el resumen declara 19 columnas", nEnc === 19);
 
   const construcciones = [];
   let desde = 0;
@@ -633,6 +642,368 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
     const n = contarElementos(c);
     chequear("la fila de resumen #" + (i + 1) + " tiene " + nEnc + " celdas (tiene " + n + ")", n === nEnc);
   });
+});
+
+
+bloque("Vocabulario único CONFORME / OBSERVADO", function () {
+  chequear("estadoGeneral_ al 100 % es CONFORME, no COMPLETO", M.estadoGeneral_(100) === "CONFORME");
+  chequear("75 % es AVANZADO", M.estadoGeneral_(75) === "AVANZADO");
+  chequear("40 % es EN DESARROLLO", M.estadoGeneral_(40) === "EN DESARROLLO");
+  chequear("39 % es CRÍTICO", M.estadoGeneral_(39) === "CRÍTICO");
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const cuerpo = fuente.replace(/VALORES_NULOS:[\s\S]*?\],/, "");
+  ["COMPLETO", "PARCIAL", "PENDIENTE"].forEach(function (t) {
+    chequear("ya no se usa el estado " + t, cuerpo.indexOf('"' + t + '"') === -1);
+  });
+  chequear("los colores cubren CONFORME y OBSERVADO",
+    /"CONFORME":/.test(fuente) && /"OBSERVADO":/.test(fuente));
+});
+
+bloque("Avance sobre criterios cumplidos", function () {
+  chequear("todo cumplido es 100 %", M.avanceSobreCriterios_([8, 8, 8], 8) === 100);
+  chequear("nada cumplido es 0 %", M.avanceSobreCriterios_([0, 0], 8) === 0);
+  chequear("mitad de criterios es 50 %", M.avanceSobreCriterios_([4, 4], 8) === 50);
+  chequear("sin filas devuelve 0", M.avanceSobreCriterios_([], 8) === 0);
+
+  // Lo que la ponderación por estado no distinguía: a un producto le falta un
+  // criterio y el otro está vacío. Ambos eran "observados"; ahora pesan distinto.
+  const casiCompleto = M.avanceSobreCriterios_([7], 8);
+  const vacio = M.avanceSobreCriterios_([1], 8);
+  chequear("un producto casi completo pesa mucho más que uno vacío",
+    casiCompleto === 88 && vacio === 13);
+
+  chequear("los procesos se miden sobre 5 criterios",
+    M.avanceSobreCriterios_([5, 5], M.TOTAL_CRITERIOS_PROCESO) === 100 &&
+    M.avanceSobreCriterios_([3], M.TOTAL_CRITERIOS_PROCESO) === 60);
+});
+
+
+
+bloque("Prefijo de las observaciones (contra observación de la FFB)", function () {
+  const muestras = [
+    M.validarAccionEstrategica_("").obs,
+    M.validarAccionEstrategica_("AEI.04.03 x").obs,
+    M.validarActividadOperativa_("").obs,
+    M.validarTipoProducto_("").obs,
+    M.validarListaCerrada_("", M.CONFIG_A1.TIPOS_ENTREGABLE, "Columna F", "Clasificación").obs,
+    M.validarListaAbierta_("", M.CONFIG_A1.VARIABLES_CALIDAD, "Columna H", "Variables").obs,
+    M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN", function () { return false; }, "F05")
+      .observaciones.join(" ")
+  ];
+
+  muestras.forEach(function (o, i) {
+    chequear("la observación #" + (i + 1) + " usa \"Columna X -->\"", /Columna [A-I] -->/.test(o));
+    chequear("la observación #" + (i + 1) + " ya no usa \"Col X —\"", !/\bCol [A-I] —/.test(o));
+  });
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const cuerpo = fuente.slice(fuente.indexOf("const CONFIG_A1"));
+  chequear("no queda ningún \"Col X —\" en el código", !/'Col [A-I] — /.test(cuerpo));
+  chequear("las etiquetas de columna son \"Columna X\"",
+    /"Columna F"/.test(cuerpo) && /"Columna I"/.test(cuerpo));
+});
+
+bloque("Resumen ejecutivo: columnas pedidas por el revisor", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const i = fuente.indexOf('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
+  const ini = fuente.indexOf("[", i);
+  let nivel = 0, fin = ini;
+  for (let j = ini; j < fuente.length; j++) {
+    if (fuente[j] === "[") nivel++;
+    else if (fuente[j] === "]") { nivel--; if (!nivel) { fin = j; break; } }
+  }
+  const cab = fuente.slice(ini, fin + 1);
+
+  [
+    "FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS",
+    "PRODUCTOS SIN REGISTRO", "TOTAL PROCESOS",
+    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "CÓDIGO DE LA HOJA"
+  ].forEach(function (e) {
+    chequear("declara " + e, cab.indexOf('"' + e + '"') !== -1);
+  });
+
+  const veces = function (t) { return (cab.match(new RegExp('"' + t + '"', "g")) || []).length; };
+  chequear("AVANCE aparece dos veces", veces("AVANCE") === 2);
+  chequear("ESTADO GENERAL aparece dos veces", veces("ESTADO GENERAL") === 2);
+  chequear("DIAGNÓSTICO aparece dos veces", veces("DIAGNÓSTICO") === 2);
+  chequear("SUBPROCESOS CONFORMES aparece una sola vez", veces("SUBPROCESOS CONFORMES") === 1);
+  chequear("ya no se llama FORMULARIO", cab.indexOf('"FORMULARIO"') === -1);
+  chequear("la contraobservación no se genera: la repone el rescate",
+    cab.indexOf("OBSERVACIÓN") === -1 || cab.indexOf("CONTRA") === -1);
+
+  // Los nuevos encabezados deben estar en el histórico, o el rescate los tomaría
+  // por columnas del revisor y los duplicaría en cada corrida.
+  ["PRODUCTOS SIN REGISTRO", "PROCESOS NIVEL 0 CONFORMES", "SUBPROCESOS OBSERVADOS",
+   "CÓDIGO DE LA HOJA"].forEach(function (e) {
+    chequear(e + " está en ENCABEZADOS_HISTORICOS",
+      M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf(e) !== -1);
+  });
+});
+
+
+bloque("Catalogaciones y procesos mal codificados (contra observaciones del detallado)", function () {
+  // Las 13 filas que el revisor marcó en DETALLADO_PRODUCTOS_A1, con la lista de
+  // códigos que existe en su pestaña para poder resolver la relación padre-hijo.
+  const casos = [
+    [397,  "PE.02.01.05_F04 PE.02.01_04 ASEGURAMIENTO DE LA CALIDAD", "proceso",
+     ["PE.02.01", "PE.02.01.01", "PE.02.01.05"]],
+    [470,  "PM.03.04.04_F04 PROCESOS DE SOPORTE", "categoria", []],
+    [630,  "PS.10.02_F04 PROCESO DE ARTICULACIÓN Y DIFUSIÓN INFORMATIVA", "proceso", ["PS.10.02"]],
+    [633,  "PS.10.03_F04 PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR", "proceso", ["PS.10.03"]],
+    [666,  "PE.03.02.05_F05 PROCESOS MISIONALES", "categoria", []],
+    [712,  "PM.03.18_F05 PROCESOS DE SOPORTE", "categoria", []],
+    [928,  "F06 PROCESOS MISIONALES", "categoria", []],
+    [942,  "PM.03.05_F06 PROCESOS DE SOPORTE", "categoria", []],
+    [1087, "PM.03.03.04_F07 PROCESOS DE SOPORTE", "categoria", []],
+    [1224, "PROCESO MISIONAL", "categoria", []],
+    [1244, "PROCESO DE SOPORTE", "categoria", []],
+    [2327, "PE.03.02.07_F17 PROCESOS MISIONALES", "categoria", []],
+    [1420, "PE.02.01.01_F10 PE.02.01.01 — MANTENIMIENTO DEL SISTEMA DE GESTIÓN DE CALIDAD",
+     "producto", ["PE.02.01", "PE.02.01.01"]]
+  ];
+
+  casos.forEach(function (c) {
+    const r = M.clasificarFila_(c[1], padreEntre(c[3]), "F04", "F04");
+    chequear("fila " + c[0] + " se clasifica como " + c[2] + " (sale " + r.tipo + ")", r.tipo === c[2]);
+  });
+
+  // Una catalogación con código debe pedir que se retire.
+  const conCodigo = M.clasificarFila_("PM.03.04.04_F04 PROCESOS DE SOPORTE", padreEntre([]), "F04", "F04");
+  chequear("la catalogación con código lo reporta",
+    /NO LE CORRESPONDE UNA CODIFICACIÓN/.test(conCodigo.observaciones.join(" ")));
+  chequear("y nombra el código que sobra", /PM\.03\.04\.04_F04/.test(conCodigo.observaciones.join(" ")));
+  chequear("marca fallado el criterio de código", conCodigo.checks.unico === false);
+
+  // Sin código no hay nada que corregir.
+  const sinCodigo = M.clasificarFila_("PROCESO DE SOPORTE", padreEntre([]), "F04", "F04");
+  chequear("la catalogación sin código no se observa", sinCodigo.observaciones.length === 0);
+
+  // El número de formulario suelto también es una codificación que no toca.
+  const sueltoF = M.clasificarFila_("F06 PROCESOS MISIONALES", padreEntre([]), "F06", "F06");
+  chequear("el F## suelto se reporta",
+    /NO LE CORRESPONDE UNA CODIFICACIÓN/.test(sueltoF.observaciones.join(" ")));
+
+  // Un proceso codificado como producto pide corregir la codificación.
+  const malCod = M.clasificarFila_("PS.10.03_F04 PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR",
+    padreEntre(["PS.10.03"]), "F04", "F04");
+  chequear("el proceso mal codificado lo dice",
+    /CODIFICACIÓN A CORREGIR/.test(malCod.observaciones.join(" ")));
+});
+
+bloque("Singular y plural en las catalogaciones", function () {
+  ["PROCESOS ESTRATÉGICOS", "PROCESOS MISIONALES", "PROCESOS DE SOPORTE",
+   "PROCESO MISIONAL", "PROCESO DE SOPORTE", "PROCESO ESTRATÉGICO"
+  ].forEach(function (t) {
+    chequear("reconoce la catalogación " + JSON.stringify(t), M.esCatalogacion_(t));
+  });
+
+  ["PLAN ESTRATÉGICO APROBADO", "GESTIÓN DE LA INVESTIGACIÓN",
+   "PROCESOS DE ADQUISICIÓN TRAMITADOS", "PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR"
+  ].forEach(function (t) {
+    chequear("no confunde " + JSON.stringify(t), !M.esCatalogacion_(t));
+  });
+
+  chequear("PROCESO DE ... en singular nombra un proceso",
+    M.abrePorProceso_("PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR"));
+  chequear("SUBPROCESO ... nombra un proceso", M.abrePorProceso_("SUBPROCESO DE ALGO"));
+
+  // El plural describe entregables: "PROCESOS DE ADQUISICIÓN TRAMITADOS" es un
+  // producto real de la FO y no debe irse a la hoja de procesos.
+  chequear("el plural NO nombra un proceso",
+    !M.abrePorProceso_("PROCESOS DE ADQUISICIÓN TRAMITADOS"));
+  chequear("una denominación normal tampoco",
+    !M.abrePorProceso_("PLAN ESTRATÉGICO APROBADO"));
+});
+
+bloque("Cierre de los productos sin registro", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("se añade la recomendación de los desplegables",
+    /Observación final --> Para las columnas C a I utilice los desplegables/.test(fuente));
+  chequear("ya no encabeza con PRODUCTO SIN REGISTRAR",
+    fuente.indexOf("PRODUCTO SIN REGISTRAR:") === -1);
+});
+
+
+bloque("Una observación por renglón", function () {
+  chequear("el separador es un salto de línea", M.SEPARADOR_OBS === "\n");
+  chequear("ya no se encadena con ||",
+    require("fs").readFileSync(FUENTE, "utf8").indexOf('join("  ||  ")') === -1);
+
+  chequear("sin observaciones devuelve el texto de relleno",
+    M.unirObservaciones_([], "Cumple los 8 criterios.") === "Cumple los 8 criterios.");
+  chequear("una sola observación no lleva salto",
+    M.unirObservaciones_(["Columna C --> algo"], "x").indexOf("\n") === -1);
+  chequear("dos observaciones van en dos renglones",
+    M.unirObservaciones_(["a", "b"], "x").split("\n").length === 2);
+
+  // El caso que señaló el revisor: FCB, fila 57 del Anexo 1, sin nada en C a I
+  // y con dos códigos en la columna B.
+  const colB = "PE.03.01.05_F10 PE.03.01.03 — REVISIÓN OCRI/OGAL Y EMISIÓN DE RR";
+  const cls = M.clasificarFila_(colB, padreEntre(["PE.03.01", "PE.03.01.03", "PE.03.01.05"]), "F10", "F10");
+  chequear("la fila sigue siendo un producto", cls.tipo === "producto");
+
+  const checks = [
+    M.validarCodigo_(cls),
+    M.validarTipoProducto_(""),
+    M.validarAccionEstrategica_(""),
+    M.validarActividadOperativa_(""),
+    M.validarListaCerrada_("", M.CONFIG_A1.TIPOS_ENTREGABLE, "Columna F", "Clasificación"),
+    M.validarListaCerrada_("", M.CONFIG_A1.ROLES_INSTITUCIONALES, "Columna G", "Atributo institucional"),
+    M.validarListaAbierta_("", M.CONFIG_A1.VARIABLES_CALIDAD, "Columna H", "Variables de calidad"),
+    M.validarListaAbierta_("", M.CONFIG_A1.CRITERIOS_IMPACTO, "Columna I", "Criterios de validación")
+  ];
+  const obs = cls.observaciones.concat(
+    checks.filter(function (c) { return !c.ok; }).map(function (c) { return c.obs; }));
+  obs.push("Observación final --> Para las columnas C a I utilice los desplegables de la hoja.");
+
+  const celda = M.unirObservaciones_(obs, "");
+  const renglones = celda.split("\n");
+
+  chequear("son nueve renglones", renglones.length === 9);
+  chequear("el primero es la columna B", /^Columna B -->/.test(renglones[0]));
+  chequear("el último es la observación final", /^Observación final -->/.test(renglones[8]));
+
+  // De la C a la I, en el orden de la hoja.
+  ["C", "D", "E", "F", "G", "H", "I"].forEach(function (col, i) {
+    chequear("el renglón " + (i + 2) + " es la columna " + col,
+      renglones[i + 1].indexOf("Columna " + col + " -->") === 0);
+  });
+
+  chequear("ningún renglón conserva el separador viejo", celda.indexOf("||") === -1);
+});
+
+bloque("Ajuste de texto en las hojas del dashboard", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  // Sin ajuste de texto el salto de línea no se ve, y el resumen lleva sus dos
+  // columnas de DIAGNÓSTICO en medio de la tabla, no al final.
+  chequear("el ajuste cubre todo el bloque de datos",
+    /getRange\(2, 1, filas\.length, nCols\)\s*\.setWrap\(true\)/.test(fuente));
+  chequear("las celdas se alinean arriba", /setVerticalAlignment\("top"\)/.test(fuente));
+});
+
+
+bloque("Conversor de observaciones antiguas", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("existe la función de conversión", /function convertirSeparadorAntiguo\(\)/.test(fuente));
+  chequear("está en el menú", /Convertir observaciones antiguas a renglones/.test(fuente));
+  chequear("solo toca las columnas generadas",
+    /indexOf\("OBSERVACIONES"\) === 0 \|\| .*indexOf\("DIAGNOSTICO"\) === 0/.test(fuente));
+  chequear("reaplica el ajuste de texto tras convertir",
+    /setValues\(datos\);[\s\S]{0,220}setWrap\(true\)/.test(fuente));
+});
+
+
+bloque("Hoja dashboard: enlaces de descenso al detalle", function () {
+  chequear("la fórmula usa coma como separador",
+    M.enlaceA_(123, 45, 206) === '=HYPERLINK("#gid=123&range=A45", 206)');
+  chequear("sin fila devuelve el número pelado", M.enlaceA_(123, 0, 5) === 5);
+  chequear("sin gid devuelve el número pelado", M.enlaceA_(null, 45, 5) === 5);
+
+  // Un detallado de juguete con tres facultades desordenadas.
+  const filas = [
+    ["FDCP", 10, "", "", "", "", "OBSERVADO", "", "", ""],
+    ["FM",    9, "", "", "", "", "OBSERVADO", "", "", ""],
+    ["FDCP",  5, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FM",    3, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FM",    7, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FDCP",  8, "", "", "", "", "OBSERVADO", "", "", ""]
+  ];
+  const ord = M.ordenarPorFacultadYEstado_(filas, 0, 6, 1, null);
+
+  chequear("las facultades salen en el orden del catálogo",
+    ord[0][0] === "FM" && ord[3][0] === "FDCP");
+  chequear("dentro de la facultad, los conformes primero",
+    ord[0][6] === "CONFORME" && ord[1][6] === "CONFORME" && ord[2][6] === "OBSERVADO");
+  chequear("a igual estado, por número de fila del Anexo",
+    ord[0][1] === 3 && ord[1][1] === 7);
+
+  const idx = M.indexarBloques_(ord, 0, 6, null);
+  chequear("FM empieza en la fila 2 de la hoja", idx.FM.inicio === 2);
+  chequear("FM tiene 2 conformes y 1 observado",
+    idx.FM.conformes === 2 && idx.FM.otros === 1);
+  chequear("el ancla de observados de FM cae tras sus conformes",
+    idx.FM.filaObservados === 4 && ord[idx.FM.filaObservados - 2][6] === "OBSERVADO");
+  chequear("FDCP empieza donde termina FM", idx.FDCP.inicio === 5);
+  chequear("el ancla de conformes de FDCP es su primera fila",
+    ord[idx.FDCP.filaConformes - 2][0] === "FDCP" &&
+    ord[idx.FDCP.filaConformes - 2][6] === "CONFORME");
+
+  // El filtro separa Nivel 0 de subprocesos en la hoja de procesos.
+  const procs = [
+    ["FM", "PE.01", "", "Nivel 0",    "", 5, "CONFORME",  "", "", ""],
+    ["FM", "PE.01.01", "", "Subproceso", "", 6, "OBSERVADO", "", "", ""],
+    ["FM", "PE.02", "", "Nivel 0",    "", 7, "OBSERVADO", "", "", ""]
+  ];
+  const soloN0 = M.indexarBloques_(procs, 0, 6, function (f) { return f[3] === "Nivel 0"; });
+  chequear("el índice de Nivel 0 cuenta solo esas filas", soloN0.FM.total === 2);
+  const soloSub = M.indexarBloques_(procs, 0, 6, function (f) { return f[3] === "Subproceso"; });
+  chequear("el índice de subprocesos cuenta solo esas filas", soloSub.FM.total === 1);
+});
+
+bloque("Hoja dashboard: estructura", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+
+  chequear("la hoja se llama dashboard", M.CONFIG_A1.HOJA_TABLERO === "dashboard");
+  chequear("se construye al final de la escritura", /construirTablero_\(ss, resumen, detalle, procesos\)/.test(fuente));
+
+  ["Productos evaluados", "Conformes", "Observados", "Productos sin registro",
+   "Procesos Nivel 0 conformes", "Procesos Nivel 0 observados"].forEach(function (t) {
+    chequear("declara la tarjeta " + JSON.stringify(t), fuente.indexOf('"' + t + '"') !== -1);
+  });
+
+  chequear("hay dos gráficos", (fuente.match(/hoja\.insertChart\(/g) || []).length === 2);
+  chequear("el gráfico de productos existe", /"Productos por facultad"/.test(fuente));
+  chequear("el gráfico de procesos existe", /"Procesos de Nivel 0 y subprocesos por facultad"/.test(fuente));
+  chequear("los datos de los gráficos quedan ocultos", /hideColumns\(COL_DATOS, 7\)/.test(fuente));
+  chequear("los gráficos anteriores se retiran antes de redibujar",
+    /getCharts\(\)\.forEach[\s\S]{0,60}removeChart/.test(fuente));
+
+  // El texto va partido en dos literales concatenados.
+  chequear("el detalle lleva la nota de los 14 obligatorios",
+    /14 obligatorios;/.test(fuente) && /PE\.03 y PS\.08 no aplican/.test(fuente));
+  chequear("y explica que los números enlazan",
+    /Cada número enlaza con la fila donde empieza ese bloque/.test(fuente));
+  chequear("la tabla tiene 15 columnas", M.TABLERO.COLS === 15);
+  chequear("usa la paleta validada",
+    M.TABLERO.AZUL === "#2a78d6" && M.TABLERO.NARANJA === "#eb6834");
+});
+
+
+bloque("Avance general del Anexo 1 (columna S)", function () {
+  const P = M.TOTAL_CRITERIOS, Q = M.TOTAL_CRITERIOS_PROCESO;
+
+  chequear("todo cumplido es 100 %",
+    M.avanceCombinado_([{ cumplidos: [8, 8], porFila: P }, { cumplidos: [5], porFila: Q }]) === 100);
+  chequear("nada cumplido es 0 %",
+    M.avanceCombinado_([{ cumplidos: [0, 0], porFila: P }, { cumplidos: [0], porFila: Q }]) === 0);
+  chequear("sin filas devuelve 0", M.avanceCombinado_([]) === 0);
+  chequear("un bloque vacío no estorba al otro",
+    M.avanceCombinado_([{ cumplidos: [], porFila: P }, { cumplidos: [5, 5], porFila: Q }]) === 100);
+
+  // Pondera por criterios evaluados, no promedia los dos porcentajes.
+  // 10 productos al 100 % (80 de 80) y 1 proceso al 0 % (0 de 5): 80/85 = 94 %.
+  // El promedio simple daría 50 %.
+  const prod = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8];
+  const proc = [0];
+  const general = M.avanceCombinado_([{ cumplidos: prod, porFila: P }, { cumplidos: proc, porFila: Q }]);
+  chequear("pondera por volumen: sale 94 %, no 50 %", general === 94);
+  chequear("y no coincide con el promedio de los dos avances",
+    general !== Math.round((M.avanceSobreCriterios_(prod, P) + M.avanceSobreCriterios_(proc, Q)) / 2));
+
+  // Coherencia con las dos columnas que ya existen.
+  const soloProd = M.avanceCombinado_([{ cumplidos: [4, 4], porFila: P }]);
+  chequear("con un solo bloque coincide con avanceSobreCriterios_",
+    soloProd === M.avanceSobreCriterios_([4, 4], P));
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("la columna se llama como pidió el revisor",
+    /"AVANCE GENERAL DEL ANEXO 1"/.test(fuente));
+  chequear("está en ENCABEZADOS_HISTORICOS",
+    M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf("AVANCE GENERAL DEL ANEXO 1") !== -1);
+  chequear("va al final, en la columna S",
+    /"CÓDIGO DE LA HOJA",\s*\n\s*"AVANCE GENERAL DEL ANEXO 1"\]/.test(fuente));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

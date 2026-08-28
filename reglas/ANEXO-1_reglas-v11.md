@@ -1,11 +1,13 @@
 # ANEXO 1 (A1) — Inventario de Productos y Procesos
-## Reglas de validación consolidadas — v6
+## Reglas de validación consolidadas — v11
 
 > **Origen.** v1 = hoja `REGLAS DE AUTOMATIZACIÓN` (solo filas de Anexo 1).
 > v2 = script `Anexo1_Auditoria.gs`. v3 = consolidación verificada contra la
 > estructura real. v4 = incorpora las contra observaciones del revisor. v5 =
-> puntúa cada proceso en una fila. **v6 = fija el catálogo oficial de facultades
-> y separa el defecto de hoja del defecto de fila.**
+> puntúa cada proceso en una fila. v6 = fija el catálogo oficial de facultades.
+> v7 = unifica el vocabulario en CONFORME / OBSERVADO. **v8 = cambia el prefijo
+> de las observaciones, separa los productos sin registro y abre el bloque de
+> procesos en Nivel 0 y subprocesos.**
 >
 > **Criterio de autoridad:** cuando la hoja de reglas y la hoja real se
 > contradicen, manda la **hoja real**. La hoja de reglas v1 quedó desactualizada
@@ -82,11 +84,50 @@ necesidad de enumerarlos.
 acepta escrito de cuatro maneras, todas presentes en los datos: `_F04`, `-F04`,
 `.F07` y `_04` (sin la F).
 
-**2.3 Filas que NO son producto (se saltan sin puntuar):**
-- Categorías raíz sin código: `PROCESOS ESTRATÉGICOS`, `MISIONALES`, `DE SOPORTE`
+**2.3 Filas que NO son producto:**
+- **Catalogaciones** (ver 2.5)
 - Todo código con descendientes
 - Todo código de un solo nivel
 - Cualquier fila cuya denominación coincida con una de las 16 de Nivel 0
+- **Denominaciones que abren nombrando un proceso** (ver 2.6)
+
+Ninguna se descarta en silencio: todas se publican en
+`OBSERVACIONES_DE_PROCESO_A1` con su observación.
+
+**2.4 Cuando la celda arrastra varios códigos, manda el más superficial.**
+Es el que indica el nivel real de la fila. En
+`PE.02.01.05_F04 PE.02.01_04 ASEGURAMIENTO DE LA CALIDAD` (FFB) el código válido
+es `PE.02.01`: un subproceso, no un producto de cuatro niveles.
+
+**2.5 Catalogaciones — NUEVA en v9.**
+
+`PROCESOS ESTRATÉGICOS`, `PROCESOS MISIONALES` y `PROCESOS DE SOPORTE` encabezan
+cada grupo de procesos de Nivel 0. **No son productos ni procesos, y no les
+corresponde codificación.**
+
+Se reconocen aunque estén en singular (`PROCESO DE SOPORTE`) y aunque arrastren
+un código o un número de formulario suelto (`F06 PROCESOS MISIONALES`). Cuando lo
+llevan, la observación pide retirarlo:
+
+> Columna B --> NO LE CORRESPONDE UNA CODIFICACIÓN. «PROCESOS DE SOPORTE» no es
+> un producto ni un proceso: es la catalogación que encabeza un grupo de procesos
+> de Nivel 0. Retire «PM.03.04.04_F04» y deje solo la denominación.
+
+En el Anexo 1 hay **17 filas** en este caso, repartidas entre FFB, FO, FE, FQIQ,
+FMV, FCB, FCE, FCF, FIGMMG y FII.
+
+**2.6 Denominación que nombra un proceso — NUEVA en v9.**
+
+Una denominación que abre con `PROCESO`, `SUBPROCESO` o `SUB PROCESO` **en
+singular** nombra un proceso, aunque su código no tenga descendientes:
+
+> Columna B --> CODIFICACIÓN A CORREGIR. «PROCESO DE COBERTURA Y SOPORTE
+> PROTOCOLAR» nombra un proceso, no un producto, pero está codificado como
+> producto («PS.10.03_F04»).
+
+**Solo en singular.** El plural describe entregables: `PROCESOS DE ADQUISICIÓN
+TRAMITADOS` es un producto real de la FO. Los plurales que sí son catalogación
+los atrapa antes la regla 2.5.
 
 ## 3. Cobertura de los 16 procesos Nivel 0 — *v1 regla 2.1, PENDIENTE de implementar*
 
@@ -200,22 +241,89 @@ El criterio estricto de la v3 queda disponible en
 
 ---
 
-## 5. Estados y avance — *sin cambios*
+## 5. Estados y avance — *reescrita en v7*
 
-| Estado del producto | Condición |
+**5.1 Dos estados, los mismos para productos y para procesos.**
+
+| Estado | Condición |
 |---|---|
-| COMPLETO | 8/8 criterios |
-| PENDIENTE | Solo col B; C–I vacías |
-| PARCIAL | Cualquier otro caso |
+| CONFORME | cumple todos sus criterios (8 en productos, 5 en procesos) |
+| OBSERVADO | cualquier otro caso |
 
-`Avance % = (COMPLETOS + 0,5 × PARCIALES) / TOTAL`
+Desaparecen `COMPLETO`, `PARCIAL` y `PENDIENTE`. Un producto **sin registrar**
+—columnas C a I vacías— es OBSERVADO como cualquier otro; su condición se
+declara en la observación:
 
-| Estado de la facultad | Avance |
+> PRODUCTO SIN REGISTRAR: las columnas C a I están vacías. No hay nada que
+> validar más allá del código.
+
+Así el dato no se pierde al retirarse el estado PENDIENTE, y el resumen informa
+cuántos observados están en esa situación.
+
+Los procesos conservan además `FALTANTE` (Nivel 0 obligatorio ausente) y
+`NO APLICA` (PE.03 y PS.08 ausentes), que no son estados de cumplimiento sino de
+existencia.
+
+**5.2 El avance se mide sobre criterios cumplidos, no sobre estados.**
+
+```
+Avance % = Σ criterios cumplidos / (nº de filas × criterios por fila)
+```
+
+Productos sobre 8 criterios, procesos sobre 5. La fórmula anterior repartía
+medio punto a cada parcial; con dos estados eso daría lo mismo a un producto al
+que le falta un criterio que a uno enteramente vacío. Medido sobre criterios,
+un producto con 7 de 8 aporta 88 % y uno con 1 de 8 aporta 13 %.
+
+**5.3 Estado general de la facultad**
+
+| Estado | Avance |
 |---|---|
-| COMPLETO | 100 % |
+| CONFORME | 100 % |
 | AVANZADO | ≥ 75 % |
 | EN DESARROLLO | ≥ 40 % |
 | CRÍTICO | < 40 % |
+
+---
+
+## 5.bis Hoja `RESUMEN_EJECUTIVO_A1` — *reestructurada en v8*
+
+| # | Columna | | # | Columna |
+|---|---|---|---|---|
+| 1 | FACULTAD | | 10 | TOTAL PROCESOS |
+| 2 | NOMBRE | | 11 | PROCESOS NIVEL 0 CONFORMES |
+| 3 | TOTAL PRODUCTOS | | 12 | PROCESOS NIVEL 0 OBSERVADOS |
+| 4 | PRODUCTOS CONFORMES | | 13 | SUBPROCESOS CONFORMES |
+| 5 | PRODUCTOS OBSERVADOS | | 14 | SUBPROCESOS OBSERVADOS |
+| 6 | PRODUCTOS SIN REGISTRO | | 15 | AVANCE |
+| 7 | AVANCE | | 16 | ESTADO GENERAL |
+| 8 | ESTADO GENERAL | | 17 | DIAGNÓSTICO |
+| 9 | DIAGNÓSTICO | | 18 | CÓDIGO DE LA HOJA |
+| | | | 19 | CONTRAOBSERVACIÓN |
+
+La última columna no la genera el script: la aporta el rescate de columnas
+manuales (regla 8), con el nombre que el revisor le haya puesto.
+
+**`PRODUCTOS SIN REGISTRO` es un desglose, no una tercera categoría.** Son los
+productos observados que además tienen vacías las columnas C a I, de modo que
+`TOTAL PRODUCTOS = CONFORMES + OBSERVADOS` sigue cumpliéndose y los sin registro
+están contenidos en los observados.
+
+`TOTAL PROCESOS` excluye los `NO APLICA`, que no se puntúan. Los `FALTANTE`
+cuentan como observados de Nivel 0, y el diagnóstico los enumera aparte.
+
+---
+
+## 5.ter Leyenda al pie del resumen — *NUEVA en v8*
+
+Debajo de la tabla, separada por una fila en blanco, la hoja cierra con cuatro
+bloques de leyenda: **tipos de producto** (Final / Salida y Parcial / Registro,
+con su destino en el Anexo 3), **estado de un producto o proceso**, **estado
+general de la facultad** y **código de la hoja**.
+
+La leyenda no interfiere con el rescate de columnas manuales: sus filas no
+llevan nada en las columnas del revisor, y el rescate descarta toda fila cuyas
+celdas manuales estén vacías.
 
 ---
 
@@ -395,6 +503,64 @@ que no se puntúan.
 
 ---
 
+## 9.bis Redacción de las observaciones — *NUEVA en v8*
+
+Toda observación se encabeza con la columna a la que se refiere, en el formato:
+
+```
+Columna B --> CODIFICACIÓN ERRÓNEA. El código que abre la celda...
+Columna D --> Sigla incorrecta "AEI". La regla 3.1 del Anexo 1 normaliza...
+```
+
+Sustituye al formato `Col B — ...` de las versiones anteriores, a pedido del
+revisor. Se aplica a las ocho columnas validadas.
+
+**9.bis.0 Una observación por renglón — NUEVA en v10.**
+
+Las observaciones de una misma fila se separan con un **salto de línea** dentro
+de la celda, no con `||`. Se ordenan por columna:
+
+1. la **columna B**, que es la que identifica la fila;
+2. de la **C a la I**, en el orden de la hoja;
+3. la **observación final**, cuando la hay.
+
+Así se lee la fila 57 de la FCB:
+
+```
+Columna B --> La celda arrastra 2 códigos ("PE.03.01.05_F10", "PE.03.01.03"). Debe quedar un único código seguido de la denominación.
+Columna C --> Tipo de producto vacío. Debe indicarse "Final / Salida" o "Parcial / Registro".
+Columna D --> Acción Estratégica vacía. Debe registrarse el código AE.##.## seguido de la descripción de la acción.
+Columna E --> Actividad Operativa vacía. Registre la actividad operativa del POI que ejecuta este producto.
+Columna F --> Clasificación vacío. Valores admitidos: Regulación · Servicio · Bien.
+Columna G --> Atributo institucional vacío. Valores admitidos: Ente rector · Calidad.
+Columna H --> Variables de calidad sin registrar. Debe aparecer al menos uno de: …
+Columna I --> Criterios de validación sin registrar. Debe aparecer al menos uno de: …
+Observación final --> Para las columnas C a I utilice los desplegables de la hoja.
+```
+
+El salto solo se ve con el **ajuste de texto** activado, de modo que el script lo
+aplica a todo el bloque de datos de las tres hojas y alinea las celdas arriba.
+No basta con ajustar la última columna: el resumen lleva sus dos `DIAGNÓSTICO`
+en medio de la tabla.
+
+**Las observaciones de corridas anteriores no se convierten solas.** El formato
+lo decide quien escribe la celda, de modo que las que quedaron con `||` siguen
+así hasta que se vuelva a auditar. Para no tener que reauditar solo por eso, el
+menú **Auditoría OGPL** incluye *Convertir observaciones antiguas a renglones*,
+que reescribe únicamente las columnas `OBSERVACIONES…` y `DIAGNÓSTICO` de las
+tres hojas y deja intactas las del revisor.
+
+**9.bis.1 Cierre de los productos sin registro — NUEVA en v9.** Un producto con
+las columnas C a I vacías recibe las ocho observaciones de columna y cierra con:
+
+> Observación final --> Para las columnas C a I utilice los desplegables de la hoja.
+
+El hecho de estar sin registro ya se contabiliza en la columna
+`PRODUCTOS SIN REGISTRO` del resumen, de modo que la observación no necesita
+encabezarlo.
+
+---
+
 ## 10. Catálogo de facultades — *NUEVA en v6*
 
 El nombre oficial es el que se publica en el resumen. **No siempre coincide con
@@ -414,3 +580,47 @@ palabras y el número gramatical sí, y por eso se conservan los alias.
 
 La columna `FORMULARIO` del resumen muestra el número oficial y, entre
 paréntesis, el que realmente usa la pestaña cuando no coinciden.
+
+
+---
+
+## 11. Hoja `dashboard` — *NUEVA en v11*
+
+Va dentro del mismo libro y se coloca como primera pestaña. Tres partes:
+
+**11.1 Tablero de cifras.** Seis tarjetas: productos evaluados, conformes,
+observados, productos sin registro, procesos de Nivel 0 conformes y observados.
+
+**11.2 Dos gráficos comparativos.** Barras apiladas por facultad: uno de
+productos (conformes / observados) y otro de procesos de Nivel 0 y subprocesos
+(cuatro series). Los datos que alimentan los gráficos viven en columnas ocultas
+de la misma hoja, para que la tabla visible pueda llevar fórmulas sin afectarlos.
+
+**11.3 Detalle por facultad.** Quince columnas: sigla, facultad, el bloque de
+productos, el de procesos de Nivel 0, el de subprocesos y el código de la hoja.
+
+### Descenso al detalle
+
+**Cada número de la tabla es un enlace** que salta a la fila donde empieza ese
+bloque en su hoja de detalle: los de productos a `DETALLADO_PRODUCTOS_A1`, los de
+procesos y subprocesos a `OBSERVACIONES_DE_PROCESO_A1`. Allí se ven esos
+registros con sus observaciones.
+
+La fórmula es `=HYPERLINK("#gid=<hoja>&range=A<fila>", <número>)`, **con coma**
+como separador: `setValues` interpreta las fórmulas en notación estadounidense y
+las traduce al idioma del libro. Con punto y coma se rompen en configuraciones
+regionales de coma decimal.
+
+### 11.4 Orden de las hojas de detalle
+
+Para que cada número pueda apuntar a una fila concreta, las hojas de detalle se
+ordenan **por facultad y, dentro de cada facultad, los conformes antes que los
+observados**; a igualdad de estado, por su número de fila en el Anexo 1. En la
+hoja de procesos se agrupa además por nivel: primero los de Nivel 0, después los
+subprocesos y al final las catalogaciones.
+
+Así, el bloque de una facultad es un rango continuo: sus conformes empiezan donde
+empieza el bloque y sus observados justo después.
+
+El orden anterior era el del Anexo 1. Se conserva en la columna `FILA` de ambas
+hojas, de modo que puede recuperarse ordenando por ella.

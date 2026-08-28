@@ -3,27 +3,23 @@
  *  AUDITORÍA AUTOMÁTICA DEL ANEXO 1 — INVENTARIO DE PRODUCTOS Y PROCESOS
  *  Oficina de Racionalización — OGPL (UNMSM)
  *
- *  VERSIÓN 6
+ *  VERSIÓN 8
  *  ─────────────────────────────────────────────────────────────────────────────
- *   [C18] Se declaran el nombre oficial y el formulario oficial de cada
- *         facultad. El sufijo `_F##` deja de inferirse de la mayoría cuando hay
- *         un valor oficial declarado.
- *   [C19] Distinción entre dos defectos que antes se confundían:
- *         · pestaña con el formulario de OTRA facultad  → hallazgo de hoja,
- *           reportado una vez en el resumen;
- *         · filas sueltas que se apartan del sufijo dominante → observación por
- *           fila.
- *         Así una pestaña entera mal numerada no genera cientos de
- *         observaciones repetidas.
+ *   [C23] Las observaciones se encabezan "Columna B --> ..." en vez de
+ *         "Col B — ...", a pedido del revisor.
+ *   [C24] `RESUMEN_EJECUTIVO_A1` separa los productos sin registro en su propia
+ *         columna y abre el bloque de procesos en Nivel 0 y subprocesos.
+ *   [C25] La hoja cierra con una leyenda de los tipos de producto y de los
+ *         estados que emplea la auditoría.
  *
- *  Arrastra de la v5: hoja de procesos puntuada, diagnóstico de codificación
- *  errónea, códigos de hasta tres dígitos.
+ *  Arrastra de la v7: vocabulario CONFORME / OBSERVADO, avance sobre criterios
+ *  cumplidos, catálogo oficial de facultades y formularios.
  *
  *  Arrastra de la v4: profundidad de código variable, Nivel 0 por código
  *  embebido o denominación, columna E que admite NINGUNO, y la regla de
  *  MAYÚSCULAS en la denominación de los procesos.
  *
- *  Especificación: reglas/ANEXO-1_reglas-v6.md
+ *  Especificación: reglas/ANEXO-1_reglas-v8.md
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -236,6 +232,10 @@ const CONFIG_A1 = {
     "CUMPLIMIENTO", "CUMPLIMIENTO (%)", "CRITERIOS", "AVANCE", "AVANCE (%)",
     "TOTAL PRODUCTOS", "COMPLETOS", "COMPLETOS (100%)", "PARCIALES",
     "PARCIALES (CON OBS.)", "PENDIENTES", "PENDIENTES (VACÍOS)",
+    "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS", "PRODUCTOS SIN REGISTRO",
+    "TOTAL PROCESOS", "PROCESOS CONFORMES", "PROCESOS OBSERVADOS",
+    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "CÓDIGO DE LA HOJA",
     "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"
   ]
 };
@@ -423,13 +423,13 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
     if (esNivel0 && codigoN0 && principal && principal.base !== codigoN0.base) {
       const sufijoSugerido = sufijoOficial || sufijoDominante;
       const correcto = elegido.codigo + (sufijoSugerido ? "_" + sufijoSugerido : "_F##");
-      obs.push('Col B — CODIFICACIÓN ERRÓNEA. El código que abre la celda, "' +
+      obs.push('Columna B --> CODIFICACIÓN ERRÓNEA. El código que abre la celda, "' +
                principal.completo + '", no corresponde a esta fila: la denominación "' +
                recortar_(denominacion) + '" es la del proceso de Nivel 0 ' + elegido.codigo +
                ', y ese código aparece también dentro de la misma celda ("' + codigoN0.completo +
                '"). Debe quedar un único código: ' + correcto + ' ' + denominacion.toUpperCase() + '.');
     } else {
-      obs.push('Col B — La celda arrastra ' + codigos.length + ' códigos ("' +
+      obs.push('Columna B --> La celda arrastra ' + codigos.length + ' códigos ("' +
                codigos.map(function (c) { return c.completo; }).join('", "') +
                '"). Debe quedar un único código seguido de la denominación.');
     }
@@ -438,7 +438,7 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   // ── Coherencia entre el código y la denominación ──
   if (n0PorNombre && n0PorCodigo && n0PorNombre.codigo !== n0PorCodigo.codigo) {
     checks.coherente = false;
-    obs.push('Col B — Discrepancia entre código y denominación: el código "' +
+    obs.push('Columna B --> Discrepancia entre código y denominación: el código "' +
              n0PorCodigo.codigo + '" corresponde a "' + n0PorCodigo.nombre +
              '", pero la denominación registrada es la de "' + n0PorNombre.codigo +
              ' ' + n0PorNombre.nombre + '". Se toma la denominación; corrija el código.');
@@ -448,7 +448,7 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   const sufijo = principal ? sufijoDe_(principal.completo) : null;
   if (sufijoDominante && sufijo && sufijo !== sufijoDominante) {
     checks.sufijo = false;
-    obs.push('Col B — Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
+    obs.push('Columna B --> Sufijo de formulario incorrecto. Esta fila usa "_' + sufijo +
              '" y el resto de la pestaña usa "_' + sufijoDominante + '". El sufijo ' +
              'identifica el formulario de la facultad y debe ser el mismo en todos ' +
              'los códigos de la hoja.');
@@ -458,7 +458,7 @@ function clasificarFila_(colB, esPadre, sufijoDominante, sufijoOficial) {
   const esProcesoPorCodigo = principal && (esPadre(principal.base) || principal.profundidad < 2);
   if ((esNivel0 || esProcesoPorCodigo) && denominacion && denominacion !== denominacion.toUpperCase()) {
     checks.mayusculas = false;
-    obs.push('Col B — La denominación del proceso debe escribirse íntegramente en ' +
+    obs.push('Columna B --> La denominación del proceso debe escribirse íntegramente en ' +
              'MAYÚSCULAS. Registrada como "' + recortar_(denominacion) + '"; ' +
              'corresponde "' + recortar_(denominacion.toUpperCase()) + '".');
   }
@@ -492,7 +492,7 @@ function validarCodigo_(clasificacion) {
   if (clasificacion.codigo) return { ok: true, obs: "" };
   return {
     ok: false,
-    obs: 'Col B — Código ausente. El producto debe llevar su código jerárquico ' +
+    obs: 'Columna B --> Código ausente. El producto debe llevar su código jerárquico ' +
          '(PE|PM|PS seguido de los niveles y del sufijo _F##) delante de la denominación, ' +
          'p. ej. PE.01.01.01_F01 PLAN ESTRATÉGICO APROBADO.'
   };
@@ -500,41 +500,41 @@ function validarCodigo_(clasificacion) {
 
 function validarTipoProducto_(colC) {
   if (!colC) {
-    return { ok: false, obs: 'Col C — Tipo de producto vacío. Debe indicarse "Final / Salida" o "Parcial / Registro".' };
+    return { ok: false, obs: 'Columna C --> Tipo de producto vacío. Debe indicarse "Final / Salida" o "Parcial / Registro".' };
   }
   const c = colC.toLowerCase();
   if (c.indexOf("final") !== -1 || c.indexOf("parcial") !== -1) return { ok: true, obs: "" };
   return {
     ok: false,
-    obs: 'Col C — "' + recortar_(colC) + '" no identifica el tipo de producto. ' +
+    obs: 'Columna C --> "' + recortar_(colC) + '" no identifica el tipo de producto. ' +
          'Debe contener "Final" (producto de salida del proceso) o "Parcial" (registro intermedio).'
   };
 }
 
 function validarAccionEstrategica_(colD) {
   if (!colD) {
-    return { ok: false, obs: 'Col D — Acción Estratégica vacía. Debe registrarse el código AE.##.## seguido de la descripción de la acción.' };
+    return { ok: false, obs: 'Columna D --> Acción Estratégica vacía. Debe registrarse el código AE.##.## seguido de la descripción de la acción.' };
   }
   if (esValorNulo_(colD)) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" es un marcador de vacío, no una Acción ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" es un marcador de vacío, no una Acción ' +
            'Estratégica. Todo producto se alinea a una AE del PEI; registre AE.##.## + descripción.'
     };
   }
   for (let i = 0; i < CONFIG_A1.SIGLAS_INVALIDAS_D.length; i++) {
     const s = CONFIG_A1.SIGLAS_INVALIDAS_D[i];
-    if (s.regex.test(colD)) return { ok: false, obs: 'Col D — ' + s.motivo + ' CORRECCIÓN: ' + s.correccion };
+    if (s.regex.test(colD)) return { ok: false, obs: 'Columna D --> ' + s.motivo + ' CORRECCIÓN: ' + s.correccion };
   }
 
   const m = colD.match(CONFIG_A1.REGEX_AE_PARSE);
   if (!m) {
-    return { ok: false, obs: 'Col D — "' + recortar_(colD) + '" no corresponde a una Acción Estratégica. Formato exigido: AE.##.## seguido de su descripción.' };
+    return { ok: false, obs: 'Columna D --> "' + recortar_(colD) + '" no corresponde a una Acción Estratégica. Formato exigido: AE.##.## seguido de su descripción.' };
   }
   if (!m[2]) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" tiene numeración incompleta. La Acción ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" tiene numeración incompleta. La Acción ' +
            'Estratégica requiere dos niveles: AE.<objetivo>.<acción>, p. ej. AE.02.01. ' +
            'Un solo nivel identifica el objetivo, no la acción que deriva de él.'
     };
@@ -543,7 +543,7 @@ function validarAccionEstrategica_(colD) {
   if (!CONFIG_A1.REGEX_LETRA.test(descripcion)) {
     return {
       ok: false,
-      obs: 'Col D — "' + recortar_(colD) + '" registra el código pero omite la descripción. ' +
+      obs: 'Columna D --> "' + recortar_(colD) + '" registra el código pero omite la descripción. ' +
            'La regla 3.1 exige el código AE.##.## SEGUIDO del texto de la acción ' +
            '(ej. "AE.02.01 Formación académica de calidad").'
     };
@@ -560,30 +560,30 @@ function validarAccionEstrategica_(colD) {
  */
 function validarActividadOperativa_(colE) {
   if (!colE) {
-    return { ok: false, obs: 'Col E — Actividad Operativa vacía. Registre la actividad operativa del POI que ejecuta este producto.' };
+    return { ok: false, obs: 'Columna E --> Actividad Operativa vacía. Registre la actividad operativa del POI que ejecuta este producto.' };
   }
   if (CONFIG_A1.RECHAZAR_NULOS_EN_E && esValorNulo_(colE)) {
     return {
       ok: false,
-      obs: 'Col E — "' + recortar_(colE) + '" es un marcador de vacío, no una Actividad Operativa.'
+      obs: 'Columna E --> "' + recortar_(colE) + '" es un marcador de vacío, no una Actividad Operativa.'
     };
   }
   if (/^AE[\s.\-]?\d/i.test(colE)) {
     return {
       ok: false,
-      obs: 'Col E — Contiene una Acción Estratégica ("' + recortar_(colE) + '"), que ' +
+      obs: 'Columna E --> Contiene una Acción Estratégica ("' + recortar_(colE) + '"), que ' +
            'corresponde a la columna D. La columna E espera la Actividad Operativa en texto libre.'
     };
   }
   if (colE.length <= 2) {
-    return { ok: false, obs: 'Col E — "' + recortar_(colE) + '" es demasiado breve para ser una Actividad Operativa.' };
+    return { ok: false, obs: 'Columna E --> "' + recortar_(colE) + '" es demasiado breve para ser una Actividad Operativa.' };
   }
   return { ok: true, obs: "" };
 }
 
 function validarListaCerrada_(valor, lista, etiquetaCol, etiquetaCampo) {
   if (!valor) {
-    return { ok: false, obs: etiquetaCol + ' — ' + etiquetaCampo + ' vacío. Valores admitidos: ' + lista.join(" · ") + '.' };
+    return { ok: false, obs: etiquetaCol + ' --> ' + etiquetaCampo + ' vacío. Valores admitidos: ' + lista.join(" · ") + '.' };
   }
   const v = normalizarTexto_(valor);
   if (lista.some(function (x) { return normalizarTexto_(x) === v; })) return { ok: true, obs: "" };
@@ -595,7 +595,7 @@ function validarListaCerrada_(valor, lista, etiquetaCol, etiquetaCampo) {
 
 function validarListaAbierta_(valor, lista, etiquetaCol, etiquetaCampo) {
   if (!valor || esValorNulo_(valor)) {
-    return { ok: false, obs: etiquetaCol + ' — ' + etiquetaCampo + ' sin registrar. Debe aparecer al menos uno de: ' + lista.join(" · ") + '.' };
+    return { ok: false, obs: etiquetaCol + ' --> ' + etiquetaCampo + ' sin registrar. Debe aparecer al menos uno de: ' + lista.join(" · ") + '.' };
   }
   const v = normalizarTexto_(valor);
   if (lista.some(function (x) { return v.indexOf(normalizarTexto_(x)) !== -1; })) return { ok: true, obs: "" };
@@ -656,9 +656,12 @@ function ejecutarAuditoriaAnexo1() {
   CONFIG_A1.FACULTADES.forEach(function (fac) {
     const hoja = localizarHoja_(hojas, fac, yaAsignadas);
     if (!hoja) {
-      resumen.push([fac.sigla, fac.nombre, 0, 0, 0, 0, "0%", "NO INICIADO",
-        "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja cuyo nombre contenga la sigla " + fac.sigla + ".",
-        fac.formulario || "—"]);
+      const sinHoja = "Pestaña no encontrada en el Anexo 1. Verifique que exista una hoja " +
+                      "cuyo nombre contenga la sigla " + fac.sigla + ".";
+      resumen.push([fac.sigla, fac.nombre,
+                    0, 0, 0, 0, "0%", "NO INICIADO", sinHoja,
+                    0, 0, 0, 0, 0, "0%", "NO INICIADO", sinHoja,
+                    fac.formulario || "—"]);
       procesos = procesos.concat(filasNivel0_(fac.sigla, {}));
       return;
     }
@@ -738,9 +741,11 @@ function procesarFacultad_(hoja, fac) {
   const ultimaFila = hoja.getLastRow();
 
   if (ultimaFila < CONFIG_A1.FILA_INICIO) {
+    const vacia = "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + ".";
     return {
-      resumenFila: [sigla, fac.nombre, 0, 0, 0, 0, "0%", "VACÍO",
-                    "Sin datos registrados a partir de la fila " + CONFIG_A1.FILA_INICIO + ".",
+      resumenFila: [sigla, fac.nombre,
+                    0, 0, 0, 0, "0%", "VACÍO", vacia,
+                    0, 0, 0, 0, 0, "0%", "VACÍO", vacia,
                     fac.formulario || "—"],
       detalleFilas: [], procesoFilas: filasNivel0_(sigla, {})
     };
@@ -819,24 +824,32 @@ function procesarFacultad_(hoja, fac) {
       validarTipoProducto_(colC),
       validarAccionEstrategica_(colD),
       validarActividadOperativa_(colE),
-      validarListaCerrada_(colF, CONFIG_A1.TIPOS_ENTREGABLE,      "Col F", "Clasificación"),
-      validarListaCerrada_(colG, CONFIG_A1.ROLES_INSTITUCIONALES, "Col G", "Atributo institucional"),
-      validarListaAbierta_(colH, CONFIG_A1.VARIABLES_CALIDAD,     "Col H", "Variables de calidad"),
-      validarListaAbierta_(colI, CONFIG_A1.CRITERIOS_IMPACTO,     "Col I", "Criterios de validación")
+      validarListaCerrada_(colF, CONFIG_A1.TIPOS_ENTREGABLE,      "Columna F", "Clasificación"),
+      validarListaCerrada_(colG, CONFIG_A1.ROLES_INSTITUCIONALES, "Columna G", "Atributo institucional"),
+      validarListaAbierta_(colH, CONFIG_A1.VARIABLES_CALIDAD,     "Columna H", "Variables de calidad"),
+      validarListaAbierta_(colI, CONFIG_A1.CRITERIOS_IMPACTO,     "Columna I", "Criterios de validación")
     ];
 
     const correctos = checks.filter(function (c) { return c.ok; }).length;
     const obs = checks.filter(function (c) { return !c.ok; }).map(function (c) { return c.obs; })
                       .concat(cls.observaciones);
 
-    const todoVacio = !colC && !colD && !colE && !colF && !colG && !colH && !colI;
-    let estado;
-    if (correctos === TOTAL_CRITERIOS && !cls.observaciones.length) estado = "COMPLETO";
-    else if (todoVacio) estado = "PENDIENTE";
-    else estado = "PARCIAL";
+    // [C20] Dos estados, los mismos que usan los procesos. Un producto sin
+    // registrar es OBSERVADO como cualquier otro; que esté enteramente vacío se
+    // dice en la observación, así el dato no se pierde al desaparecer PENDIENTE.
+    const sinRegistro = !colC && !colD && !colE && !colF && !colG && !colH && !colI;
+    if (sinRegistro) {
+      obs.unshift("PRODUCTO SIN REGISTRAR: las columnas C a I están vacías. " +
+                  "No hay nada que validar más allá del código.");
+    }
+
+    const conforme = correctos === TOTAL_CRITERIOS && !cls.observaciones.length;
+    const estado = conforme ? "CONFORME" : "OBSERVADO";
 
     productos.push({
       estado: estado,
+      correctos: correctos,
+      sinRegistro: sinRegistro,
       fila: [sigla, filaReal, procN0Actual, cls.codigo || "(sin código)", cls.denominacion,
              colC || "(vacío)", estado, Math.round((correctos / TOTAL_CRITERIOS) * 100) + "%",
              correctos + "/" + TOTAL_CRITERIOS,
@@ -844,46 +857,83 @@ function procesarFacultad_(hoja, fac) {
     });
   }
 
-  const total      = productos.length;
-  const completos  = productos.filter(function (p) { return p.estado === "COMPLETO"; }).length;
-  const parciales  = productos.filter(function (p) { return p.estado === "PARCIAL"; }).length;
-  const pendientes = productos.filter(function (p) { return p.estado === "PENDIENTE"; }).length;
+  // ── Bloque de PRODUCTOS ──
+  const totalProd = productos.length;
+  const prodConformes = productos.filter(function (p) { return p.estado === "CONFORME"; }).length;
+  const prodObservados = totalProd - prodConformes;
+  // [C24] Un producto sin registro es el que no tiene NADA en las columnas C a I.
+  // Se marca en la validación, no se deduce del puntaje.
+  const sinRegistro = productos.filter(function (p) { return p.sinRegistro; }).length;
 
-  const avance = total > 0 ? Math.round(((completos + parciales * 0.5) / total) * 100) : 0;
-  let estadoGeneral;
-  if (avance === 100) estadoGeneral = "COMPLETO";
-  else if (avance >= 75) estadoGeneral = "AVANZADO";
-  else if (avance >= 40) estadoGeneral = "EN DESARROLLO";
-  else estadoGeneral = "CRÍTICO";
+  const avanceProd = avanceSobreCriterios_(
+    productos.map(function (p) { return p.correctos; }), TOTAL_CRITERIOS);
 
+  let diagProd = prodConformes + " conformes y " + prodObservados + " observados de " +
+                 totalProd + " productos.";
+  if (sinRegistro) {
+    diagProd += " De los observados, " + sinRegistro +
+                " están sin registro (columnas C a I vacías).";
+  }
+
+  // ── Bloque de PROCESOS ──
   const nivel0 = filasNivel0_(sigla, n0Encontrados);
-  const faltantes = nivel0.filter(function (f) { return f[6] === "FALTANTE"; });
-  const observados = nivel0.concat(subprocesos).filter(function (f) { return f[6] === "OBSERVADO"; });
+  const procesos = nivel0.concat(subprocesos);
+  // Los NO APLICA (PE.03 y PS.08 ausentes) no se puntúan ni se cuentan.
+  const n0Evaluables = nivel0.filter(function (f) { return f[6] !== "NO APLICA"; });
+  const evaluables = n0Evaluables.concat(subprocesos);
 
-  let diagnostico = completos + " completos, " + parciales + " con observaciones, " + pendientes + " pendientes.";
+  const n0Conformes = n0Evaluables.filter(function (f) { return f[6] === "CONFORME"; }).length;
+  const n0Observados = n0Evaluables.length - n0Conformes;
+  const subConformes = subprocesos.filter(function (f) { return f[6] === "CONFORME"; }).length;
+  const subObservados = subprocesos.length - subConformes;
+
+  const faltantes = nivel0.filter(function (f) { return f[6] === "FALTANTE"; });
+
+  const avanceProc = avanceSobreCriterios_(
+    evaluables.map(function (f) { return parseInt(f[8], 10) || 0; }), TOTAL_CRITERIOS_PROCESO);
+
+  let diagProc = "Nivel 0: " + n0Conformes + " conformes y " + n0Observados + " observados de " +
+                 n0Evaluables.length + ". Subprocesos: " + subConformes + " conformes y " +
+                 subObservados + " observados de " + subprocesos.length + ".";
   if (faltantes.length) {
-    diagnostico += " Faltan " + faltantes.length + " procesos de Nivel 0 obligatorios: " +
-                   faltantes.map(function (f) { return f[1]; }).join(", ") + ".";
-  }
-  if (observados.length) {
-    diagnostico += " " + observados.length + " procesos con observaciones de codificación o formato.";
-  }
-  if (!fac.formulario && sufijoDominante) {
-    diagnostico += " Formulario oficial sin declarar para " + sigla +
-                   "; se toma el dominante de la pestaña (_" + sufijoDominante + ").";
+    diagProc += " Faltan " + faltantes.length + " procesos de Nivel 0 obligatorios: " +
+                faltantes.map(function (f) { return f[1]; }).join(", ") + ".";
   }
   if (hojaConFormularioAjeno) {
-    diagnostico += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
-                   sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
-                   sigla + " es _" + fac.formulario + ". Debe corregirse en toda la hoja.";
+    diagProc += " FORMULARIO AJENO: la pestaña usa mayoritariamente el sufijo _" +
+                sufijoDominante + ", que corresponde a otra facultad; el formulario oficial de " +
+                sigla + " es _" + fac.formulario + ". Debe corregirse en toda la hoja.";
   }
 
   return {
-    resumenFila: [sigla, fac.nombre, total, completos, parciales, pendientes, avance + "%",
-                  estadoGeneral, diagnostico, celdaFormulario_(fac, sufijoDominante)],
+    resumenFila: [sigla, fac.nombre,
+                  totalProd, prodConformes, prodObservados, sinRegistro,
+                  avanceProd + "%", estadoGeneral_(avanceProd), diagProd,
+                  evaluables.length, n0Conformes, n0Observados, subConformes, subObservados,
+                  avanceProc + "%", estadoGeneral_(avanceProc), diagProc,
+                  celdaFormulario_(fac, sufijoDominante)],
     detalleFilas: productos.map(function (p) { return p.fila; }),
-    procesoFilas: nivel0.concat(subprocesos)
+    procesoFilas: procesos
   };
+}
+
+/**
+ * [C22] Avance sobre los criterios realmente cumplidos, no sobre una
+ * ponderación por estado. Con dos estados —conforme y observado— repartir medio
+ * punto a todo lo observado daría lo mismo a un producto al que le falta un
+ * criterio que a uno enteramente vacío.
+ */
+function avanceSobreCriterios_(cumplidos, porFila) {
+  if (!cumplidos.length) return 0;
+  const suma = cumplidos.reduce(function (a, b) { return a + b; }, 0);
+  return Math.round((suma / (cumplidos.length * porFila)) * 100);
+}
+
+function estadoGeneral_(avance) {
+  if (avance === 100) return "CONFORME";
+  if (avance >= 75) return "AVANZADO";
+  if (avance >= 40) return "EN DESARROLLO";
+  return "CRÍTICO";
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -891,10 +941,9 @@ function procesarFacultad_(hoja, fac) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 const COLORES_ESTADO = {
-  "COMPLETO": "#d9ead3", "AVANZADO": "#cfe2f3", "EN DESARROLLO": "#fff2cc",
-  "CRÍTICO": "#f4cccc", "PARCIAL": "#fff2cc", "PENDIENTE": "#fce5cd",
+  "CONFORME": "#d9ead3", "AVANZADO": "#cfe2f3", "EN DESARROLLO": "#fff2cc",
+  "OBSERVADO": "#fff2cc", "CRÍTICO": "#f4cccc",
   "NO INICIADO": "#f4cccc", "VACÍO": "#f4cccc",
-  "CONFORME": "#d9ead3", "OBSERVADO": "#fff2cc",
   "NO APLICA": "#efefef", "FALTANTE": "#f4cccc"
 };
 
@@ -914,8 +963,15 @@ function escribirEnDashboard_(resumen, detalle, procesos) {
   const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
 
   volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1",
-    ["FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "COMPLETOS", "PARCIALES", "PENDIENTES", "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO", "FORMULARIO"],
+    ["FACULTAD", "NOMBRE",
+     "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS", "PRODUCTOS SIN REGISTRO",
+     "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO",
+     "TOTAL PROCESOS", "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+     "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS",
+     "AVANCE", "ESTADO GENERAL", "DIAGNÓSTICO",
+     "CÓDIGO DE LA HOJA"],
     resumen, 7, "#1c4587", function (f) { return f[0]; });
+  escribirLeyenda_(ss.getSheetByName("RESUMEN_EJECUTIVO_A1"), resumen.length);
 
   volcarHoja_(ss, "DETALLADO_PRODUCTOS_A1",
     ["FACULTAD", "FILA", "PROCESO NIVEL 0", "CÓDIGO PRODUCTO", "NOMBRE PRODUCTO", "TIPO", "ESTADO", "CUMPLIMIENTO", "CRITERIOS", "OBSERVACIONES Y CORRECCIONES"],
@@ -1017,6 +1073,65 @@ function volcarHoja_(ss, nombre, encabezados, filas, idxEstado, colorCabecera, c
   hoja.autoResizeColumns(1, Math.max(1, nGen - 1));
   hoja.setColumnWidth(nGen, 520);
   for (let i = 0; i < manuales.length; i++) hoja.setColumnWidth(nGen + 1 + i, 340);
+}
+
+/**
+ * [C25] Leyenda al pie del resumen ejecutivo.
+ *
+ * Se escribe debajo de la tabla, separada por una fila en blanco. No estorba al
+ * rescate de columnas manuales: sus filas no llevan nada en las columnas del
+ * revisor, y el rescate descarta toda fila cuyas celdas manuales estén vacías.
+ */
+function escribirLeyenda_(hoja, numFilas) {
+  if (!hoja) return;
+
+  const bloques = [
+    ["TIPOS DE PRODUCTO", "Se registran en la columna C del Anexo 1.", [
+      ["Final / Salida",
+       "Producto que sale del proceso y llega al beneficiario. En el Anexo 3 va en las Salidas de la ficha SIPOC."],
+      ["Parcial / Registro",
+       "Producto intermedio que documenta la ejecución: informes, actas, listas. En el Anexo 3 va en la sección de Registros."]
+    ]],
+    ["ESTADO DE UN PRODUCTO O PROCESO", "Columnas ESTADO de las hojas de detalle.", [
+      ["CONFORME", "Cumple todos sus criterios: 8 en un producto, 5 en un proceso."],
+      ["OBSERVADO", "Incumple al menos un criterio. La fila explica cuál y cómo corregirlo."],
+      ["SIN REGISTRO", "Producto observado que además tiene vacías las columnas C a I. Se cuenta aparte en el resumen."],
+      ["FALTANTE", "Proceso de Nivel 0 obligatorio que no está registrado en la pestaña."],
+      ["NO APLICA", "PE.03 y PS.08 ausentes. No se puntúan ni cuentan como incumplimiento."]
+    ]],
+    ["ESTADO GENERAL DE LA FACULTAD", "Se calcula sobre los criterios cumplidos, no sobre el número de filas conformes.", [
+      ["CONFORME", "Avance del 100 %."],
+      ["AVANZADO", "Avance igual o mayor al 75 %."],
+      ["EN DESARROLLO", "Avance igual o mayor al 40 %."],
+      ["CRÍTICO", "Avance menor al 40 %."]
+    ]],
+    ["CÓDIGO DE LA HOJA", "Sufijo _F## que deben llevar todos los códigos de la pestaña.", [
+      ["F##", "Coincide con el formulario oficial de la facultad."],
+      ["F## (la hoja usa F@@)", "La pestaña usa el formulario de otra facultad. Debe corregirse en toda la hoja."]
+    ]]
+  ];
+
+  let fila = numFilas + 3;
+  hoja.getRange(fila, 1).setValue("LEYENDA")
+      .setFontWeight("bold").setFontSize(12);
+  fila += 2;
+
+  bloques.forEach(function (b) {
+    hoja.getRange(fila, 1, 1, 3).merge().setValue(b[0])
+        .setFontWeight("bold").setBackground("#1c4587").setFontColor("#ffffff");
+    fila++;
+    hoja.getRange(fila, 1, 1, 3).merge().setValue(b[1])
+        .setFontStyle("italic").setFontColor("#666666");
+    fila++;
+
+    const filas = b[2];
+    hoja.getRange(fila, 1, filas.length, 2).setValues(filas);
+    hoja.getRange(fila, 1, filas.length, 1).setFontWeight("bold");
+    hoja.getRange(fila, 2, filas.length, 1).setWrap(true);
+    fila += filas.length + 1;
+  });
+
+  hoja.setColumnWidth(2, Math.max(hoja.getColumnWidth(2), 520));
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

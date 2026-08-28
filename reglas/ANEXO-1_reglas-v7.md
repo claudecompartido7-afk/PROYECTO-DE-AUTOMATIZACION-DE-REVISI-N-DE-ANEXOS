@@ -1,11 +1,12 @@
 # ANEXO 1 (A1) — Inventario de Productos y Procesos
-## Reglas de validación consolidadas — v6
+## Reglas de validación consolidadas — v7
 
 > **Origen.** v1 = hoja `REGLAS DE AUTOMATIZACIÓN` (solo filas de Anexo 1).
 > v2 = script `Anexo1_Auditoria.gs`. v3 = consolidación verificada contra la
 > estructura real. v4 = incorpora las contra observaciones del revisor. v5 =
-> puntúa cada proceso en una fila. **v6 = fija el catálogo oficial de facultades
-> y separa el defecto de hoja del defecto de fila.**
+> puntúa cada proceso en una fila. v6 = fija el catálogo oficial de facultades.
+> **v7 = unifica el vocabulario en CONFORME / OBSERVADO y reestructura el
+> resumen ejecutivo en dos bloques.**
 >
 > **Criterio de autoridad:** cuando la hoja de reglas y la hoja real se
 > contradicen, manda la **hoja real**. La hoja de reglas v1 quedó desactualizada
@@ -200,22 +201,71 @@ El criterio estricto de la v3 queda disponible en
 
 ---
 
-## 5. Estados y avance — *sin cambios*
+## 5. Estados y avance — *reescrita en v7*
 
-| Estado del producto | Condición |
+**5.1 Dos estados, los mismos para productos y para procesos.**
+
+| Estado | Condición |
 |---|---|
-| COMPLETO | 8/8 criterios |
-| PENDIENTE | Solo col B; C–I vacías |
-| PARCIAL | Cualquier otro caso |
+| CONFORME | cumple todos sus criterios (8 en productos, 5 en procesos) |
+| OBSERVADO | cualquier otro caso |
 
-`Avance % = (COMPLETOS + 0,5 × PARCIALES) / TOTAL`
+Desaparecen `COMPLETO`, `PARCIAL` y `PENDIENTE`. Un producto **sin registrar**
+—columnas C a I vacías— es OBSERVADO como cualquier otro; su condición se
+declara en la observación:
 
-| Estado de la facultad | Avance |
+> PRODUCTO SIN REGISTRAR: las columnas C a I están vacías. No hay nada que
+> validar más allá del código.
+
+Así el dato no se pierde al retirarse el estado PENDIENTE, y el resumen informa
+cuántos observados están en esa situación.
+
+Los procesos conservan además `FALTANTE` (Nivel 0 obligatorio ausente) y
+`NO APLICA` (PE.03 y PS.08 ausentes), que no son estados de cumplimiento sino de
+existencia.
+
+**5.2 El avance se mide sobre criterios cumplidos, no sobre estados.**
+
+```
+Avance % = Σ criterios cumplidos / (nº de filas × criterios por fila)
+```
+
+Productos sobre 8 criterios, procesos sobre 5. La fórmula anterior repartía
+medio punto a cada parcial; con dos estados eso daría lo mismo a un producto al
+que le falta un criterio que a uno enteramente vacío. Medido sobre criterios,
+un producto con 7 de 8 aporta 88 % y uno con 1 de 8 aporta 13 %.
+
+**5.3 Estado general de la facultad**
+
+| Estado | Avance |
 |---|---|
-| COMPLETO | 100 % |
+| CONFORME | 100 % |
 | AVANZADO | ≥ 75 % |
 | EN DESARROLLO | ≥ 40 % |
 | CRÍTICO | < 40 % |
+
+---
+
+## 5.bis Hoja `RESUMEN_EJECUTIVO_A1` — *reestructurada en v7*
+
+Dos bloques simétricos, productos y procesos, con las mismas cinco medidas:
+
+| # | Columna | | # | Columna |
+|---|---|---|---|---|
+| 1 | FACULTAD | | 9 | TOTAL PROCESOS |
+| 2 | NOMBRE | | 10 | PROCESOS CONFORMES |
+| 3 | TOTAL PRODUCTOS | | 11 | PROCESOS OBSERVADOS |
+| 4 | PRODUCTOS CONFORMES | | 12 | AVANCE |
+| 5 | PRODUCTOS OBSERVADOS | | 13 | ESTADO GENERAL |
+| 6 | AVANCE | | 14 | DIAGNÓSTICO |
+| 7 | ESTADO GENERAL | | 15 | FORMULARIO |
+| 8 | DIAGNÓSTICO | | 16 | CONTRA OBSERVACIÓN |
+
+La columna 16 no la genera el script: la aporta el rescate de columnas manuales
+(regla 8), igual que en las otras hojas.
+
+`TOTAL PROCESOS` excluye los `NO APLICA`, que no se puntúan. `PROCESOS
+OBSERVADOS` incluye los `FALTANTE`, y el diagnóstico los enumera aparte.
 
 ---
 
