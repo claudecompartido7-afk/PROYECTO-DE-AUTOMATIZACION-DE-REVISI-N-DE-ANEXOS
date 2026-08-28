@@ -121,6 +121,15 @@ avance:
 
 Una fila enteramente vacía es separación de la tabla, no un hueco.
 
+**Celdas combinadas.** La hoja combina verticalmente el proceso sobre varias
+filas de salidas —lo habitual en las facultades de nivel 2, donde `PM.01.04`
+agrupa a `PM.01.04.01`, `PM.01.04.02`… con productos `PM.01.04.01.01`—.
+`getValues()` entrega el valor solo en la esquina del rango combinado y deja el
+resto en blanco, así que esas filas parecían no tener proceso. Antes de revisar,
+los rangos combinados se expanden en memoria (`getMergedRanges()`), de modo que
+un hueco solo se reporta cuando la celda está **realmente** vacía y sin
+combinar. La hoja original no se modifica.
+
 **1.2.2 Código y denominación en celdas de varias líneas.** Las celdas de
 proveedores, entradas, salidas y beneficiarios traen **un código por línea**, y
 la celda contigua **una denominación por línea**. Cada código se empareja con la
@@ -215,8 +224,10 @@ pueden **convivir códigos de 2 y de 3 niveles**. Ocurre en una ficha concreta, 
 en todas.
 
 **4.1** Para las facultades listadas en `CONFIG_A3.FACULTADES_NIVEL_2` se admite
-**un nivel adicional** en Procesos, Salidas y Registros. No es error: queda
-anotado como excepción en el detalle y en el resumen.
+**un nivel adicional** en Procesos, Salidas y Registros. No es error, y por eso
+**no se anota fila por fila**: es lo normal en esas facultades, y repetir la
+misma frase en cada código llenaba el detalle de ruido. Se cuenta y se menciona
+**una sola vez** por ficha, en el resumen.
 
 **4.2** La excepción **no** alcanza al campo Código de la Definición (punto 1.1),
 que sigue exigiendo un solo grupo numérico.

@@ -35,7 +35,7 @@ module.exports = {
   peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
   emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_,
-  claveDenominacion_, leerCatalogoAnexo1_
+  claveDenominacion_, leerCatalogoAnexo1_, expandirCombinadas_
 };
 module.exports.SpreadsheetApp = SpreadsheetApp;
 `;
@@ -371,8 +371,12 @@ bloque("Ficha con defectos", function () {
     !F2.detalle.some(function (d) {
       return d.campo === "Registros" && d.estructura === "No";
     }));
-  chequear("y queda anotado como excepción de nivel 2",
-    F2.notas.some(function (n) { return n.indexOf("nivel 2") !== -1; }));
+  chequear("y se cuenta como excepción de nivel 2, una sola vez por código",
+    F2.excepcionesNivel2 >= 1);
+  chequear("sin repetir la misma frase en cada fila del detalle",
+    F2.detalle.filter(function (d) {
+      return d.observacion.indexOf("nivel 2") !== -1;
+    }).length === 0);
 });
 
 bloque("Ubicación de cada campo revisado", function () {
@@ -516,6 +520,41 @@ bloque("Localización de la pestaña del Anexo 1", function () {
     M.claveDenominacion_("- PLAN OPERATIVO.") === M.claveDenominacion_("PLAN OPERATIVO"));
   chequear("pero dos productos distintos siguen siendo distintos",
     M.claveDenominacion_("PLAN OPERATIVO") !== M.claveDenominacion_("PLAN ESTRATEGICO"));
+});
+
+bloque("Cotejo de los registros contra el Anexo 1", function () {
+  // Los registros vienen como los beneficiarios: un código por línea con su
+  // denominación. Atribuirles el texto entero de la celda hacía fallar el
+  // cotejo de todos ellos aunque estuvieran bien en ambos anexos.
+  const pares = M.emparejarCodigosYDenominaciones_(
+    "PM.01.01.02.05_F02 CONSTANCIA OFICIAL DE AYUDANTÍA\n" +
+    "PM.01.01.03.01_F02 SÍLABOS DE CURSOS DE PREGRADO", "");
+  chequear("se separan los dos registros", pares.length === 2);
+  chequear("cada uno con su denominación",
+    pares[0].denominacion === "CONSTANCIA OFICIAL DE AYUDANTÍA" &&
+    pares[1].denominacion === "SÍLABOS DE CURSOS DE PREGRADO");
+
+  const anexo1 = {
+    disponible: true, hoja: "F02_FDCP",
+    catalogo: {
+      "PM.01.01.02.05_F02": { denominacion: "CONSTANCIA OFICIAL DE AYUDANTÍA", tipo: "Parcial / Registro" },
+      "PM.01.01.03.01_F02": { denominacion: "SÍLABOS DE CURSOS DE PREGRADO", tipo: "Parcial / Registro" }
+    }
+  };
+  const cotejo = M.construirCotejo_(pares.map(function (par) {
+    return { tipo: "Registro", codigo: par.codigo, denominacion: par.denominacion, ficha: 4 };
+  }), anexo1);
+  chequear("los dos registros cotejan contra el Anexo 1",
+    cotejo.every(function (c) { return c.existe === "Sí"; }));
+  chequear("y no queda observación", cotejo.every(function (c) { return c.observacion === ""; }));
+
+  // Cómo fallaba antes: el texto entero de la celda como denominación de ambos.
+  const comoAntes = M.construirCotejo_(pares.map(function (par) {
+    return { tipo: "Registro", codigo: par.codigo, ficha: 4,
+             denominacion: "CONSTANCIA OFICIAL DE AYUDANTÍA SÍLABOS DE CURSOS DE PREGRADO" };
+  }), anexo1);
+  chequear("con la denominación de toda la celda, el cotejo fallaba",
+    comoAntes.every(function (c) { return c.existe !== "Sí"; }));
 });
 
 bloque("Hoja 5 — cotejo contra el Anexo 1", function () {
@@ -703,6 +742,59 @@ bloque("Producto final obligatorio", function () {
     !g.detalle.some(function (d) {
       return d.severidad === "critico" && d.campo.indexOf("Productos finales") !== -1;
     }));
+});
+
+bloque("Celdas combinadas — el proceso que abarca varias filas", function () {
+  function rangoCombinado(fila, col, filas, cols) {
+    return {
+      getRow: function () { return fila; }, getColumn: function () { return col; },
+      getNumRows: function () { return filas; }, getNumColumns: function () { return cols; }
+    };
+  }
+
+  // getValues() deja en blanco todo el rango combinado salvo la esquina: así
+  // llega una columna "Proceso" combinada sobre tres filas de salidas.
+  const crudo = [
+    ["PM.01.04_F02", "GESTIÓN DE GRADOS", "PM.01.04.01.01_F02", "REGLAMENTO INTERNO"],
+    ["", "", "PM.01.04.01.02_F02", "SÍLABOS DE PREGRADO"],
+    ["", "", "PM.01.04.02.01_F02", "RESOLUCIONES DECANALES"]
+  ];
+  // Dos combinaciones verticales independientes: el código y su denominación.
+  const expandido = M.expandirCombinadas_(
+    crudo, [rangoCombinado(1, 1, 3, 1), rangoCombinado(1, 2, 3, 1)], 1, 1);
+
+  chequear("la esquina conserva su valor", expandido[0][0] === "PM.01.04_F02");
+  chequear("la segunda fila hereda el proceso", expandido[1][0] === "PM.01.04_F02");
+  chequear("y la tercera también", expandido[2][0] === "PM.01.04_F02");
+  chequear("la denominación combinada también se arrastra",
+    expandido[2][1] === "GESTIÓN DE GRADOS");
+  chequear("lo que no está combinado no se toca",
+    expandido[1][2] === "PM.01.04.01.02_F02");
+  chequear("la matriz original no se modifica", crudo[1][0] === "");
+  chequear("sin combinaciones devuelve lo mismo",
+    M.expandirCombinadas_(crudo, [], 1, 1)[1][0] === "");
+  chequear("una combinación de varias columnas lleva el único valor que tiene",
+    M.expandirCombinadas_([["PE.01_F02", ""], ["", ""]],
+                          [rangoCombinado(1, 1, 2, 2)], 1, 1)[1][1] === "PE.01_F02");
+  chequear("un ancla que solo dice \"X\" cuenta como vacía y no se propaga",
+    M.expandirCombinadas_([["X", ""], ["", ""]], [rangoCombinado(1, 1, 2, 2)], 1, 1)[1][1] === "");
+  chequear("un rango combinado vacío no propaga nada",
+    M.expandirCombinadas_([["", "x"], ["", ""]], [rangoCombinado(1, 1, 2, 1)], 1, 1)[1][0] === "");
+
+  // El falso positivo que motivó el arreglo: filas 89, 92, 100 y 105 de la FDCP.
+  const conMerge = V.map(function (fila) { return fila.slice(); });
+  conMerge[10][5] = ""; conMerge[10][6] = "";        // el proceso viene combinado desde arriba
+  const sinExpandir = M.revisarFicha_(Object.assign({}, CTX, { valores: conMerge }), BLOQUES[0], 1);
+  chequear("sin expandir, la fila parece no tener proceso",
+    sinExpandir.detalle.some(function (d) { return d.campo === "Proceso de la salida"; }));
+
+  const expandidoV = M.expandirCombinadas_(
+    conMerge, [rangoCombinado(10, 6, 2, 1), rangoCombinado(10, 7, 2, 1)], 1, 1);
+  const conExpansion = M.revisarFicha_(Object.assign({}, CTX, { valores: expandidoV }), BLOQUES[0], 1);
+  chequear("expandiendo la combinación, el falso positivo desaparece",
+    !conExpansion.detalle.some(function (d) { return d.campo === "Proceso de la salida"; }));
+  chequear("y tampoco se inventa un producto final faltante",
+    !conExpansion.detalle.some(function (d) { return d.campo === "Producto final del proceso"; }));
 });
 
 bloque("Coherencia fila por fila de la descripción", function () {

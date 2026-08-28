@@ -710,6 +710,38 @@ function catalogoDeEtiquetas_() {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /**
+ * Devuelve una copia de la matriz de valores con las CELDAS COMBINADAS
+ * expandidas: el valor de la celda ancla se repite en todas las celdas del
+ * rango combinado.
+ *
+ * `getValues()` entrega el valor solo en la esquina superior izquierda del
+ * rango y deja el resto en blanco. Como la hoja usa combinaciones verticales
+ * —un proceso que abarca varias filas de salidas—, esas filas parecían no
+ * tener proceso y se reportaba "producto final sin proceso" en filas que están
+ * perfectamente bien. Expandiendo el valor, un hueco solo es un hueco cuando la
+ * celda está realmente vacía y sin combinar.
+ */
+function expandirCombinadas_(valores, rangosCombinados, filaBase, colBase) {
+  const copia = valores.map(function (fila) { return fila.slice(); });
+  if (!rangosCombinados || !rangosCombinados.length) return copia;
+
+  rangosCombinados.forEach(function (rango) {
+    const f0 = rango.getRow() - filaBase;
+    const c0 = rango.getColumn() - colBase;
+    const filas = rango.getNumRows();
+    const cols = rango.getNumColumns();
+    if (f0 < 0 || c0 < 0 || f0 >= copia.length || c0 >= (copia[f0] || []).length) return;
+
+    const ancla = copia[f0][c0];
+    if (esVacio_(ancla)) return;
+    for (let f = f0; f < f0 + filas && f < copia.length; f++) {
+      for (let c = c0; c < c0 + cols && c < copia[f].length; c++) copia[f][c] = ancla;
+    }
+  });
+  return copia;
+}
+
+/**
  * Comprueba, fila por fila, que las cinco columnas de la descripción se
  * correspondan entre sí. Cada fila con datos aporta dos criterios al avance:
  * el par proveedor ↔ entrada y el par proceso ↔ salida.
@@ -832,6 +864,7 @@ function revisarFicha_(ctx, bloque, numero) {
     faltantes: [],
     erroresCodificacion: 0,
     notas: [],
+    excepcionesNivel2: 0,  // códigos con un nivel de más, válidos en estas facultades
     fueraDeFuente: 0,
     salidas: [],          // productos finales CODIFICADOS en la columna H
     salidasDeclaradas: 0, // celdas con texto en la columna H, tengan código o no
@@ -925,10 +958,9 @@ function revisarFicha_(ctx, bloque, numero) {
              r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
              { fila: pos.fila, col: v.col }, severidadDeErrorDeCodigo_(r.errores));
     } else {
-      anotar('Definición', def.campo, v.valor, 'Sí', 'Sí',
-             r.notas.map(function (n) { return n.motivo; }).join(' | '),
+      anotar('Definición', def.campo, v.valor, 'Sí', 'Sí', '',
              { fila: pos.fila, col: v.col });
-      r.notas.forEach(function (n) { ficha.notas.push(def.campo + ': ' + n.motivo); });
+      ficha.excepcionesNivel2 += r.notas.length;
     }
   });
 
@@ -989,10 +1021,10 @@ function revisarFicha_(ctx, bloque, numero) {
                  r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
                  { fila: f, col: c }, severidadDeErrorDeCodigo_(r.errores));
         } else if (r.notas.length) {
-          r.notas.forEach(function (n) { ficha.notas.push(col.campo + ': ' + n.motivo); });
-          anotar('Descripción', col.campo, celda, 'Sí', 'Sí',
-                 r.notas.map(function (n) { return n.motivo; }).join(' | '),
-                 { fila: f, col: c });
+          // La excepción de nivel 2 es lo NORMAL en estas facultades: se cuenta
+          // una vez para el resumen en lugar de repetirla en cada código, que
+          // llenaba el detalle con la misma frase veinte veces.
+          ficha.excepcionesNivel2 += r.notas.length;
         }
         // Registro maestro (reglas 2, 3 y 6) y cotejo con el Anexo 1 (regla 5).
         r.codigos.forEach(function (cod) {
@@ -1108,15 +1140,16 @@ function revisarFicha_(ctx, bloque, numero) {
              r.errores.map(function (e) { return e.motivo + ' ' + e.correccion; }).join(' | '),
              { fila: filaHallada, col: colValor }, severidadDeErrorDeCodigo_(r.errores));
     } else {
-      anotar('Ejecución', def.campo, valor, 'Sí', 'Sí',
-             r.notas.map(function (n) { return n.motivo; }).join(' | '),
+      anotar('Ejecución', def.campo, valor, 'Sí', 'Sí', '',
              { fila: filaHallada, col: colValor });
-      r.notas.forEach(function (n) { ficha.notas.push(def.campo + ': ' + n.motivo); });
+      ficha.excepcionesNivel2 += r.notas.length;
     }
     // Regla 7: los registros se cotejan contra los productos parciales del A1.
-    r.codigos.forEach(function (cod) {
-      cotejo.push({ tipo: 'Registro', codigo: cod,
-                    denominacion: denominacionDeA3_(valor), ficha: numero });
+    // Cada registro con SU denominación: la celda trae varios, uno por línea, y
+    // atribuirles el texto entero hacía fallar el cotejo de todos ellos.
+    emparejarCodigosYDenominaciones_(valor, V[filaHallada][colValor + 1]).forEach(function (par) {
+      cotejo.push({ tipo: 'Registro', codigo: par.codigo,
+                    denominacion: par.denominacion, ficha: numero });
     });
   });
 
@@ -1662,9 +1695,15 @@ function aplicarConfigDeHoja_(libro) {
  */
 function revisarFacultad_(facultad) {
   const rango = facultad.hoja.getDataRange();
-  const valores = rango.getValues();
+  const crudos = rango.getValues();
   let fuentes = null;
   try { fuentes = rango.getFontFamilies(); } catch (e) { fuentes = null; }
+
+  // Las combinaciones se resuelven una sola vez por pestaña, en memoria: la
+  // hoja original no se toca.
+  let combinadas = [];
+  try { combinadas = rango.getMergedRanges(); } catch (e) { combinadas = []; }
+  const valores = expandirCombinadas_(crudos, combinadas, rango.getRow(), rango.getColumn());
 
   // El número del nombre de la pestaña manda sobre el catálogo: es el
   // formulario que deben llevar todos los códigos de esta facultad.
@@ -1716,7 +1755,7 @@ function revisarFacultad_(facultad) {
     if (!ficha) return;
     ficha.detalle.push({
       ficha: ficha.numero, nombre: ficha.nombre, seccion: 'Anexo 1',
-      campo: c.tipo + ' no cotejada', fila: '', celda: '',
+      campo: 'Cotejo Anexo 1 — ' + c.tipo, fila: '', celda: '',
       codigo: c.codigo, estructura: 'N/A', completo: 'Sí',
       observacion: c.observacion, severidad: sev
     });
@@ -1820,7 +1859,10 @@ function escribirResultado_(ss, facultades) {
         sugerencias.push('Regla 1: uniformice ' + f.fueraDeFuente + ' celda(s) a fuente ' +
                          CONFIG_A3.FUENTE_OBLIGATORIA + '.');
       }
-      if (f.notas.length) sugerencias.push('Excepción de nivel 2 admitida: ' + f.notas.slice(0, 3).join('; ') + '.');
+      if (f.excepcionesNivel2) {
+        sugerencias.push(f.excepcionesNivel2 + ' código(s) con un nivel adicional, admitidos por ' +
+                         'tratarse de una facultad que trabaja procesos y productos de nivel 2.');
+      }
       if (!sugerencias.length) sugerencias.push('Sin observaciones.');
       resumen.push([fac.sigla, fac.nombre, f.numero + '. ' + f.nombre, f.codigo,
                     f.completa ? 'Sí' : 'No', f.avance / 100, f.salidas.length,
