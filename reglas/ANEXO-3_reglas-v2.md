@@ -189,6 +189,16 @@ la fuente con la que se escribe el archivo de salida.
 simétricos: un mismo código usado con denominaciones distintas, y una misma
 denominación registrada con códigos distintos.
 
+**3.2.0 Pestaña del Anexo 1.** El Anexo 1 se renombró igual que el Anexo 3:
+sus pestañas son también `F##_SIGLA`. La localización prueba primero ese formato
+y solo después el antiguo (`2. FDCP`). Ojo con el guion bajo: en una expresión
+regular es carácter de palabra, así que `\bFDCP\b` **no** casa dentro de
+`F02_FDCP`; hay que normalizarlo a espacio antes de comparar. Cuando la pestaña
+no aparece, el motivo enumera las pestañas que sí tiene el Anexo 1.
+
+Las denominaciones se comparan ignorando comillas, guiones y puntuación:
+`PLAN ESTRATÉGICO "FDCP"` y `PLAN ESTRATEGICO FDCP` son el mismo producto.
+
 **3.2 Cotejo con el Anexo 1 (reglas 5 y 7).** Se distinguen tres desenlaces:
 `Sí`, `Sí (denominación distinta)` — con la denominación del Anexo 1
 transcrita — y `No`. Si el Anexo 1 no se puede leer, se reporta

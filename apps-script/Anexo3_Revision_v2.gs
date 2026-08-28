@@ -267,6 +267,16 @@ function normalizar_(txt) {
     .replace(/\s+/g, ' ').replace(/[:.]+$/, '');
 }
 
+/**
+ * Forma canónica de una denominación, para comparar la del Anexo 3 con la del
+ * Anexo 1. Se ignoran comillas, guiones y puntuación: `PLAN ESTRATÉGICO "FM"` y
+ * `PLAN ESTRATEGICO FM` son el mismo producto escrito de dos maneras, y
+ * marcarlos como distintos solo genera ruido.
+ */
+function claveDenominacion_(txt) {
+  return normalizar_(txt).replace(/[^A-Z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 function normalizarCodigoA3_(txt) {
   return (txt === null || txt === undefined ? '' : txt).toString().trim().toUpperCase()
     .replace(/\s+/g, '').replace(/[–—]/g, '-');
@@ -569,7 +579,13 @@ function filtrarFacultades_(facultades, filtro) {
 
 /** Sigla de la facultad a partir del nombre de la pestaña ("2.FDCP" → FDCP). */
 function siglaDePestana_(nombrePestana) {
-  const n = normalizar_(nombrePestana).replace(/^\d+\s*[.\-]?\s*/, '');
+  // El guion bajo NO es separador para \b (es carácter de palabra), así que se
+  // normaliza a espacio antes de comparar: sin esto, "F02_FDCP" no coincidía
+  // con ninguna sigla y la pestaña del Anexo 1 quedaba sin localizar.
+  const n = normalizar_(nombrePestana)
+    .replace(/[_\-.]+/g, ' ')
+    .replace(/^\d+\s*/, '')
+    .trim();
   let exacta = null;
   let contenida = null;
   CONFIG_A3.FACULTADES.forEach(function (f) {
@@ -1378,12 +1394,28 @@ function leerCatalogoAnexo1_(sigla) {
   try {
     const libro = SpreadsheetApp.openById(CONFIG_A3.ANEXO1_SHEET_ID);
     if (CONFIG_A3.ANEXO1_TAB_NAME) hoja = libro.getSheetByName(CONFIG_A3.ANEXO1_TAB_NAME);
+
+    // El Anexo 1 se renombró igual que el Anexo 3: primero se busca el formato
+    // vigente `F##_SIGLA` y solo después el antiguo `1. FM`.
+    if (!hoja) {
+      libro.getSheets().forEach(function (h) {
+        const f = leerPestanaFacultad_(h.getName());
+        if (!hoja && f && f.sigla === sigla) hoja = h;
+      });
+    }
     if (!hoja) {
       libro.getSheets().forEach(function (h) {
         if (!hoja && siglaDePestana_(h.getName()) === sigla) hoja = h;
       });
     }
-    if (!hoja) return { disponible: false, motivo: 'No se ubicó la pestaña de ' + sigla + ' en el Anexo 1.', catalogo: catalogo };
+    if (!hoja) {
+      return {
+        disponible: false,
+        motivo: 'No se ubicó la pestaña de ' + sigla + ' en el Anexo 1. Pestañas del Anexo 1: ' +
+                libro.getSheets().map(function (h) { return '"' + h.getName() + '"'; }).join(', ') + '.',
+        catalogo: catalogo
+      };
+    }
 
     const datos = hoja.getRange(1, 2, hoja.getLastRow(), 2).getValues();  // B y C
     datos.forEach(function (fila) {
@@ -1426,7 +1458,7 @@ function construirCotejo_(entradas, anexo1) {
         observacion = f.tipo === 'Registro'
           ? 'Regla 7: producto parcial no registrado en el Anexo 1. Debe incorporarse con la misma denominación en ambos anexos.'
           : 'Regla 5: la salida no figura en el Anexo 1. Use la codificación y denominación ya establecidas allí.';
-      } else if (f.denominacion && normalizar_(f.denominacion) !== normalizar_(enA1.denominacion)) {
+      } else if (f.denominacion && claveDenominacion_(f.denominacion) !== claveDenominacion_(enA1.denominacion)) {
         existe = 'Sí (denominación distinta)';
         observacion = 'El Anexo 1 lo denomina "' + recortarA3_(enA1.denominacion, 70) +
                       '". Debe consignarse la misma denominación en ambos anexos.';

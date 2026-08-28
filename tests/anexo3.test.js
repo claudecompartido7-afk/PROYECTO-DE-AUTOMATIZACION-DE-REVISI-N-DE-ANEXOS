@@ -18,7 +18,8 @@ const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo3_Revision_v2.gs"
 const SHIM = `
 var SpreadsheetApp = {
   getUi: function () { throw new Error("sin interfaz"); },
-  getActiveSpreadsheet: function () { return null; }
+  getActiveSpreadsheet: function () { return null; },
+  openById: function () { throw new Error("sin Anexo 1"); }
 };
 var DriveApp = {};
 var Utilities = { formatDate: function () { return "2026-01-01 00:00"; } };
@@ -33,8 +34,10 @@ module.exports = {
   leerPestanaFacultad_, localizarFacultades_, filtrarFacultades_, detectarDuplicados_,
   peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
-  emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_
+  emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_,
+  claveDenominacion_, leerCatalogoAnexo1_
 };
+module.exports.SpreadsheetApp = SpreadsheetApp;
 `;
 
 function cargarModulo() {
@@ -226,6 +229,15 @@ bloque("Detección automática de las pestañas de facultad", function () {
 
 bloque("Facultad y formulario", function () {
   chequear("sigla desde 2.FDCP", M.siglaDePestana_("2.FDCP") === "FDCP");
+  // El Anexo 1 y el Anexo 3 se renombraron a F##_SIGLA: el guion bajo es
+  // carácter de palabra, así que sin tratarlo como separador la pestaña no se
+  // encontraba y todo el cotejo salía "no verificable".
+  chequear("sigla desde el formato vigente F02_FDCP",
+    M.siglaDePestana_("F02_FDCP") === "FDCP");
+  chequear("F01_FM no se confunde con FMV", M.siglaDePestana_("F01_FM") === "FM");
+  chequear("F08_FMV se resuelve bien", M.siglaDePestana_("F08_FMV") === "FMV");
+  chequear("F11_FCC no se confunde con FCCSS", M.siglaDePestana_("F11_FCC") === "FCC");
+  chequear("F15_FCCSS se resuelve bien", M.siglaDePestana_("F15_FCCSS") === "FCCSS");
   chequear("sigla desde 1.FM", M.siglaDePestana_("1.FM") === "FM");
   chequear("FMV no se confunde con FM", M.siglaDePestana_("8.FMV") === "FMV");
   chequear("FCCSS no se confunde con FCC", M.siglaDePestana_("15.FCCSS") === "FCCSS");
@@ -451,6 +463,59 @@ bloque("Hoja 4 — registro maestro de códigos", function () {
     porCodigo["Beneficiarios|BE.01_F02"].consistente === "No");
   chequear("se listan las fichas donde aparece",
     porCodigo["Proveedores|PR.04_F02"].fichas === "1, 2");
+});
+
+const SpreadsheetApp = M.SpreadsheetApp;
+
+bloque("Localización de la pestaña del Anexo 1", function () {
+  function libroAnexo1(nombres) {
+    return {
+      getSheetByName: function () { return null; },
+      getSheets: function () {
+        return nombres.map(function (n) {
+          return {
+            getName: function () { return n; },
+            getLastRow: function () { return 2; },
+            getRange: function () {
+              return { getValues: function () {
+                return [["PE.01_F02 GESTIÓN ESTRATÉGICA", ""],
+                        ['PE.01.01.01_F02 PLAN ESTRATÉGICO "FDCP"', "Final / Salida"]];
+              } };
+            }
+          };
+        });
+      }
+    };
+  }
+  const original = SpreadsheetApp.openById;
+
+  SpreadsheetApp.openById = function () { return libroAnexo1(["F01_FM", "F02_FDCP", "F03_FLCH"]); };
+  const nuevo = M.leerCatalogoAnexo1_("FDCP");
+  chequear("con el formato vigente se ubica la pestaña", nuevo.disponible === true);
+  chequear("y es la de la facultad pedida", nuevo.hoja === "F02_FDCP");
+  chequear("se lee su catálogo de productos",
+    nuevo.catalogo["PE.01.01.01_F02"] !== undefined);
+  chequear("con su denominación",
+    nuevo.catalogo["PE.01.01.01_F02"].denominacion.indexOf("PLAN ESTRATÉGICO") !== -1);
+
+  SpreadsheetApp.openById = function () { return libroAnexo1(["1. FM", "2. FDCP"]); };
+  chequear("el formato antiguo sigue funcionando",
+    M.leerCatalogoAnexo1_("FDCP").hoja === "2. FDCP");
+
+  SpreadsheetApp.openById = function () { return libroAnexo1(["F01_FM", "F03_FLCH"]); };
+  const ausente = M.leerCatalogoAnexo1_("FDCP");
+  chequear("si la facultad no está, se dice", ausente.disponible === false);
+  chequear("y el motivo enumera las pestañas del Anexo 1",
+    ausente.motivo.indexOf('"F01_FM"') !== -1);
+
+  SpreadsheetApp.openById = original;
+
+  chequear("las comillas no hacen distintas dos denominaciones iguales",
+    M.claveDenominacion_('PLAN ESTRATÉGICO "FDCP"') === M.claveDenominacion_("PLAN ESTRATEGICO FDCP"));
+  chequear("ni los guiones ni los puntos",
+    M.claveDenominacion_("- PLAN OPERATIVO.") === M.claveDenominacion_("PLAN OPERATIVO"));
+  chequear("pero dos productos distintos siguen siendo distintos",
+    M.claveDenominacion_("PLAN OPERATIVO") !== M.claveDenominacion_("PLAN ESTRATEGICO"));
 });
 
 bloque("Hoja 5 — cotejo contra el Anexo 1", function () {
