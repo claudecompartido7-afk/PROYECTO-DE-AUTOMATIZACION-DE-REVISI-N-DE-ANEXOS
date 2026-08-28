@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v7.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v8.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -96,7 +96,7 @@ bloque("Columna D — el diagnóstico explica el error", function () {
   chequear("OE indica la corrección concreta", /AE\.02\.01/.test(oe));
 
   const ao = M.validarAccionEstrategica_("AO. Gestión del Planeamiento").obs;
-  chequear("AO señala la columna correcta", /COLUMNA E/.test(ao));
+  chequear("AO señala la columna correcta", /COLUMNA E/i.test(ao));
 
   const as = M.validarAccionEstrategica_("AS.06.01").obs;
   chequear("AS indica el formato exigido", /AE\.##\.##/.test(as));
@@ -611,7 +611,7 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
   const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   chequear("se encuentran los encabezados del resumen", enc !== null);
   const nEnc = contarElementos(enc);
-  chequear("el resumen declara 15 columnas", nEnc === 15);
+  chequear("el resumen declara 18 columnas", nEnc === 18);
 
   const construcciones = [];
   let desde = 0;
@@ -672,7 +672,33 @@ bloque("Avance sobre criterios cumplidos", function () {
     M.avanceSobreCriterios_([3], M.TOTAL_CRITERIOS_PROCESO) === 60);
 });
 
-bloque("Encabezados del RESUMEN_EJECUTIVO_A1 pedidos por el revisor", function () {
+
+
+bloque("Prefijo de las observaciones (contra observación de la FFB)", function () {
+  const muestras = [
+    M.validarAccionEstrategica_("").obs,
+    M.validarAccionEstrategica_("AEI.04.03 x").obs,
+    M.validarActividadOperativa_("").obs,
+    M.validarTipoProducto_("").obs,
+    M.validarListaCerrada_("", M.CONFIG_A1.TIPOS_ENTREGABLE, "Columna F", "Clasificación").obs,
+    M.validarListaAbierta_("", M.CONFIG_A1.VARIABLES_CALIDAD, "Columna H", "Variables").obs,
+    M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN", function () { return false; }, "F05")
+      .observaciones.join(" ")
+  ];
+
+  muestras.forEach(function (o, i) {
+    chequear("la observación #" + (i + 1) + " usa \"Columna X -->\"", /Columna [A-I] -->/.test(o));
+    chequear("la observación #" + (i + 1) + " ya no usa \"Col X —\"", !/\bCol [A-I] —/.test(o));
+  });
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const cuerpo = fuente.slice(fuente.indexOf("const CONFIG_A1"));
+  chequear("no queda ningún \"Col X —\" en el código", !/'Col [A-I] — /.test(cuerpo));
+  chequear("las etiquetas de columna son \"Columna X\"",
+    /"Columna F"/.test(cuerpo) && /"Columna I"/.test(cuerpo));
+});
+
+bloque("Resumen ejecutivo: columnas pedidas por el revisor", function () {
   const fuente = require("fs").readFileSync(FUENTE, "utf8");
   const i = fuente.indexOf('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   const ini = fuente.indexOf("[", i);
@@ -681,26 +707,33 @@ bloque("Encabezados del RESUMEN_EJECUTIVO_A1 pedidos por el revisor", function (
     if (fuente[j] === "[") nivel++;
     else if (fuente[j] === "]") { nivel--; if (!nivel) { fin = j; break; } }
   }
-  const bloqueTexto = fuente.slice(ini, fin + 1);
+  const cab = fuente.slice(ini, fin + 1);
 
-  const esperados = [
-    "FACULTAD", "NOMBRE",
-    "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS",
-    "TOTAL PROCESOS", "PROCESOS CONFORMES", "PROCESOS OBSERVADOS",
-    "FORMULARIO"
-  ];
-  esperados.forEach(function (e) {
-    chequear("declara la columna " + e, bloqueTexto.indexOf('"' + e + '"') !== -1);
+  [
+    "FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS",
+    "PRODUCTOS SIN REGISTRO", "TOTAL PROCESOS",
+    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
+    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "CÓDIGO DE LA HOJA"
+  ].forEach(function (e) {
+    chequear("declara " + e, cab.indexOf('"' + e + '"') !== -1);
   });
 
-  const cuenta = function (t) { return (bloqueTexto.match(new RegExp('"' + t + '"', "g")) || []).length; };
-  chequear("AVANCE aparece dos veces (productos y procesos)", cuenta("AVANCE") === 2);
-  chequear("ESTADO GENERAL aparece dos veces", cuenta("ESTADO GENERAL") === 2);
-  chequear("DIAGNÓSTICO aparece dos veces", cuenta("DIAGNÓSTICO") === 2);
+  const veces = function (t) { return (cab.match(new RegExp('"' + t + '"', "g")) || []).length; };
+  chequear("AVANCE aparece dos veces", veces("AVANCE") === 2);
+  chequear("ESTADO GENERAL aparece dos veces", veces("ESTADO GENERAL") === 2);
+  chequear("DIAGNÓSTICO aparece dos veces", veces("DIAGNÓSTICO") === 2);
+  chequear("SUBPROCESOS CONFORMES aparece una sola vez", veces("SUBPROCESOS CONFORMES") === 1);
+  chequear("ya no se llama FORMULARIO", cab.indexOf('"FORMULARIO"') === -1);
+  chequear("la contraobservación no se genera: la repone el rescate",
+    cab.indexOf("OBSERVACIÓN") === -1 || cab.indexOf("CONTRA") === -1);
 
-  chequear("CONTRA OBSERVACIÓN no se genera: la aporta el rescate de columnas",
-    bloqueTexto.indexOf("CONTRA OBSERVACIÓN") === -1 &&
-    M.CONFIG_A1.ENCABEZADO_CONTRA === "CONTRA OBSERVACIÓN");
+  // Los nuevos encabezados deben estar en el histórico, o el rescate los tomaría
+  // por columnas del revisor y los duplicaría en cada corrida.
+  ["PRODUCTOS SIN REGISTRO", "PROCESOS NIVEL 0 CONFORMES", "SUBPROCESOS OBSERVADOS",
+   "CÓDIGO DE LA HOJA"].forEach(function (e) {
+    chequear(e + " está en ENCABEZADOS_HISTORICOS",
+      M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf(e) !== -1);
+  });
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
