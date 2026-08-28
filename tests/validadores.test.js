@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v11.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v12.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
@@ -29,9 +29,9 @@ module.exports = {
   localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
-  TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
+  TOTAL_CRITERIOS, TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
   esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
-  ordenarPorFacultadYEstado_, indexarBloques_, enlaceA_, TABLERO
+  ordenarPorFacultadYEstado_, indexarBloques_, enlaceA_, TABLERO, avanceCombinado_
 };
 `;
 
@@ -617,7 +617,7 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
   const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   chequear("se encuentran los encabezados del resumen", enc !== null);
   const nEnc = contarElementos(enc);
-  chequear("el resumen declara 18 columnas", nEnc === 18);
+  chequear("el resumen declara 19 columnas", nEnc === 19);
 
   const construcciones = [];
   let desde = 0;
@@ -968,6 +968,42 @@ bloque("Hoja dashboard: estructura", function () {
   chequear("la tabla tiene 15 columnas", M.TABLERO.COLS === 15);
   chequear("usa la paleta validada",
     M.TABLERO.AZUL === "#2a78d6" && M.TABLERO.NARANJA === "#eb6834");
+});
+
+
+bloque("Avance general del Anexo 1 (columna S)", function () {
+  const P = M.TOTAL_CRITERIOS, Q = M.TOTAL_CRITERIOS_PROCESO;
+
+  chequear("todo cumplido es 100 %",
+    M.avanceCombinado_([{ cumplidos: [8, 8], porFila: P }, { cumplidos: [5], porFila: Q }]) === 100);
+  chequear("nada cumplido es 0 %",
+    M.avanceCombinado_([{ cumplidos: [0, 0], porFila: P }, { cumplidos: [0], porFila: Q }]) === 0);
+  chequear("sin filas devuelve 0", M.avanceCombinado_([]) === 0);
+  chequear("un bloque vacío no estorba al otro",
+    M.avanceCombinado_([{ cumplidos: [], porFila: P }, { cumplidos: [5, 5], porFila: Q }]) === 100);
+
+  // Pondera por criterios evaluados, no promedia los dos porcentajes.
+  // 10 productos al 100 % (80 de 80) y 1 proceso al 0 % (0 de 5): 80/85 = 94 %.
+  // El promedio simple daría 50 %.
+  const prod = [8, 8, 8, 8, 8, 8, 8, 8, 8, 8];
+  const proc = [0];
+  const general = M.avanceCombinado_([{ cumplidos: prod, porFila: P }, { cumplidos: proc, porFila: Q }]);
+  chequear("pondera por volumen: sale 94 %, no 50 %", general === 94);
+  chequear("y no coincide con el promedio de los dos avances",
+    general !== Math.round((M.avanceSobreCriterios_(prod, P) + M.avanceSobreCriterios_(proc, Q)) / 2));
+
+  // Coherencia con las dos columnas que ya existen.
+  const soloProd = M.avanceCombinado_([{ cumplidos: [4, 4], porFila: P }]);
+  chequear("con un solo bloque coincide con avanceSobreCriterios_",
+    soloProd === M.avanceSobreCriterios_([4, 4], P));
+
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("la columna se llama como pidió el revisor",
+    /"AVANCE GENERAL DEL ANEXO 1"/.test(fuente));
+  chequear("está en ENCABEZADOS_HISTORICOS",
+    M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf("AVANCE GENERAL DEL ANEXO 1") !== -1);
+  chequear("va al final, en la columna S",
+    /"CÓDIGO DE LA HOJA",\s*\n\s*"AVANCE GENERAL DEL ANEXO 1"\]/.test(fuente));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
