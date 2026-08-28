@@ -14,15 +14,16 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v8.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v9.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v8.gs       v8, conservada como referencia
 apps-script/Anexo1_Auditoria_v7.gs       v7, conservada como referencia
 apps-script/Anexo1_Auditoria_v6.gs       v6, conservada como referencia
 apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v8.md              Reglas vigentes
-reglas/ANEXO-1_reglas-v7.md              Reglas previas
+reglas/ANEXO-1_reglas-v9.md              Reglas vigentes
+reglas/ANEXO-1_reglas-v8.md              Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
@@ -35,7 +36,7 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 node tests/validadores.test.js
 ```
 
-276 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+311 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
@@ -44,7 +45,7 @@ las filas de proceso y preservación de las columnas del revisor.
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v8.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v9.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
    `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
@@ -63,10 +64,11 @@ falta volver a escribirlas después de cada auditoría.
 
 ## Lectura del Anexo 1 desde fuera de Google
 
-El conector de Google Drive corta cada pestaña en **250 filas**. Siete pestañas
-superan ese límite (FDCP, FFB, FO, FQIQ, FCC, FCM, FPSIC), así que cualquier
-análisis hecho sobre esa exportación da mínimos, no totales. Las cifras válidas
-son las que produce el script al ejecutarse dentro de Google.
+`read_file_content` corta cada pestaña en **250 filas**, así que no sirve para
+analizar las hojas grandes. La vía correcta es `download_file_content` con
+`exportMimeType` de xlsx, que entrega el libro completo; `tools/extraer_xlsx.py`
+lo convierte a JSON. Con ella se leen las 4 200 filas del Anexo 1 y las 2 862 de
+`DETALLADO_PRODUCTOS_A1`.
 
 ## Nota sobre las reglas
 

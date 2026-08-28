@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v8.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v9.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -25,7 +25,8 @@ module.exports = {
   localizarHoja_, esValorNulo_, normalizarTexto_, normalizarCodigo_,
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
-  TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_
+  TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
+  esCatalogacion_, abrePorProceso_
 };
 `;
 
@@ -734,6 +735,89 @@ bloque("Resumen ejecutivo: columnas pedidas por el revisor", function () {
     chequear(e + " está en ENCABEZADOS_HISTORICOS",
       M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf(e) !== -1);
   });
+});
+
+
+bloque("Catalogaciones y procesos mal codificados (contra observaciones del detallado)", function () {
+  // Las 13 filas que el revisor marcó en DETALLADO_PRODUCTOS_A1, con la lista de
+  // códigos que existe en su pestaña para poder resolver la relación padre-hijo.
+  const casos = [
+    [397,  "PE.02.01.05_F04 PE.02.01_04 ASEGURAMIENTO DE LA CALIDAD", "proceso",
+     ["PE.02.01", "PE.02.01.01", "PE.02.01.05"]],
+    [470,  "PM.03.04.04_F04 PROCESOS DE SOPORTE", "categoria", []],
+    [630,  "PS.10.02_F04 PROCESO DE ARTICULACIÓN Y DIFUSIÓN INFORMATIVA", "proceso", ["PS.10.02"]],
+    [633,  "PS.10.03_F04 PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR", "proceso", ["PS.10.03"]],
+    [666,  "PE.03.02.05_F05 PROCESOS MISIONALES", "categoria", []],
+    [712,  "PM.03.18_F05 PROCESOS DE SOPORTE", "categoria", []],
+    [928,  "F06 PROCESOS MISIONALES", "categoria", []],
+    [942,  "PM.03.05_F06 PROCESOS DE SOPORTE", "categoria", []],
+    [1087, "PM.03.03.04_F07 PROCESOS DE SOPORTE", "categoria", []],
+    [1224, "PROCESO MISIONAL", "categoria", []],
+    [1244, "PROCESO DE SOPORTE", "categoria", []],
+    [2327, "PE.03.02.07_F17 PROCESOS MISIONALES", "categoria", []],
+    [1420, "PE.02.01.01_F10 PE.02.01.01 — MANTENIMIENTO DEL SISTEMA DE GESTIÓN DE CALIDAD",
+     "producto", ["PE.02.01", "PE.02.01.01"]]
+  ];
+
+  casos.forEach(function (c) {
+    const r = M.clasificarFila_(c[1], padreEntre(c[3]), "F04", "F04");
+    chequear("fila " + c[0] + " se clasifica como " + c[2] + " (sale " + r.tipo + ")", r.tipo === c[2]);
+  });
+
+  // Una catalogación con código debe pedir que se retire.
+  const conCodigo = M.clasificarFila_("PM.03.04.04_F04 PROCESOS DE SOPORTE", padreEntre([]), "F04", "F04");
+  chequear("la catalogación con código lo reporta",
+    /NO LE CORRESPONDE UNA CODIFICACIÓN/.test(conCodigo.observaciones.join(" ")));
+  chequear("y nombra el código que sobra", /PM\.03\.04\.04_F04/.test(conCodigo.observaciones.join(" ")));
+  chequear("marca fallado el criterio de código", conCodigo.checks.unico === false);
+
+  // Sin código no hay nada que corregir.
+  const sinCodigo = M.clasificarFila_("PROCESO DE SOPORTE", padreEntre([]), "F04", "F04");
+  chequear("la catalogación sin código no se observa", sinCodigo.observaciones.length === 0);
+
+  // El número de formulario suelto también es una codificación que no toca.
+  const sueltoF = M.clasificarFila_("F06 PROCESOS MISIONALES", padreEntre([]), "F06", "F06");
+  chequear("el F## suelto se reporta",
+    /NO LE CORRESPONDE UNA CODIFICACIÓN/.test(sueltoF.observaciones.join(" ")));
+
+  // Un proceso codificado como producto pide corregir la codificación.
+  const malCod = M.clasificarFila_("PS.10.03_F04 PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR",
+    padreEntre(["PS.10.03"]), "F04", "F04");
+  chequear("el proceso mal codificado lo dice",
+    /CODIFICACIÓN A CORREGIR/.test(malCod.observaciones.join(" ")));
+});
+
+bloque("Singular y plural en las catalogaciones", function () {
+  ["PROCESOS ESTRATÉGICOS", "PROCESOS MISIONALES", "PROCESOS DE SOPORTE",
+   "PROCESO MISIONAL", "PROCESO DE SOPORTE", "PROCESO ESTRATÉGICO"
+  ].forEach(function (t) {
+    chequear("reconoce la catalogación " + JSON.stringify(t), M.esCatalogacion_(t));
+  });
+
+  ["PLAN ESTRATÉGICO APROBADO", "GESTIÓN DE LA INVESTIGACIÓN",
+   "PROCESOS DE ADQUISICIÓN TRAMITADOS", "PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR"
+  ].forEach(function (t) {
+    chequear("no confunde " + JSON.stringify(t), !M.esCatalogacion_(t));
+  });
+
+  chequear("PROCESO DE ... en singular nombra un proceso",
+    M.abrePorProceso_("PROCESO DE COBERTURA Y SOPORTE PROTOCOLAR"));
+  chequear("SUBPROCESO ... nombra un proceso", M.abrePorProceso_("SUBPROCESO DE ALGO"));
+
+  // El plural describe entregables: "PROCESOS DE ADQUISICIÓN TRAMITADOS" es un
+  // producto real de la FO y no debe irse a la hoja de procesos.
+  chequear("el plural NO nombra un proceso",
+    !M.abrePorProceso_("PROCESOS DE ADQUISICIÓN TRAMITADOS"));
+  chequear("una denominación normal tampoco",
+    !M.abrePorProceso_("PLAN ESTRATÉGICO APROBADO"));
+});
+
+bloque("Cierre de los productos sin registro", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  chequear("se añade la recomendación de los desplegables",
+    /Observación final --> Para las columnas C a I utilice los desplegables/.test(fuente));
+  chequear("ya no encabeza con PRODUCTO SIN REGISTRAR",
+    fuente.indexOf("PRODUCTO SIN REGISTRAR:") === -1);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
