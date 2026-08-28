@@ -13,11 +13,15 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v10.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v11.gs");
 
 const SHIM = `
-var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
+var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
+                       openById: function () { return null; }, BorderStyle: {} };
 var Logger = { log: function () {} };
+var Utilities = { formatDate: function () { return ""; } };
+var Session = { getScriptTimeZone: function () { return "UTC"; } };
+var Charts = { ChartType: { COLUMN: "COLUMN" } };
 module.exports = {
   CONFIG_A1, validarCodigo_, validarTipoProducto_, validarAccionEstrategica_,
   validarActividadOperativa_, validarListaCerrada_, validarListaAbierta_,
@@ -26,7 +30,8 @@ module.exports = {
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
   TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
-  esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS
+  esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
+  ordenarPorFacultadYEstado_, indexarBloques_, enlaceA_, TABLERO
 };
 `;
 
@@ -887,6 +892,82 @@ bloque("Conversor de observaciones antiguas", function () {
     /indexOf\("OBSERVACIONES"\) === 0 \|\| .*indexOf\("DIAGNOSTICO"\) === 0/.test(fuente));
   chequear("reaplica el ajuste de texto tras convertir",
     /setValues\(datos\);[\s\S]{0,220}setWrap\(true\)/.test(fuente));
+});
+
+
+bloque("Hoja dashboard: enlaces de descenso al detalle", function () {
+  chequear("la fórmula usa coma como separador",
+    M.enlaceA_(123, 45, 206) === '=HYPERLINK("#gid=123&range=A45", 206)');
+  chequear("sin fila devuelve el número pelado", M.enlaceA_(123, 0, 5) === 5);
+  chequear("sin gid devuelve el número pelado", M.enlaceA_(null, 45, 5) === 5);
+
+  // Un detallado de juguete con tres facultades desordenadas.
+  const filas = [
+    ["FDCP", 10, "", "", "", "", "OBSERVADO", "", "", ""],
+    ["FM",    9, "", "", "", "", "OBSERVADO", "", "", ""],
+    ["FDCP",  5, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FM",    3, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FM",    7, "", "", "", "", "CONFORME",  "", "", ""],
+    ["FDCP",  8, "", "", "", "", "OBSERVADO", "", "", ""]
+  ];
+  const ord = M.ordenarPorFacultadYEstado_(filas, 0, 6, 1, null);
+
+  chequear("las facultades salen en el orden del catálogo",
+    ord[0][0] === "FM" && ord[3][0] === "FDCP");
+  chequear("dentro de la facultad, los conformes primero",
+    ord[0][6] === "CONFORME" && ord[1][6] === "CONFORME" && ord[2][6] === "OBSERVADO");
+  chequear("a igual estado, por número de fila del Anexo",
+    ord[0][1] === 3 && ord[1][1] === 7);
+
+  const idx = M.indexarBloques_(ord, 0, 6, null);
+  chequear("FM empieza en la fila 2 de la hoja", idx.FM.inicio === 2);
+  chequear("FM tiene 2 conformes y 1 observado",
+    idx.FM.conformes === 2 && idx.FM.otros === 1);
+  chequear("el ancla de observados de FM cae tras sus conformes",
+    idx.FM.filaObservados === 4 && ord[idx.FM.filaObservados - 2][6] === "OBSERVADO");
+  chequear("FDCP empieza donde termina FM", idx.FDCP.inicio === 5);
+  chequear("el ancla de conformes de FDCP es su primera fila",
+    ord[idx.FDCP.filaConformes - 2][0] === "FDCP" &&
+    ord[idx.FDCP.filaConformes - 2][6] === "CONFORME");
+
+  // El filtro separa Nivel 0 de subprocesos en la hoja de procesos.
+  const procs = [
+    ["FM", "PE.01", "", "Nivel 0",    "", 5, "CONFORME",  "", "", ""],
+    ["FM", "PE.01.01", "", "Subproceso", "", 6, "OBSERVADO", "", "", ""],
+    ["FM", "PE.02", "", "Nivel 0",    "", 7, "OBSERVADO", "", "", ""]
+  ];
+  const soloN0 = M.indexarBloques_(procs, 0, 6, function (f) { return f[3] === "Nivel 0"; });
+  chequear("el índice de Nivel 0 cuenta solo esas filas", soloN0.FM.total === 2);
+  const soloSub = M.indexarBloques_(procs, 0, 6, function (f) { return f[3] === "Subproceso"; });
+  chequear("el índice de subprocesos cuenta solo esas filas", soloSub.FM.total === 1);
+});
+
+bloque("Hoja dashboard: estructura", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+
+  chequear("la hoja se llama dashboard", M.CONFIG_A1.HOJA_TABLERO === "dashboard");
+  chequear("se construye al final de la escritura", /construirTablero_\(ss, resumen, detalle, procesos\)/.test(fuente));
+
+  ["Productos evaluados", "Conformes", "Observados", "Productos sin registro",
+   "Procesos Nivel 0 conformes", "Procesos Nivel 0 observados"].forEach(function (t) {
+    chequear("declara la tarjeta " + JSON.stringify(t), fuente.indexOf('"' + t + '"') !== -1);
+  });
+
+  chequear("hay dos gráficos", (fuente.match(/hoja\.insertChart\(/g) || []).length === 2);
+  chequear("el gráfico de productos existe", /"Productos por facultad"/.test(fuente));
+  chequear("el gráfico de procesos existe", /"Procesos de Nivel 0 y subprocesos por facultad"/.test(fuente));
+  chequear("los datos de los gráficos quedan ocultos", /hideColumns\(COL_DATOS, 7\)/.test(fuente));
+  chequear("los gráficos anteriores se retiran antes de redibujar",
+    /getCharts\(\)\.forEach[\s\S]{0,60}removeChart/.test(fuente));
+
+  // El texto va partido en dos literales concatenados.
+  chequear("el detalle lleva la nota de los 14 obligatorios",
+    /14 obligatorios;/.test(fuente) && /PE\.03 y PS\.08 no aplican/.test(fuente));
+  chequear("y explica que los números enlazan",
+    /Cada número enlaza con la fila donde empieza ese bloque/.test(fuente));
+  chequear("la tabla tiene 15 columnas", M.TABLERO.COLS === 15);
+  chequear("usa la paleta validada",
+    M.TABLERO.AZUL === "#2a78d6" && M.TABLERO.NARANJA === "#eb6834");
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
