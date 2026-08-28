@@ -59,8 +59,13 @@ const CONFIG_A3 = {
    */
   SOURCE_TAB_NAME:  '',
 
-  /** Carpeta de Drive "Revisión Interna de Avances del A3". */
-  OUTPUT_FOLDER_ID: '1zSwJCoMFhI1J2jg7Aq7qroLHjT0QLwTA',
+  /**
+   * Libro donde se escribe el reporte: `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`,
+   * el mismo donde el auditor del Anexo 1 deja sus hojas `*_A1`. Las hojas del
+   * Anexo 3 llevan el sufijo `_A3`, así que conviven sin pisarse: cada corrida
+   * reescribe solo las suyas.
+   */
+  DESTINO_SHEET_ID: '1oYBAHp-Bd0V8un5hUAWdK1jKbcbdsROH4IOyM0MAmFk',
 
   /** Anexo 1, para cotejar salidas y registros (reglas 5 y 7). */
   ANEXO1_SHEET_ID:  '1SUMuS32zUweN_o7WfdBhXq-ipvvaFXYTcxKF1hmhPww',
@@ -87,15 +92,12 @@ const CONFIG_A3 = {
 
   /* ── Salida ───────────────────────────────────────────────────────────── */
 
-  PREFIJO_ARCHIVO: 'Revision_Anexo3',
-  /** true = reutiliza el archivo del día si ya existe; false = crea uno nuevo. */
-  REUTILIZAR_ARCHIVO_DEL_DIA: false,
 
   HOJAS: {
-    DETALLE:    'DETALLE_REVISION',
-    RESUMEN:    'RESUMEN_FICHAS',
-    RESUMEN_20: 'RESUMEN_20_FACULTADES',
-    MAESTRO:    'REGISTRO_MAESTRO_CODIGOS'
+    DETALLE:    'DETALLE_REVISION_A3',
+    RESUMEN:    'RESUMEN_FICHAS_A3',
+    RESUMEN_20: 'RESUMEN_20_FACULTADES_A3',
+    MAESTRO:    'REGISTRO_MAESTRO_CODIGOS_A3'
   },
 
   /**
@@ -1476,26 +1478,18 @@ function construirCotejo_(entradas, anexo1) {
    ESCRITURA DEL ARCHIVO DE SALIDA
    ═══════════════════════════════════════════════════════════════════════════ */
 
-function crearArchivoSalida_(etiqueta) {
-  const marca = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HH-mm');
-  const nombre = CONFIG_A3.PREFIJO_ARCHIVO + '_' + etiqueta + '_' + marca;
-  const carpeta = DriveApp.getFolderById(CONFIG_A3.OUTPUT_FOLDER_ID);
-
-  if (CONFIG_A3.REUTILIZAR_ARCHIVO_DEL_DIA) {
-    const dia = CONFIG_A3.PREFIJO_ARCHIVO + '_' + etiqueta + '_' +
-                Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
-    const it = carpeta.getFiles();
-    while (it.hasNext()) {
-      const f = it.next();
-      if (f.getName().indexOf(dia) === 0) return SpreadsheetApp.openById(f.getId());
-    }
+/**
+ * Abre el libro donde se escribe el reporte. No se crea nada: es el libro de
+ * revisión que ya usa el auditor del Anexo 1.
+ */
+function abrirLibroDestino_() {
+  try {
+    return SpreadsheetApp.openById(CONFIG_A3.DESTINO_SHEET_ID);
+  } catch (e) {
+    throw new Error('No se pudo abrir el libro de revisión (' + CONFIG_A3.DESTINO_SHEET_ID +
+                    '). Verifique el ID en CONFIG_A3.DESTINO_SHEET_ID y que tenga permiso de ' +
+                    'edición sobre él. Detalle: ' + e.message);
   }
-
-  const ss = SpreadsheetApp.create(nombre);
-  const archivo = DriveApp.getFileById(ss.getId());
-  carpeta.addFile(archivo);
-  DriveApp.getRootFolder().removeFile(archivo);
-  return ss;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1905,9 +1899,8 @@ function escribirResultado_(ss, facultades) {
      'FICHAS EN QUE APARECE', '¿DENOMINACIÓN CONSISTENTE?', 'OBSERVACIÓN'],
     maestro, sevMaestro);
 
-  // La hoja que crea Google por defecto sobra.
-  const inicial = ss.getSheetByName('Hoja 1') || ss.getSheetByName('Sheet1') || ss.getSheetByName('Hoja1');
-  if (inicial && ss.getSheets().length > 1) ss.deleteSheet(inicial);
+  // El libro es compartido con la auditoría del Anexo 1: no se borra ninguna
+  // hoja ajena, solo se reescriben las cuatro del Anexo 3.
   ss.setActiveSheet(ss.getSheetByName(H.RESUMEN_20));
 }
 
@@ -1930,11 +1923,23 @@ function aplicarSemaforoDeAvance_(hoja, columna, numFilas) {
   hoja.setConditionalFormatRules(hoja.getConditionalFormatRules().concat(reglas));
 }
 
-/** Libro del Anexo 3: el activo si el script está enlazado a él; si no, por ID. */
+/**
+ * Libro del Anexo 3.
+ *
+ * El script vive en el libro de revisión, no en el Anexo 3, así que el libro
+ * activo NO sirve como origen. Se usa el activo solo cuando de verdad contiene
+ * pestañas de facultad —por si alguien pega este archivo dentro del Anexo 3—; en
+ * cualquier otro caso se abre el Anexo 3 por su ID.
+ */
 function abrirAnexo3_() {
   const activo = SpreadsheetApp.getActiveSpreadsheet();
-  if (activo) return activo;
-  return SpreadsheetApp.openById(CONFIG_A3.SOURCE_SHEET_ID);
+  if (activo && localizarFacultades_(activo).length) return activo;
+  try {
+    return SpreadsheetApp.openById(CONFIG_A3.SOURCE_SHEET_ID);
+  } catch (e) {
+    throw new Error('No se pudo abrir el Anexo 3 (' + CONFIG_A3.SOURCE_SHEET_ID +
+                    '). Verifique el ID en CONFIG_A3.SOURCE_SHEET_ID. Detalle: ' + e.message);
+  }
 }
 
 /**
@@ -1959,28 +1964,37 @@ function ejecutarRevisionAnexo3() {
   }
 
   const revisadas = facultades.map(revisarFacultad_);
-  const etiqueta = revisadas.length === 1 ? revisadas[0].sigla : 'TODAS';
-  const ss = crearArchivoSalida_(etiqueta);
+  const ss = abrirLibroDestino_();
   escribirResultado_(ss, revisadas);
 
   const url = ss.getUrl();
   const fichas = revisadas.reduce(function (a, f) { return a + f.efectivas.length; }, 0);
+  const hojas = [CONFIG_A3.HOJAS.DETALLE, CONFIG_A3.HOJAS.RESUMEN,
+                 CONFIG_A3.HOJAS.RESUMEN_20, CONFIG_A3.HOJAS.MAESTRO].join(', ');
   Logger.log('Revisión del Anexo 3 — ' + revisadas.length + ' facultad(es), ' +
-             fichas + ' ficha(s): ' + url);
-  try {
-    SpreadsheetApp.getUi().alert('Revisión terminada.\n\n' + revisadas.length +
-      ' facultad(es) y ' + fichas + ' ficha(s) revisadas.\n\nArchivo: ' + url);
-  } catch (e) { /* sin interfaz: ejecución desde el editor o por disparador */ }
+             fichas + ' ficha(s). Hojas: ' + hojas + '. ' + url);
+  notificarA3_('Revisión del Anexo 3 terminada.\n\n' + revisadas.length +
+    ' facultad(es) y ' + fichas + ' ficha(s) revisadas.\n\nSe actualizaron las hojas:\n' +
+    hojas);
   return url;
 }
 
 /**
  * Alias de compatibilidad: en la v1 esta función recorría las facultades una
  * por una y dejaba un archivo por cada una. Ahora `ejecutarRevisionAnexo3` ya
- * las revisa todas en un solo archivo, así que apunta a ella.
+ * las revisa todas de una vez, así que apunta a ella.
  */
 function revisarTodasLasFacultadesA3() {
   return ejecutarRevisionAnexo3();
+}
+
+/** Aviso al usuario cuando hay interfaz; al registro cuando no la hay. */
+function notificarA3_(mensaje) {
+  try {
+    SpreadsheetApp.getUi().alert(mensaje);
+  } catch (e) {
+    Logger.log(mensaje);   // ejecución desde el editor o por disparador
+  }
 }
 
 /**

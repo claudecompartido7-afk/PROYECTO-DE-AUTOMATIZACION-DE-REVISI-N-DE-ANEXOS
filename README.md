@@ -16,7 +16,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ```
 apps-script/Anexo3_Revision_v2.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
-apps-script/Anexo1_Auditoria_v6.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v7.gs       Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v6.gs       v6, conservada como referencia
 apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
@@ -55,8 +56,9 @@ semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v6.gs`
-3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v7.gs`
+3. Ejecutar `ejecutarAuditoriaAnexo1`, o **Auditoría OGPL › Ejecutar auditoría
+   del Anexo 1**, y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
    `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
    `OBSERVACIONES_DE_PROCESO_A1`
@@ -67,25 +69,28 @@ observaciones ya escritas viajen con ella.
 
 ## Anexo 3 — revisión de fichas técnicas
 
-1. Abrir el Anexo 3 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo3_Revision_v2.gs`
+1. Abrir `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES` → **Extensiones › Apps Script**
+2. Agregar un archivo con el contenido de `apps-script/Anexo3_Revision_v2.gs`
+   (junto al del Anexo 1, en el mismo proyecto)
 3. Revisar el bloque `CONFIG_A3` del inicio (carpeta de salida y Anexo 1 para el
    cotejo). Las pestañas de facultad se detectan solas por su nombre
    `F##_SIGLA`; deje `SOURCE_TAB_NAME` vacío para revisarlas todas, o escriba
    siglas separadas por coma para revisar solo algunas. También puede
    configurarse desde una pestaña `CONFIG_A3` del propio Anexo 3: columna A =
    clave, columna B = valor.
-4. Ejecutar `ejecutarRevisionAnexo3` y autorizar los permisos
+4. Recargar el libro y usar **Auditoría OGPL › Ejecutar revisión del Anexo 3**
+   (o ejecutar `ejecutarRevisionAnexo3` desde el editor)
 
 Si alguna facultad no aparece en el reporte, ejecute `listarPestanasA3`: escribe
 en el registro (Ver › Registro) cada pestaña y si se reconoce como facultad.
 Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
 
-En cada corrida se **crea** un Google Sheets nuevo dentro de la carpeta
-`OUTPUT_FOLDER_ID`, con el nombre `Revision_Anexo3_TODAS_<fecha_hora>`, para no
-pisar corridas anteriores. Trae cuatro hojas: `DETALLE_REVISION`,
-`RESUMEN_FICHAS`, `RESUMEN_20_FACULTADES` y `REGISTRO_MAESTRO_CODIGOS`. Todas
-abren con la sigla y el nombre de la facultad, en el orden F01 → F20.
+El reporte se escribe en el mismo libro que usa la auditoría del Anexo 1
+(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cuatro hojas con sufijo `_A3`:
+`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_20_FACULTADES_A3` y
+`REGISTRO_MAESTRO_CODIGOS_A3`. Conviven con las `*_A1` sin pisarse: cada corrida
+reescribe solo las suyas. Todas abren con la sigla y el nombre de la facultad,
+en el orden F01 → F20.
 
 Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
 por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese

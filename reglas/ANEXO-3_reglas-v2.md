@@ -243,8 +243,11 @@ una celda con dos códigos mal escritos suma dos.
 
 ## 6. Hojas del archivo de salida
 
-Cuatro hojas. Todas abren con `FACULTAD` (sigla) y `NOMBRE`, y las filas vienen
-en el orden F01 → F20.
+Cuatro hojas, escritas en el libro `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`
+—el mismo de la auditoría del Anexo 1— con el sufijo `_A3` para que convivan con
+las `*_A1` sin pisarse. Cada corrida reescribe solo las cuatro del Anexo 3 y no
+toca ninguna hoja ajena. Todas abren con `FACULTAD` (sigla) y `NOMBRE`, y las
+filas vienen en el orden F01 → F20.
 
 El cotejo contra el Anexo 1 (reglas 5 y 7) ya no tiene hoja propia: sus
 hallazgos se vuelcan al `DETALLE_REVISION`, en la sección `Anexo 1` de la ficha
