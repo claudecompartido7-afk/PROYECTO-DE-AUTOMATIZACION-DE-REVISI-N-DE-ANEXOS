@@ -179,20 +179,12 @@ sufijo **dominante** de la pestaña.
 
 | # | Regla | Cómo se verifica |
 |---|---|---|
-| 1 | Todo el contenido en la **fuente exigida** | Se comparan las fuentes de cada celda **con contenido** de la ficha; las celdas vacías no se observan |
 | 2 | Proveedores con `PR.XX_FYY`, mismo código ante repetición | Validación de estructura + **Hoja 4** (registro maestro) |
 | 3 | Entradas con `EN.XX_FYY`, mismo código ante repetición | Igual que la 2 |
 | 4 | Procesos de nivel 1, correlativos, **uno por celda** | Una celda de la columna F con más de un código es hallazgo |
 | 5 | Salidas: solo productos finales, con código y denominación del **Anexo 1** | **Hoja 5** (cotejo) |
 | 6 | Beneficiarios con `BE.XX_FYY`, mismo código ante repetición | Igual que la 2 |
 | 7 | Registros: solo productos parciales del **Anexo 1** | **Hoja 5**; lo que no figure allí se marca como pendiente de incorporar en ambos anexos |
-
-**3.0 Fuente exigida (regla 1).** Las directrices escritas dentro de la propia
-hoja del Anexo 3 dicen **Arial**; por indicación de la OGPL el script exige hoy
-**Calibri**. La fuente se declara en `CONFIG_A3.FUENTE_OBLIGATORIA` y todos los
-mensajes del reporte la nombran a partir de ahí, de modo que volver a Arial es
-cambiar esa línea. Es un ajuste distinto de `CONFIG_A3.FUENTE_REPORTE`, que es
-la fuente con la que se escribe el archivo de salida.
 
 **3.1 Persistencia del código (reglas 2, 3 y 6).** Se detectan los dos defectos
 simétricos: un mismo código usado con denominaciones distintas, y una misma
@@ -280,10 +272,6 @@ sección que no aparece— se informa el **rango de filas** (`10–11`). La mism
 ubicación se repite entre paréntesis en la lista de campos faltantes del resumen
 ejecutivo, y en la columna `FILA / CELDA` de la hoja de observaciones.
 
-Las celdas fuera de la fuente exigida se detallan **una por una**, con su celda exacta, hasta
-el tope de `MAX_CELDAS_FUENTE` (25) por ficha; si hay más, se cierra con una fila
-que informa el total.
-
 **6.2 Clasificación de los hallazgos (v2).** Cada fila se pinta según su
 clasificación, y la misma clasificación se escribe en texto, para que la hoja se
 lea igual impresa en blanco y negro o por quien no distinga los colores.
@@ -292,7 +280,7 @@ lea igual impresa en blanco y negro o por quien no distinga los colores.
 |---|---|---|
 | Verde | `Correcto` | Campo completo y codificación correcta |
 | Ámbar | `Incompleto` | Campo obligatorio vacío, o dato por verificar contra el Anexo 1 |
-| Naranja | `Observación` | Hay algo escrito pero mal: codificación fuera de estructura, fuente indebida, denominación inconsistente, salida duplicada, salida ausente del Anexo 1 |
+| Naranja | `Observación` | Hay algo escrito pero mal: codificación fuera de estructura, denominación inconsistente, salida duplicada, salida ausente del Anexo 1 |
 | Rojo | `Crítico` | Compromete la ficha: sin producto final, código con el formulario de otra facultad, código de ficha duplicado, sección ausente |
 | Gris | `Opcional` | La firma de Formalización |
 
@@ -301,7 +289,13 @@ la peor clasificación de sus filas, ignorando lo opcional.
 
 **6.3 Criterios revisados.** Completitud de la ficha · consistencia de códigos y
 denominaciones · códigos duplicados · códigos pertenecientes a otra facultad ·
-formalización incompleta · entradas y salidas · productos finales · fuente.
+formalización incompleta · entradas y salidas · productos finales.
+
+**La fuente del Anexo 3 no se comprueba.** La regla 1 de las directrices
+(«toda la información en Arial») queda **fuera de alcance** por indicación de la
+OGPL: el script no lee las fuentes de la hoja ni reporta nada sobre ellas. La
+fuente del archivo de salida (`CONFIG_A3.FUENTE_REPORTE`) es formato del
+reporte, no un criterio de revisión.
 
 **6.4 Semáforo de avance por facultad.** En `RESUMEN_20_FACULTADES` la columna
 `% AVANCE` lleva formato condicional:

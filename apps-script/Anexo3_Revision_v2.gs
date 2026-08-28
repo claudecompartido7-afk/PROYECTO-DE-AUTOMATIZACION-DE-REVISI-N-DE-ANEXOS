@@ -17,8 +17,8 @@
  *
  *  Qué hace
  *  ─────────────────────────────────────────────────────────────────────────────
- *   1. Recorre las pestañas de facultad del Anexo 3 (valores y fuentes se leen
- *      de una sola vez por pestaña; los datos originales NO se tocan).
+ *   1. Recorre las pestañas de facultad del Anexo 3 (cada pestaña se lee de una
+ *      sola vez; los datos originales NO se tocan).
  *   2. Parte cada pestaña en fichas técnicas y revisa las cuatro secciones:
  *      Descripción, Definición, Ejecución y Formalización.
  *   3. Valida la codificación de proveedores, entradas, procesos, salidas,
@@ -99,16 +99,10 @@ const CONFIG_A3 = {
   },
 
   /**
-   * Fuente que se exige al Anexo 3 (regla 1). Ojo: el bloque DIRECTRICES escrito
-   * dentro de la propia hoja del Anexo 3 dice "Arial"; aquí manda lo que se
-   * declare en esta línea, así que si la OGPL vuelve a Arial basta con
-   * cambiarla —los mensajes del reporte la nombran sola.
+   * Fuente con la que se escribe el archivo de salida. Es formato del reporte,
+   * no un criterio de revisión: la fuente del Anexo 3 no se comprueba.
    */
-  FUENTE_OBLIGATORIA: 'Calibri',
-  /** Fuente con la que se escribe el archivo de salida. */
   FUENTE_REPORTE: 'Arial',
-  /** Máximo de celdas fuera de la fuente exigida que se detallan una por una. */
-  MAX_CELDAS_FUENTE: 25,
 
   /**
    * Semáforo de las hojas de salida. Cada fila se pinta según su estado:
@@ -846,7 +840,7 @@ function severidadDeErrorDeCodigo_(errores) {
 /**
  * Revisa una ficha y devuelve sus hallazgos.
  *
- * `ctx` = { valores, fuentes, formulario, permiteNivel2, etiquetas }.
+ * `ctx` = { valores, formulario, permiteNivel2, etiquetas }.
  */
 function revisarFicha_(ctx, bloque, numero) {
   const V = ctx.valores;
@@ -865,7 +859,6 @@ function revisarFicha_(ctx, bloque, numero) {
     erroresCodificacion: 0,
     notas: [],
     excepcionesNivel2: 0,  // códigos con un nivel de más, válidos en estas facultades
-    fueraDeFuente: 0,
     salidas: [],          // productos finales CODIFICADOS en la columna H
     salidasDeclaradas: 0, // celdas con texto en la columna H, tengan código o no
     filasDescripcion: 0,  // celdas con datos en la tabla de la descripción
@@ -1224,37 +1217,6 @@ function revisarFicha_(ctx, bloque, numero) {
         }
       });
     });
-  }
-
-  /* ── Regla 1: fuente exigida ────────────────────────────────────────── */
-
-  if (ctx.fuentes) {
-    // Una fila por celda infractora, para que el revisor tenga la celda exacta.
-    // Si son muchas se listan las primeras y se cierra con el total, para no
-    // inundar el detalle con cientos de filas de una misma ficha.
-    let listadas = 0;
-    for (let f = bloque.inicio; f <= bloque.fin && f < ctx.fuentes.length; f++) {
-      for (let c = 0; c < ctx.fuentes[f].length; c++) {
-        if (esVacio_(V[f][c])) continue;
-        const fuente = (ctx.fuentes[f][c] || '').toString();
-        if (normalizar_(fuente) === normalizar_(CONFIG_A3.FUENTE_OBLIGATORIA)) continue;
-        ficha.fueraDeFuente++;
-        if (listadas < CONFIG_A3.MAX_CELDAS_FUENTE) {
-          listadas++;
-          anotar('Formato', 'Fuente ' + CONFIG_A3.FUENTE_OBLIGATORIA,
-                 recortarA3_(V[f][c], 60), 'N/A', 'No',
-                 'Regla 1: la celda usa la fuente "' + fuente + '" en lugar de ' +
-                 CONFIG_A3.FUENTE_OBLIGATORIA + '.',
-                 { fila: f, col: c }, 'observacion');
-        }
-      }
-    }
-    if (ficha.fueraDeFuente > listadas) {
-      anotar('Formato', 'Fuente ' + CONFIG_A3.FUENTE_OBLIGATORIA, '', 'N/A', 'No',
-             'Regla 1: ' + ficha.fueraDeFuente + ' celda(s) fuera de ' +
-             CONFIG_A3.FUENTE_OBLIGATORIA + ' en la ficha; ' +
-             'se detallan las ' + listadas + ' primeras.', rangoFicha, 'observacion');
-    }
   }
 
   ficha.avance = ficha.campos ? Math.round(ficha.completos * 1000 / ficha.campos) / 10 : 0;
@@ -1696,8 +1658,6 @@ function aplicarConfigDeHoja_(libro) {
 function revisarFacultad_(facultad) {
   const rango = facultad.hoja.getDataRange();
   const crudos = rango.getValues();
-  let fuentes = null;
-  try { fuentes = rango.getFontFamilies(); } catch (e) { fuentes = null; }
 
   // Las combinaciones se resuelven una sola vez por pestaña, en memoria: la
   // hoja original no se toca.
@@ -1713,7 +1673,7 @@ function revisarFacultad_(facultad) {
   const permiteNivel2 = CONFIG_A3.FACULTADES_NIVEL_2.indexOf(facultad.sigla) !== -1;
 
   const ctx = {
-    valores: valores, fuentes: fuentes, formulario: formulario,
+    valores: valores, formulario: formulario,
     permiteNivel2: permiteNivel2, etiquetas: catalogoDeEtiquetas_()
   };
 
@@ -1855,10 +1815,6 @@ function escribirResultado_(ss, facultades) {
       }
       if (f.faltantes.length) sugerencias.push('Complete ' + f.faltantes.length + ' campo(s) pendiente(s).');
       if (f.erroresCodificacion) sugerencias.push('Corrija ' + f.erroresCodificacion + ' error(es) de codificación.');
-      if (f.fueraDeFuente) {
-        sugerencias.push('Regla 1: uniformice ' + f.fueraDeFuente + ' celda(s) a fuente ' +
-                         CONFIG_A3.FUENTE_OBLIGATORIA + '.');
-      }
       if (f.excepcionesNivel2) {
         sugerencias.push(f.excepcionesNivel2 + ' código(s) con un nivel adicional, admitidos por ' +
                          'tratarse de una facultad que trabaja procesos y productos de nivel 2.');
