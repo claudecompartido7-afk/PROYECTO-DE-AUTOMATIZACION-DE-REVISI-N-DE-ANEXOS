@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v9.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v10.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); } };
@@ -26,7 +26,7 @@ module.exports = {
   clasificarFila_, extraerCodigos_, denominacionDe_, rescatarColumnasManuales_,
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
   TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
-  esCatalogacion_, abrePorProceso_
+  esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS
 };
 `;
 
@@ -818,6 +818,64 @@ bloque("Cierre de los productos sin registro", function () {
     /Observación final --> Para las columnas C a I utilice los desplegables/.test(fuente));
   chequear("ya no encabeza con PRODUCTO SIN REGISTRAR",
     fuente.indexOf("PRODUCTO SIN REGISTRAR:") === -1);
+});
+
+
+bloque("Una observación por renglón", function () {
+  chequear("el separador es un salto de línea", M.SEPARADOR_OBS === "\n");
+  chequear("ya no se encadena con ||",
+    require("fs").readFileSync(FUENTE, "utf8").indexOf('join("  ||  ")') === -1);
+
+  chequear("sin observaciones devuelve el texto de relleno",
+    M.unirObservaciones_([], "Cumple los 8 criterios.") === "Cumple los 8 criterios.");
+  chequear("una sola observación no lleva salto",
+    M.unirObservaciones_(["Columna C --> algo"], "x").indexOf("\n") === -1);
+  chequear("dos observaciones van en dos renglones",
+    M.unirObservaciones_(["a", "b"], "x").split("\n").length === 2);
+
+  // El caso que señaló el revisor: FCB, fila 57 del Anexo 1, sin nada en C a I
+  // y con dos códigos en la columna B.
+  const colB = "PE.03.01.05_F10 PE.03.01.03 — REVISIÓN OCRI/OGAL Y EMISIÓN DE RR";
+  const cls = M.clasificarFila_(colB, padreEntre(["PE.03.01", "PE.03.01.03", "PE.03.01.05"]), "F10", "F10");
+  chequear("la fila sigue siendo un producto", cls.tipo === "producto");
+
+  const checks = [
+    M.validarCodigo_(cls),
+    M.validarTipoProducto_(""),
+    M.validarAccionEstrategica_(""),
+    M.validarActividadOperativa_(""),
+    M.validarListaCerrada_("", M.CONFIG_A1.TIPOS_ENTREGABLE, "Columna F", "Clasificación"),
+    M.validarListaCerrada_("", M.CONFIG_A1.ROLES_INSTITUCIONALES, "Columna G", "Atributo institucional"),
+    M.validarListaAbierta_("", M.CONFIG_A1.VARIABLES_CALIDAD, "Columna H", "Variables de calidad"),
+    M.validarListaAbierta_("", M.CONFIG_A1.CRITERIOS_IMPACTO, "Columna I", "Criterios de validación")
+  ];
+  const obs = cls.observaciones.concat(
+    checks.filter(function (c) { return !c.ok; }).map(function (c) { return c.obs; }));
+  obs.push("Observación final --> Para las columnas C a I utilice los desplegables de la hoja.");
+
+  const celda = M.unirObservaciones_(obs, "");
+  const renglones = celda.split("\n");
+
+  chequear("son nueve renglones", renglones.length === 9);
+  chequear("el primero es la columna B", /^Columna B -->/.test(renglones[0]));
+  chequear("el último es la observación final", /^Observación final -->/.test(renglones[8]));
+
+  // De la C a la I, en el orden de la hoja.
+  ["C", "D", "E", "F", "G", "H", "I"].forEach(function (col, i) {
+    chequear("el renglón " + (i + 2) + " es la columna " + col,
+      renglones[i + 1].indexOf("Columna " + col + " -->") === 0);
+  });
+
+  chequear("ningún renglón conserva el separador viejo", celda.indexOf("||") === -1);
+});
+
+bloque("Ajuste de texto en las hojas del dashboard", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  // Sin ajuste de texto el salto de línea no se ve, y el resumen lleva sus dos
+  // columnas de DIAGNÓSTICO en medio de la tabla, no al final.
+  chequear("el ajuste cubre todo el bloque de datos",
+    /getRange\(2, 1, filas\.length, nCols\)\s*\.setWrap\(true\)/.test(fuente));
+  chequear("las celdas se alinean arriba", /setVerticalAlignment\("top"\)/.test(fuente));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
