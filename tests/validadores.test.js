@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v12.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v13.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
@@ -218,8 +218,8 @@ bloque("Cobertura de los 16 procesos de Nivel 0", function () {
   chequear("son 16 procesos", vacia.length === 16);
   chequear("PE.03 se reporta como NO APLICA", porCodigo("PE.03")[6] === "NO APLICA");
   chequear("PS.08 se reporta como NO APLICA", porCodigo("PS.08")[6] === "NO APLICA");
-  chequear("quedan 14 obligatorios faltantes",
-    vacia.filter(function (f) { return f[6] === "FALTANTE"; }).length === 14);
+  chequear("quedan 14 obligatorios sin registrar",
+    vacia.filter(function (f) { return f[6] === "SIN REGISTRAR"; }).length === 14);
   chequear("un faltante puntúa 0", porCodigo("PE.01")[8] === "0/" + M.TOTAL_CRITERIOS_PROCESO);
   chequear("un opcional ausente no puntúa", porCodigo("PE.03")[8] === "—");
 
@@ -617,7 +617,7 @@ bloque("Coherencia entre encabezados y filas del dashboard", function () {
   const enc = literalTras('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
   chequear("se encuentran los encabezados del resumen", enc !== null);
   const nEnc = contarElementos(enc);
-  chequear("el resumen declara 19 columnas", nEnc === 19);
+  chequear("el resumen declara 21 columnas", nEnc === 21);
 
   const construcciones = [];
   let desde = 0;
@@ -704,43 +704,6 @@ bloque("Prefijo de las observaciones (contra observación de la FFB)", function 
     /"Columna F"/.test(cuerpo) && /"Columna I"/.test(cuerpo));
 });
 
-bloque("Resumen ejecutivo: columnas pedidas por el revisor", function () {
-  const fuente = require("fs").readFileSync(FUENTE, "utf8");
-  const i = fuente.indexOf('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
-  const ini = fuente.indexOf("[", i);
-  let nivel = 0, fin = ini;
-  for (let j = ini; j < fuente.length; j++) {
-    if (fuente[j] === "[") nivel++;
-    else if (fuente[j] === "]") { nivel--; if (!nivel) { fin = j; break; } }
-  }
-  const cab = fuente.slice(ini, fin + 1);
-
-  [
-    "FACULTAD", "NOMBRE", "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS",
-    "PRODUCTOS SIN REGISTRO", "TOTAL PROCESOS",
-    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS",
-    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "CÓDIGO DE LA HOJA"
-  ].forEach(function (e) {
-    chequear("declara " + e, cab.indexOf('"' + e + '"') !== -1);
-  });
-
-  const veces = function (t) { return (cab.match(new RegExp('"' + t + '"', "g")) || []).length; };
-  chequear("AVANCE aparece dos veces", veces("AVANCE") === 2);
-  chequear("ESTADO GENERAL aparece dos veces", veces("ESTADO GENERAL") === 2);
-  chequear("DIAGNÓSTICO aparece dos veces", veces("DIAGNÓSTICO") === 2);
-  chequear("SUBPROCESOS CONFORMES aparece una sola vez", veces("SUBPROCESOS CONFORMES") === 1);
-  chequear("ya no se llama FORMULARIO", cab.indexOf('"FORMULARIO"') === -1);
-  chequear("la contraobservación no se genera: la repone el rescate",
-    cab.indexOf("OBSERVACIÓN") === -1 || cab.indexOf("CONTRA") === -1);
-
-  // Los nuevos encabezados deben estar en el histórico, o el rescate los tomaría
-  // por columnas del revisor y los duplicaría en cada corrida.
-  ["PRODUCTOS SIN REGISTRO", "PROCESOS NIVEL 0 CONFORMES", "SUBPROCESOS OBSERVADOS",
-   "CÓDIGO DE LA HOJA"].forEach(function (e) {
-    chequear(e + " está en ENCABEZADOS_HISTORICOS",
-      M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf(e) !== -1);
-  });
-});
 
 
 bloque("Catalogaciones y procesos mal codificados (contra observaciones del detallado)", function () {
@@ -948,7 +911,7 @@ bloque("Hoja dashboard: estructura", function () {
   chequear("la hoja se llama dashboard", M.CONFIG_A1.HOJA_TABLERO === "dashboard");
   chequear("se construye al final de la escritura", /construirTablero_\(ss, resumen, detalle, procesos\)/.test(fuente));
 
-  ["Productos evaluados", "Conformes", "Observados", "Productos sin registro",
+  ["Productos evaluados", "Conformes", "Observados", "Productos sin registrar",
    "Procesos Nivel 0 conformes", "Procesos Nivel 0 observados"].forEach(function (t) {
     chequear("declara la tarjeta " + JSON.stringify(t), fuente.indexOf('"' + t + '"') !== -1);
   });
@@ -1004,6 +967,79 @@ bloque("Avance general del Anexo 1 (columna S)", function () {
     M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf("AVANCE GENERAL DEL ANEXO 1") !== -1);
   chequear("va al final, en la columna S",
     /"CÓDIGO DE LA HOJA",\s*\n\s*"AVANCE GENERAL DEL ANEXO 1"\]/.test(fuente));
+});
+
+
+bloque("Tres estados excluyentes en las hojas de detalle", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+
+  chequear("un Nivel 0 ausente sale SIN REGISTRAR",
+    M.filasNivel0_("FM", {}).find(function (f) { return f[1] === "PE.01"; })[6] === "SIN REGISTRAR");
+  chequear("ya no se usa el estado FALTANTE",
+    fuente.replace(/^[\s\S]*?const CONFIG_A1/, "").indexOf('"FALTANTE"') === -1);
+
+  chequear("el producto sin registrar tiene su propio estado",
+    /sinRegistro \? "SIN REGISTRAR" : "OBSERVADO"/.test(fuente));
+  chequear("los observados se cuentan por resta",
+    /totalProd - prodConformes - prodSinRegistrar/.test(fuente));
+  chequear("el Nivel 0 también se cuenta por resta",
+    /n0Evaluables\.length - n0Conformes - n0SinRegistrar/.test(fuente));
+
+  chequear("SIN REGISTRAR tiene color propio", /"SIN REGISTRAR": "#fce5cd"/.test(fuente));
+  chequear("y su lugar en el orden de las hojas",
+    /"SIN REGISTRAR": 2, "NO APLICA": 3/.test(fuente));
+
+  // El orden de las hojas de detalle agrupa los tres estados.
+  const filas = [
+    ["FM", 5, "", "", "", "", "SIN REGISTRAR", "", "", ""],
+    ["FM", 6, "", "", "", "", "OBSERVADO", "", "", ""],
+    ["FM", 7, "", "", "", "", "CONFORME", "", "", ""]
+  ];
+  const ord = M.ordenarPorFacultadYEstado_(filas, 0, 6, 1, null);
+  chequear("el orden es conforme, observado, sin registrar",
+    ord[0][6] === "CONFORME" && ord[1][6] === "OBSERVADO" && ord[2][6] === "SIN REGISTRAR");
+});
+
+bloque("Resumen ejecutivo: las 21 columnas de la v13", function () {
+  const fuente = require("fs").readFileSync(FUENTE, "utf8");
+  const i = fuente.indexOf('volcarHoja_(ss, "RESUMEN_EJECUTIVO_A1"');
+  const ini = fuente.indexOf("[", i);
+  let nivel = 0, fin = ini;
+  for (let j = ini; j < fuente.length; j++) {
+    if (fuente[j] === "[") nivel++;
+    else if (fuente[j] === "]") { nivel--; if (!nivel) { fin = j; break; } }
+  }
+  const cab = fuente.slice(ini, fin + 1);
+
+  const esperadas = [
+    "FACULTAD", "NOMBRE",
+    "TOTAL PRODUCTOS", "PRODUCTOS CONFORMES", "PRODUCTOS OBSERVADOS", "PRODUCTOS SIN REGISTRAR",
+    "TOTAL PROCESOS",
+    "PROCESOS NIVEL 0 CONFORMES", "PROCESOS NIVEL 0 OBSERVADOS", "PROCESOS NIVEL 0 SIN REGISTRAR",
+    "SUBPROCESOS CONFORMES", "SUBPROCESOS OBSERVADOS", "SUBPROCESOS SIN REGISTRAR",
+    "CÓDIGO DE LA HOJA", "AVANCE GENERAL DEL ANEXO 1"
+  ];
+  esperadas.forEach(function (e) {
+    chequear("declara " + e, cab.indexOf('"' + e + '"') !== -1);
+  });
+  chequear("ya no se llama PRODUCTOS SIN REGISTRO", cab.indexOf('"PRODUCTOS SIN REGISTRO"') === -1);
+
+  const veces = function (t) { return (cab.match(new RegExp('"' + t + '"', "g")) || []).length; };
+  chequear("AVANCE dos veces", veces("AVANCE") === 2);
+  chequear("ESTADO GENERAL dos veces", veces("ESTADO GENERAL") === 2);
+  chequear("DIAGNÓSTICO dos veces", veces("DIAGNÓSTICO") === 2);
+
+  ["PRODUCTOS SIN REGISTRAR", "PROCESOS NIVEL 0 SIN REGISTRAR", "SUBPROCESOS SIN REGISTRAR"]
+    .forEach(function (e) {
+      chequear(e + " está en ENCABEZADOS_HISTORICOS",
+        M.CONFIG_A1.ENCABEZADOS_HISTORICOS.indexOf(e) !== -1);
+    });
+
+  // El tablero lee la fila de resumen por posición: si los índices no se
+  // actualizan con las columnas nuevas, muestra los números de otra columna.
+  chequear("el tablero toma los subprocesos de 13 y 14",
+    /parseInt\(f\[13\], 10\) \|\| 0, parseInt\(f\[14\], 10\) \|\| 0/.test(fuente));
+  chequear("y el código de la hoja de 19", /\bf\[19\]\n/.test(fuente) || /f\[19\]/.test(fuente));
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
