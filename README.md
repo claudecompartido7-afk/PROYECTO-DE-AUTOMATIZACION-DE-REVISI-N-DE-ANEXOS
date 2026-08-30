@@ -14,7 +14,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v13.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v14.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v13.gs      v13, conservada como referencia
 apps-script/Anexo1_Auditoria_v12.gs      v12, conservada como referencia
 apps-script/Anexo1_Auditoria_v11.gs      v11, conservada como referencia
 apps-script/Anexo1_Auditoria_v10.gs      v10, conservada como referencia
@@ -26,8 +27,8 @@ apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v13.md             Reglas vigentes
-reglas/ANEXO-1_reglas-v12.md             Reglas previas
+reglas/ANEXO-1_reglas-v14.md             Reglas vigentes
+reglas/ANEXO-1_reglas-v13.md             Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
@@ -40,7 +41,7 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 node tests/validadores.test.js
 ```
 
-384 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+360 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
@@ -49,10 +50,10 @@ las filas de proceso y preservación de las columnas del revisor.
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v13.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v14.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
-   `dashboard`, `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
+   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
    `OBSERVACIONES_DE_PROCESO_A1`
 
 La hoja `COBERTURA_PROCESOS_A1` se **renombra** a `OBSERVACIONES_DE_PROCESO_A1`
