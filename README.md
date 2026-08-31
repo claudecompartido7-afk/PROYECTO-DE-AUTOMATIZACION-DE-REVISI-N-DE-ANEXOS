@@ -24,12 +24,28 @@ reglas/ANEXO-1_reglas-v5.md              Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
+publico/editor.html                      Editor de la portada pública
+publico/portada.js                       Contenido, generador y revisor previo
+publico/index.html                       Portada publicada (se genera)
+publico/LEEME.md                         Cómo editar y publicar
+tests/portada.test.js                    Pruebas de la portada (Node)
 ```
+
+## Portada pública
+
+Lo que ven los jefes, los dueños de proceso y los decanos se edita en
+`publico/editor.html`, que se abre en el navegador sin instalar nada: muestra en
+vivo la página que se va a publicar y revisa los textos antes de dejar
+descargarla. El detalle está en [`publico/LEEME.md`](publico/LEEME.md).
+
+En `publico/` va **solo contenido público** —cifras agregadas y enlaces a
+documentos vigentes—. El diagnóstico interno no vive ahí y no debe añadirse.
 
 ## Pruebas
 
 ```
 node tests/validadores.test.js
+node tests/portada.test.js
 ```
 
 218 comprobaciones sobre las funciones puras: validadores de las columnas C a I,

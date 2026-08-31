@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inventario de Productos y Procesos — Universidad Nacional Mayor de San Marcos</title>
+<meta name="description" content="Estado de avance de la revisión del Anexo 1 remitido por las facultades, con el detalle de los documentos vigentes que rigen el llenado del formulario.">
+<meta name="robots" content="index,follow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --tinta:#151A22; --granate:#8C1D2F; --oro:#C8A02E;
+  --papel:#F7F6F3; --blanco:#FFFFFF; --linea:#E4E0D9;
+  --texto:#2B2F36; --suave:#6A7079;
+  --verde:#2F6F4F;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--papel);color:var(--texto);
+  font-family:'Source Sans 3','Segoe UI',system-ui,-apple-system,sans-serif;
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.envoltura{max-width:1080px;margin:0 auto;padding:0 24px}
+
+/* Barra institucional */
+.barra{background:var(--blanco);border-bottom:3px solid var(--granate)}
+.barra .envoltura{display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
+.barra .casa{font-family:'Archivo','Arial Narrow',sans-serif;font-weight:700;
+  font-size:15px;letter-spacing:.02em;color:var(--tinta);text-transform:uppercase;margin:0}
+.barra .oficina{font-size:13px;color:var(--suave);margin:2px 0 0}
+.barra .sello{font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--granate);font-weight:600;white-space:nowrap}
+
+/* Hero */
+.hero{background:var(--tinta);color:#fff;padding:56px 0 60px}
+.hero h1{font-family:'Archivo','Arial Narrow',sans-serif;font-weight:700;
+  font-size:clamp(28px,4.4vw,46px);line-height:1.14;margin:0 0 18px;letter-spacing:-.01em}
+.hero .bajada{font-size:clamp(16px,1.9vw,19px);max-width:62ch;color:#D7DAE0;margin:0}
+.hero .periodo{display:inline-block;margin-top:26px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+  font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--oro);
+  border:1px solid rgba(200,160,46,.45);border-radius:2px;padding:6px 12px}
+
+/* Indicadores */
+.indicadores{margin-top:-34px;margin-bottom:56px}
+.rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
+.tarjeta-kpi{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
+  padding:22px 20px;border-top:3px solid var(--granate)}
+.tarjeta-kpi .cifra{font-family:'Archivo',sans-serif;font-weight:700;
+  font-size:38px;line-height:1;color:var(--tinta);letter-spacing:-.02em}
+.tarjeta-kpi .etiqueta{font-weight:600;font-size:14px;margin-top:10px;color:var(--texto)}
+.tarjeta-kpi .detalle{font-size:13px;color:var(--suave);margin-top:3px;line-height:1.45}
+
+/* Secciones */
+section.bloque{margin-bottom:56px}
+h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:22px;color:var(--tinta);
+  margin:0 0 6px;letter-spacing:-.005em}
+.bajada-seccion{color:var(--suave);font-size:15px;margin:0 0 22px;max-width:70ch}
+
+/* Barra de avance */
+.panel{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;padding:26px 24px}
+.barra-avance{display:flex;height:34px;border-radius:2px;overflow:hidden;
+  border:1px solid var(--linea);background:var(--papel)}
+.barra-avance span{display:block;height:100%}
+.seg-conforme{background:#2F6F4F}
+.seg-observado{background:var(--oro)}
+.seg-pendiente{background:#CFCBC2}
+.leyenda{display:flex;flex-wrap:wrap;gap:22px;margin-top:18px}
+.leyenda div{display:flex;align-items:baseline;gap:9px;font-size:14px}
+.punto{width:11px;height:11px;border-radius:2px;flex:none;transform:translateY(1px)}
+.leyenda .n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:600;color:var(--tinta)}
+.leyenda .q{color:var(--suave)}
+.nota-panel{margin:18px 0 0;font-size:13.5px;color:var(--suave);
+  border-left:3px solid var(--linea);padding-left:14px;line-height:1.55}
+
+/* Documentos */
+.docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px}
+.doc{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
+  padding:22px 20px;display:flex;flex-direction:column}
+.doc .cinta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--granate);font-weight:600;margin-bottom:12px}
+.doc h3{font-family:'Archivo',sans-serif;font-size:17px;color:var(--tinta);margin:0 0 8px;line-height:1.3}
+.doc p{font-size:14px;color:var(--suave);margin:0 0 18px;flex:1;line-height:1.55}
+.doc a{align-self:flex-start;font-weight:600;font-size:14px;color:var(--granate);
+  text-decoration:none;border-bottom:1.5px solid rgba(140,29,47,.3);padding-bottom:2px}
+.doc a:hover{border-bottom-color:var(--granate)}
+.doc .sin-enlace{font-size:13px;color:#9AA0A8;font-style:italic}
+
+/* Aviso */
+.aviso{background:var(--blanco);border:1px solid var(--linea);border-left:4px solid var(--granate);
+  border-radius:3px;padding:24px}
+.aviso h2{font-size:19px;margin-bottom:8px}
+.aviso p{margin:0;color:var(--texto);font-size:15px;max-width:72ch}
+
+/* Pie */
+footer{background:var(--tinta);color:#AEB4BD;padding:30px 0;font-size:13.5px}
+footer .envoltura{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.3)}
+
+@media print{
+  .hero{background:#fff;color:#000;padding:24px 0}
+  .hero h1,.hero .bajada{color:#000}
+  body{background:#fff}
+  .indicadores{margin-top:24px}
+}
+</style>
+</head>
+<body>
+<header class="barra">
+  <div class="envoltura">
+    <div>
+      <p class="casa">Universidad Nacional Mayor de San Marcos</p>
+      <p class="oficina">Oficina General de Planificación — Oficina de Racionalización</p>
+    </div>
+    <div class="sello">Decana de América</div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="envoltura">
+    <h1>Inventario de Productos y Procesos</h1>
+    <p class="bajada">Estado de avance de la revisión del Anexo 1 remitido por las facultades, con el detalle de los documentos vigentes que rigen el llenado del formulario.</p>
+    <div class="periodo">Corte al 31 de agosto de 2026</div>
+  </div>
+</section>
+
+<div class="envoltura indicadores">
+  <div class="rejilla">
+<div class="tarjeta-kpi"><div class="cifra">63%</div><div class="etiqueta">Avance de la revisión</div><div class="detalle">Productos con revisión concluida</div></div>
+<div class="tarjeta-kpi"><div class="cifra">2 823</div><div class="etiqueta">Productos inventariados</div><div class="detalle">Registros recibidos en el Anexo 1</div></div>
+<div class="tarjeta-kpi"><div class="cifra">20</div><div class="etiqueta">Facultades</div><div class="detalle">Formularios remitidos a la OGPL</div></div>
+<div class="tarjeta-kpi"><div class="cifra">16</div><div class="etiqueta">Procesos de nivel 0</div><div class="detalle">Estratégicos, misionales y de soporte</div></div>
+  </div>
+</div>
+
+<div class="envoltura">
+
+  <section class="bloque">
+    <h2>Composición del avance</h2>
+<div class="panel"><div class="barra-avance" role="img" aria-label="1 779 conformes, 612 observados, 432 pendientes"><span class="seg-conforme"  style="width:63.02%"></span><span class="seg-observado" style="width:21.68%"></span><span class="seg-pendiente" style="width:15.30%"></span></div><div class="leyenda"><div><span class="punto seg-conforme"></span><span class="n">1 779</span> <span class="q">conformes · 63.02%</span></div><div><span class="punto seg-observado"></span><span class="n">612</span> <span class="q">observados · 21.68%</span></div><div><span class="punto seg-pendiente"></span><span class="n">432</span> <span class="q">pendientes · 15.30%</span></div></div><p class="nota-panel">La cifra de avance corresponde a los productos cuya revisión ya concluyó, sea con resultado conforme o con observación comunicada.</p></div>
+  </section>
+
+  <section class="bloque">
+    <h2>Documentos vigentes</h2>
+    <p class="bajada-seccion">Estos son los documentos de referencia para el llenado y la corrección del Anexo 1.</p>
+    <div class="docs">
+<article class="doc"><div class="cinta">Instructivo</div><h3>Guía de llenado del Anexo 1</h3><p>Cómo se codifican los productos, qué exige cada columna y qué valores admite el formulario.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
+<article class="doc"><div class="cinta">Reglas</div><h3>Reglas de validación vigentes</h3><p>El conjunto de reglas que aplica la revisión automática, con el criterio de cada una.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
+<article class="doc"><div class="cinta">Bitácora</div><h3>Bitácora del proyecto</h3><p>Registro de hitos, incidencias y decisiones adoptadas a lo largo de la revisión.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
+    </div>
+  </section>
+
+  <section class="bloque">
+    <div class="aviso">
+      <h2>¿Su facultad tiene observaciones?</h2>
+      <p>Las observaciones se comunican por oficio a cada facultad. Para consultas sobre el detalle de un registro, escriba a la Oficina de Racionalización indicando el código del producto.</p>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="envoltura">
+    <div>Consultas: <a href="mailto:racionalizacion.ogpl@unmsm.edu.pe">racionalizacion.ogpl@unmsm.edu.pe</a></div>
+    <div>Actualizado al 31 de agosto de 2026</div>
+  </div>
+</footer>
+
+<script type="application/json" id="contenido-portada">
+{
+  "institucion": {
+    "universidad": "Universidad Nacional Mayor de San Marcos",
+    "oficina": "Oficina General de Planificación — Oficina de Racionalización",
+    "sello": "Decana de América"
+  },
+  "portada": {
+    "titulo": "Inventario de Productos y Procesos",
+    "bajada": "Estado de avance de la revisión del Anexo 1 remitido por las facultades, con el detalle de los documentos vigentes que rigen el llenado del formulario.",
+    "periodo": "Corte al 31 de agosto de 2026"
+  },
+  "indicadores": [
+    {
+      "valor": "63%",
+      "etiqueta": "Avance de la revisión",
+      "detalle": "Productos con revisión concluida"
+    },
+    {
+      "valor": "2 823",
+      "etiqueta": "Productos inventariados",
+      "detalle": "Registros recibidos en el Anexo 1"
+    },
+    {
+      "valor": "20",
+      "etiqueta": "Facultades",
+      "detalle": "Formularios remitidos a la OGPL"
+    },
+    {
+      "valor": "16",
+      "etiqueta": "Procesos de nivel 0",
+      "detalle": "Estratégicos, misionales y de soporte"
+    }
+  ],
+  "avance": {
+    "titulo": "Composición del avance",
+    "nota": "La cifra de avance corresponde a los productos cuya revisión ya concluyó, sea con resultado conforme o con observación comunicada.",
+    "conformes": 1779,
+    "observados": 612,
+    "pendientes": 432
+  },
+  "documentos": {
+    "titulo": "Documentos vigentes",
+    "bajada": "Estos son los documentos de referencia para el llenado y la corrección del Anexo 1.",
+    "lista": [
+      {
+        "etiqueta": "Instructivo",
+        "titulo": "Guía de llenado del Anexo 1",
+        "descripcion": "Cómo se codifican los productos, qué exige cada columna y qué valores admite el formulario.",
+        "enlace": ""
+      },
+      {
+        "etiqueta": "Reglas",
+        "titulo": "Reglas de validación vigentes",
+        "descripcion": "El conjunto de reglas que aplica la revisión automática, con el criterio de cada una.",
+        "enlace": ""
+      },
+      {
+        "etiqueta": "Bitácora",
+        "titulo": "Bitácora del proyecto",
+        "descripcion": "Registro de hitos, incidencias y decisiones adoptadas a lo largo de la revisión.",
+        "enlace": ""
+      }
+    ]
+  },
+  "aviso": {
+    "titulo": "¿Su facultad tiene observaciones?",
+    "texto": "Las observaciones se comunican por oficio a cada facultad. Para consultas sobre el detalle de un registro, escriba a la Oficina de Racionalización indicando el código del producto."
+  },
+  "pie": {
+    "contacto": "racionalizacion.ogpl@unmsm.edu.pe",
+    "actualizado": "31 de agosto de 2026"
+  }
+}
+</script>
+</body>
+</html>

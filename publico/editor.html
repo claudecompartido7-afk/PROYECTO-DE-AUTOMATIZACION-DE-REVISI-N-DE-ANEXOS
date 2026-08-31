@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Editor de la portada pública — OGPL</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --tinta:#151A22; --granate:#8C1D2F; --oro:#C8A02E;
+  --papel:#F2F1EE; --blanco:#fff; --linea:#DDD9D2;
+  --texto:#2B2F36; --suave:#6A7079; --rojo:#B3261E; --ambar:#8A6100;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--papel);color:var(--texto);
+  font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.55}
+
+/* Barra superior */
+.superior{background:var(--tinta);color:#fff;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;padding:11px 20px;flex-wrap:wrap;
+  position:sticky;top:0;z-index:20;border-bottom:3px solid var(--granate)}
+.superior h1{font-family:'Archivo',sans-serif;font-size:15px;margin:0;font-weight:700;
+  letter-spacing:.02em;text-transform:uppercase}
+.superior .sub{font-size:12.5px;color:#A8AEB7;margin:1px 0 0}
+.acciones{display:flex;gap:8px;flex-wrap:wrap}
+button{font:inherit;font-weight:600;font-size:13.5px;border-radius:3px;cursor:pointer;
+  padding:8px 14px;border:1px solid transparent;transition:.12s}
+.b-principal{background:var(--granate);color:#fff}
+.b-principal:hover{background:#751826}
+.b-lisa{background:transparent;color:#D7DAE0;border-color:#3C444F}
+.b-lisa:hover{background:#232A34;color:#fff}
+.b-chico{padding:4px 9px;font-size:12px;background:var(--blanco);
+  border-color:var(--linea);color:var(--texto)}
+.b-chico:hover{border-color:var(--granate);color:var(--granate)}
+.b-quitar:hover{border-color:var(--rojo);color:var(--rojo)}
+
+/* Dos columnas */
+.tablero{display:grid;grid-template-columns:minmax(380px,460px) 1fr;
+  height:calc(100vh - 56px)}
+@media(max-width:960px){.tablero{grid-template-columns:1fr;height:auto}}
+
+.columna-form{overflow-y:auto;padding:22px;border-right:1px solid var(--linea);
+  background:var(--papel)}
+.columna-vista{background:#5B6068;display:flex;flex-direction:column;overflow:hidden}
+@media(max-width:960px){.columna-vista{height:75vh}}
+
+/* Secciones del formulario */
+details.seccion{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
+  margin-bottom:12px;overflow:hidden}
+details.seccion>summary{cursor:pointer;padding:13px 16px;font-family:'Archivo',sans-serif;
+  font-weight:600;font-size:14px;color:var(--tinta);list-style:none;
+  display:flex;align-items:center;justify-content:space-between;gap:10px}
+details.seccion>summary::-webkit-details-marker{display:none}
+details.seccion>summary::after{content:'▸';color:var(--suave);font-size:13px;transition:.15s}
+details.seccion[open]>summary::after{transform:rotate(90deg)}
+details.seccion[open]>summary{border-bottom:1px solid var(--linea)}
+.cuerpo{padding:16px}
+
+label.campo{display:block;margin-bottom:14px}
+label.campo:last-child{margin-bottom:0}
+.campo>span{display:block;font-size:12.5px;font-weight:600;color:var(--suave);
+  margin-bottom:5px;letter-spacing:.01em}
+input[type=text],input[type=number],textarea{width:100%;font:inherit;font-size:14px;
+  padding:8px 10px;border:1px solid var(--linea);border-radius:3px;background:#FCFCFB;
+  color:var(--texto);resize:vertical}
+input:focus,textarea:focus{outline:none;border-color:var(--granate);
+  box-shadow:0 0 0 3px rgba(140,29,47,.10);background:#fff}
+textarea{min-height:70px;line-height:1.5}
+.par{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pista{font-size:12px;color:var(--suave);margin-top:4px}
+
+/* Fichas de lista */
+.ficha{border:1px solid var(--linea);border-left:3px solid var(--granate);
+  border-radius:3px;padding:13px;margin-bottom:11px;background:#FCFCFB}
+.ficha-cabeza{display:flex;align-items:center;justify-content:space-between;
+  gap:8px;margin-bottom:11px}
+.ficha-cabeza b{font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+  color:var(--granate);letter-spacing:.06em;text-transform:uppercase}
+.ficha-botones{display:flex;gap:5px}
+
+/* Vista previa */
+.vista-barra{background:#3E434B;color:#C9CED6;padding:8px 14px;font-size:12.5px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;flex:none}
+.vista-barra .anchos{display:flex;gap:5px}
+.vista-barra button{padding:3px 10px;font-size:12px;background:transparent;
+  border:1px solid #545A63;color:#C9CED6}
+.vista-barra button.activo{background:#C9CED6;color:#2B2F36;border-color:#C9CED6}
+.marco{flex:1;display:flex;justify-content:center;overflow:auto;padding:14px}
+iframe{background:#fff;border:0;width:100%;height:100%;box-shadow:0 4px 20px rgba(0,0,0,.28)}
+
+/* Revisión */
+.revision{margin-bottom:12px;border-radius:3px;border:1px solid var(--linea);
+  background:var(--blanco);overflow:hidden}
+.revision-cabeza{padding:12px 16px;font-family:'Archivo',sans-serif;font-weight:600;
+  font-size:14px;display:flex;align-items:center;gap:9px}
+.revision.limpia .revision-cabeza{color:#1E5A3C;background:#EAF5EF}
+.revision.sucia .revision-cabeza{color:var(--rojo);background:#FCECEA}
+.reparo{padding:11px 16px;border-top:1px solid var(--linea);font-size:13px;
+  cursor:pointer;transition:background .12s}
+.reparo:hover{background:#FAF8F6}
+.reparo:focus-visible{outline:2px solid var(--granate);outline-offset:-2px}
+.reparo:hover .donde{color:var(--granate)}
+.reparo .tit{font-weight:600;display:flex;gap:8px;align-items:center}
+.sello{font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.07em;
+  padding:1px 6px;border-radius:2px;text-transform:uppercase;font-weight:600}
+.sello.alta{background:#FCECEA;color:var(--rojo);border:1px solid #F0C4BF}
+.sello.media{background:#FDF4E3;color:var(--ambar);border:1px solid #EBD9AE}
+.reparo .donde{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--suave);margin-top:3px}
+.reparo .por{color:var(--texto);margin-top:4px}
+.reparo .cita{margin-top:5px;padding:6px 9px;background:var(--papel);border-radius:2px;
+  font-size:12.5px;color:var(--suave);border-left:2px solid var(--linea)}
+
+.aviso-guardado{font-size:12px;color:#A8AEB7}
+dialog{border:1px solid var(--linea);border-radius:4px;padding:0;max-width:min(760px,92vw);
+  width:100%;box-shadow:0 16px 50px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(21,26,34,.55)}
+.dlg-cabeza{padding:14px 18px;border-bottom:1px solid var(--linea);
+  font-family:'Archivo',sans-serif;font-weight:600;display:flex;
+  justify-content:space-between;align-items:center;gap:12px}
+.dlg-cuerpo{padding:18px;max-height:62vh;overflow:auto}
+.dlg-cuerpo textarea{min-height:340px;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+</style>
+</head>
+<body>
+
+<div class="superior">
+  <div>
+    <h1>Editor de la portada pública</h1>
+    <p class="sub">Lo que usted edite aquí es exactamente lo que verán las facultades.</p>
+  </div>
+  <div class="acciones">
+    <span class="aviso-guardado" id="avisoGuardado"></span>
+    <button class="b-lisa" id="btnCargar">Cargar index.html</button>
+    <button class="b-lisa" id="btnJson">Ver JSON</button>
+    <button class="b-lisa" id="btnRestaurar">Restaurar base</button>
+    <button class="b-principal" id="btnPublicar">Descargar index.html</button>
+  </div>
+</div>
+
+<div class="tablero">
+  <div class="columna-form">
+    <div id="revision"></div>
+    <div id="formulario"></div>
+  </div>
+
+  <div class="columna-vista">
+    <div class="vista-barra">
+      <span>Vista previa — así se publica</span>
+      <div class="anchos">
+        <button data-ancho="100%" class="activo">Escritorio</button>
+        <button data-ancho="820px">Tableta</button>
+        <button data-ancho="390px">Teléfono</button>
+      </div>
+    </div>
+    <div class="marco"><iframe id="vista" title="Vista previa de la portada"></iframe></div>
+  </div>
+</div>
+
+<input type="file" id="archivo" accept=".html,text/html" hidden>
+
+<dialog id="dlgJson">
+  <div class="dlg-cabeza">
+    <span>Contenido en JSON</span>
+    <div style="display:flex;gap:8px">
+      <button class="b-chico" id="btnCopiarJson">Copiar</button>
+      <button class="b-chico" id="btnAplicarJson">Aplicar cambios</button>
+      <button class="b-chico" id="btnCerrarJson">Cerrar</button>
+    </div>
+  </div>
+  <div class="dlg-cuerpo"><textarea id="areaJson" spellcheck="false"></textarea></div>
+</dialog>
+
+<script src="portada.js"></script>
+<script>
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  EDITOR DE LA PORTADA PÚBLICA
+ *
+ *  Trabaja sobre un único objeto `estado`. Cada tecla que usted pulsa lo
+ *  modifica y vuelve a dibujar la vista previa; el formulario NO se redibuja
+ *  al escribir, de modo que el cursor nunca salta.
+ *
+ *  El borrador se guarda solo, en este navegador. Nada viaja a ningún
+ *  servidor: la publicación consiste en descargar el index.html y subirlo.
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+const LLAVE_BORRADOR = 'ogpl.portada.borrador';
+
+let estado = cargarBorrador() || clonar(CONTENIDO_BASE);
+
+function clonar(o){ return JSON.parse(JSON.stringify(o)); }
+
+function cargarBorrador(){
+  try{
+    const crudo = localStorage.getItem(LLAVE_BORRADOR);
+    return crudo ? JSON.parse(crudo) : null;
+  }catch(e){ return null; }
+}
+
+let temporizadorGuardado;
+function guardarBorrador(){
+  clearTimeout(temporizadorGuardado);
+  temporizadorGuardado = setTimeout(function(){
+    try{
+      localStorage.setItem(LLAVE_BORRADOR, JSON.stringify(estado));
+      const hora = new Date().toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'});
+      document.getElementById('avisoGuardado').textContent = 'Borrador guardado ' + hora;
+    }catch(e){
+      document.getElementById('avisoGuardado').textContent = 'No se pudo guardar el borrador';
+    }
+  }, 400);
+}
+
+/* ── acceso por ruta: 'portada.titulo', 'indicadores.2.valor' ── */
+function leer(obj, ruta){
+  return ruta.split('.').reduce(function(o,k){ return o == null ? o : o[k]; }, obj);
+}
+function fijar(obj, ruta, valor){
+  const partes = ruta.split('.');
+  const ultima = partes.pop();
+  const destino = partes.reduce(function(o,k){ return o[k]; }, obj);
+  destino[ultima] = valor;
+}
+
+/* ───────────────────────── construcción del formulario ───────────────────────── */
+
+function campoTexto(ruta, etiqueta, pista){
+  const v = leer(estado, ruta);
+  return '<label class="campo"><span>' + etiqueta + '</span>' +
+    '<input type="text" data-ruta="' + ruta + '" value="' + escAtr(v) + '">' +
+    (pista ? '<div class="pista">' + pista + '</div>' : '') + '</label>';
+}
+function campoArea(ruta, etiqueta, pista){
+  const v = leer(estado, ruta);
+  return '<label class="campo"><span>' + etiqueta + '</span>' +
+    '<textarea data-ruta="' + ruta + '">' + escTxt(v) + '</textarea>' +
+    (pista ? '<div class="pista">' + pista + '</div>' : '') + '</label>';
+}
+function campoNumero(ruta, etiqueta){
+  const v = leer(estado, ruta);
+  return '<label class="campo"><span>' + etiqueta + '</span>' +
+    '<input type="number" min="0" step="1" data-ruta="' + ruta + '" data-tipo="numero" value="' +
+    escAtr(v) + '"></label>';
+}
+function escAtr(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+function escTxt(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+function seccion(id, titulo, contenidoHtml, abierta){
+  return '<details class="seccion"' + (abierta ? ' open' : '') + ' data-id="' + id + '">' +
+    '<summary>' + titulo + '</summary><div class="cuerpo">' + contenidoHtml + '</div></details>';
+}
+
+function botonesFicha(lista, i, total){
+  return '<div class="ficha-botones">' +
+    '<button class="b-chico" data-mover="' + lista + '" data-i="' + i + '" data-d="-1"' +
+      (i === 0 ? ' disabled' : '') + ' title="Subir">↑</button>' +
+    '<button class="b-chico" data-mover="' + lista + '" data-i="' + i + '" data-d="1"' +
+      (i === total - 1 ? ' disabled' : '') + ' title="Bajar">↓</button>' +
+    '<button class="b-chico b-quitar" data-quitar="' + lista + '" data-i="' + i + '" title="Quitar">✕</button>' +
+  '</div>';
+}
+
+function pintarFormulario(){
+  const ind = estado.indicadores || [];
+  const docs = (estado.documentos && estado.documentos.lista) || [];
+
+  const htmlIndicadores = ind.map(function(k,i){
+    return '<div class="ficha">' +
+      '<div class="ficha-cabeza"><b>Indicador ' + (i+1) + '</b>' + botonesFicha('indicadores', i, ind.length) + '</div>' +
+      '<div class="par">' +
+        campoTexto('indicadores.' + i + '.valor', 'Cifra', 'Ej.: 63% · 2 823') +
+        campoTexto('indicadores.' + i + '.etiqueta', 'Etiqueta') +
+      '</div>' +
+      campoTexto('indicadores.' + i + '.detalle', 'Detalle') +
+    '</div>';
+  }).join('') +
+  '<button class="b-chico" data-agregar="indicadores">+ Añadir indicador</button>';
+
+  const htmlDocs = docs.map(function(d,i){
+    return '<div class="ficha">' +
+      '<div class="ficha-cabeza"><b>Documento ' + (i+1) + '</b>' + botonesFicha('documentos.lista', i, docs.length) + '</div>' +
+      '<div class="par">' +
+        campoTexto('documentos.lista.' + i + '.etiqueta', 'Cintillo', 'Ej.: Instructivo') +
+        campoTexto('documentos.lista.' + i + '.titulo', 'Título') +
+      '</div>' +
+      campoArea('documentos.lista.' + i + '.descripcion', 'Descripción') +
+      campoTexto('documentos.lista.' + i + '.enlace', 'Enlace', 'Debe empezar por https:// · vacío = «pendiente de publicación»') +
+    '</div>';
+  }).join('') +
+  '<button class="b-chico" data-agregar="documentos.lista">+ Añadir documento</button>';
+
+  document.getElementById('formulario').innerHTML =
+    seccion('portada', 'Encabezado y título',
+      campoTexto('portada.titulo', 'Título principal') +
+      campoArea('portada.bajada', 'Bajada', 'Dos o tres líneas. Es lo primero que se lee.') +
+      campoTexto('portada.periodo', 'Fecha de corte'), true) +
+
+    seccion('indicadores', 'Indicadores (' + ind.length + ')', htmlIndicadores, true) +
+
+    seccion('avance', 'Barra de avance',
+      campoTexto('avance.titulo', 'Título de la sección') +
+      '<div class="par">' +
+        campoNumero('avance.conformes', 'Conformes') +
+        campoNumero('avance.observados', 'Observados') +
+      '</div>' +
+      campoNumero('avance.pendientes', 'Pendientes') +
+      '<div class="pista" id="sumaAvance"></div>' +
+      campoArea('avance.nota', 'Nota al pie del panel')) +
+
+    seccion('documentos', 'Documentos (' + docs.length + ')',
+      campoTexto('documentos.titulo', 'Título de la sección') +
+      campoArea('documentos.bajada', 'Bajada de la sección') +
+      '<hr style="border:0;border-top:1px solid var(--linea);margin:16px 0">' +
+      htmlDocs) +
+
+    seccion('aviso', 'Aviso a las facultades',
+      campoTexto('aviso.titulo', 'Título del aviso') +
+      campoArea('aviso.texto', 'Texto del aviso')) +
+
+    seccion('institucion', 'Institución y pie',
+      campoTexto('institucion.universidad', 'Universidad') +
+      campoTexto('institucion.oficina', 'Oficina') +
+      campoTexto('institucion.sello', 'Sello') +
+      '<hr style="border:0;border-top:1px solid var(--linea);margin:16px 0">' +
+      campoTexto('pie.contacto', 'Correo de contacto') +
+      campoTexto('pie.actualizado', 'Fecha de actualización'));
+
+  actualizarSuma();
+}
+
+function actualizarSuma(){
+  const nodo = document.getElementById('sumaAvance');
+  if (!nodo) return;
+  const a = estado.avance || {};
+  const total = (+a.conformes||0) + (+a.observados||0) + (+a.pendientes||0);
+  const pct = total ? Math.round((+a.conformes||0) * 100 / total) : 0;
+  // `miles` es la misma función con que la página escribe sus cifras: la pista
+  // debe separar los millares igual que el archivo publicado, no de otro modo.
+  nodo.textContent = 'Suman ' + miles(total) +
+    ' productos · el avance mostrado será ' + pct + '%';
+}
+
+/* ───────────────────────── vista previa y revisión ───────────────────────── */
+
+let temporizadorVista;
+function refrescarVista(){
+  clearTimeout(temporizadorVista);
+  temporizadorVista = setTimeout(function(){
+    document.getElementById('vista').srcdoc = paginaCompleta(estado);
+  }, 220);
+}
+
+function refrescarRevision(){
+  const reparos = revisarAntesDePublicar(estado);
+  const caja = document.getElementById('revision');
+
+  if (!reparos.length){
+    caja.className = 'revision limpia';
+    caja.innerHTML = '<div class="revision-cabeza">✓ Revisión sin reparos — puede publicarse</div>';
+    return;
+  }
+
+  const graves = reparos.filter(function(r){ return r.gravedad === 'alta'; }).length;
+  caja.className = 'revision sucia';
+  caja.innerHTML =
+    '<div class="revision-cabeza">⚠ ' + reparos.length + ' reparo' + (reparos.length>1?'s':'') +
+      ' antes de publicar' + (graves ? ' · ' + graves + ' de atención inmediata' : '') + '</div>' +
+    reparos.map(function(r){
+      return '<div class="reparo" data-ir="' + escAtr(r.ruta || '') + '" ' +
+             'title="Ir al campo" role="button" tabindex="0">' +
+        '<div class="tit"><span class="sello ' + r.gravedad + '">' + r.gravedad + '</span>' + r.nombre + '</div>' +
+        '<div class="donde">' + r.campo + ' →</div>' +
+        '<div class="por">' + r.motivo + '</div>' +
+        '<div class="cita">' + escTxt(r.extracto) + '</div>' +
+      '</div>';
+    }).join('');
+}
+
+/** Todo lo que hay que rehacer tras un cambio de contenido. */
+function tras(cambioEstructural){
+  if (cambioEstructural) pintarFormulario();
+  refrescarVista();
+  refrescarRevision();
+  guardarBorrador();
+}
+
+/**
+ * Lleva al usuario hasta el campo que causó un reparo.
+ *
+ * Sin esto la revisión dice qué está mal pero deja buscando dónde: el campo
+ * puede estar dentro de una sección plegada y no verse en absoluto.
+ */
+function irAlCampo(ruta){
+  if (!ruta) return;
+  const control = document.querySelector('[data-ruta="' + ruta.replace(/"/g,'\\"') + '"]');
+  if (!control) return;
+
+  const seccion = control.closest('details.seccion');
+  if (seccion) seccion.open = true;
+
+  control.scrollIntoView({ behavior:'smooth', block:'center' });
+  control.focus({ preventScroll:true });
+
+  // Un parpadeo breve: al abrirse una sección entera, el borde de foco solo
+  // no basta para localizar el campo entre los demás.
+  control.animate(
+    [{ boxShadow:'0 0 0 3px rgba(140,29,47,.55)' },
+     { boxShadow:'0 0 0 3px rgba(140,29,47,0)' }],
+    { duration: 1100, easing: 'ease-out' }
+  );
+}
+
+/* ───────────────────────────── eventos ───────────────────────────── */
+
+document.getElementById('revision').addEventListener('click', function(ev){
+  const r = ev.target.closest('.reparo');
+  if (r) irAlCampo(r.dataset.ir);
+});
+document.getElementById('revision').addEventListener('keydown', function(ev){
+  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+  const r = ev.target.closest('.reparo');
+  if (r){ ev.preventDefault(); irAlCampo(r.dataset.ir); }
+});
+
+// Escribir: actualiza el estado sin redibujar el formulario (el cursor se queda).
+document.getElementById('formulario').addEventListener('input', function(ev){
+  const campo = ev.target.closest('[data-ruta]');
+  if (!campo) return;
+  const valor = campo.dataset.tipo === 'numero' ? (Number(campo.value) || 0) : campo.value;
+  fijar(estado, campo.dataset.ruta, valor);
+  actualizarSuma();
+  refrescarVista();
+  refrescarRevision();
+  guardarBorrador();
+});
+
+// Añadir, quitar y reordenar: sí redibujan.
+document.getElementById('formulario').addEventListener('click', function(ev){
+  const b = ev.target.closest('button');
+  if (!b) return;
+
+  if (b.dataset.agregar){
+    ev.preventDefault();
+    const lista = leer(estado, b.dataset.agregar);
+    lista.push(b.dataset.agregar === 'indicadores'
+      ? { valor:'0', etiqueta:'Nuevo indicador', detalle:'' }
+      : { etiqueta:'', titulo:'Nuevo documento', descripcion:'', enlace:'' });
+    tras(true);
+    return;
+  }
+
+  if (b.dataset.quitar){
+    ev.preventDefault();
+    const lista = leer(estado, b.dataset.quitar);
+    const i = +b.dataset.i;
+    const nombre = lista[i].titulo || lista[i].etiqueta || 'este elemento';
+    if (confirm('¿Quitar «' + nombre + '»?')){ lista.splice(i,1); tras(true); }
+    return;
+  }
+
+  if (b.dataset.mover){
+    ev.preventDefault();
+    const lista = leer(estado, b.dataset.mover);
+    const i = +b.dataset.i, j = i + (+b.dataset.d);
+    if (j < 0 || j >= lista.length) return;
+    const t = lista[i]; lista[i] = lista[j]; lista[j] = t;
+    tras(true);
+  }
+});
+
+// Anchos de la vista previa.
+document.querySelector('.vista-barra .anchos').addEventListener('click', function(ev){
+  const b = ev.target.closest('button');
+  if (!b) return;
+  document.querySelectorAll('.vista-barra .anchos button')
+    .forEach(function(x){ x.classList.toggle('activo', x === b); });
+  document.getElementById('vista').style.width = b.dataset.ancho;
+});
+
+/* ── Publicar ── */
+document.getElementById('btnPublicar').addEventListener('click', function(){
+  const reparos = revisarAntesDePublicar(estado);
+  const graves = reparos.filter(function(r){ return r.gravedad === 'alta'; });
+
+  if (graves.length){
+    const detalle = graves.map(function(r){ return '· ' + r.nombre + ' (' + r.campo + ')'; }).join('\n');
+    if (!confirm('La revisión encontró ' + graves.length + ' reparo(s) de atención inmediata:\n\n' +
+                 detalle + '\n\nEsta página la verán todas las facultades. ¿Descargar igualmente?')) return;
+  }
+
+  const html = paginaCompleta(estado);
+  const enlace = document.createElement('a');
+  const url = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
+  enlace.href = url;
+  enlace.download = 'index.html';
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+});
+
+/* ── Cargar un index.html publicado para seguir editándolo ── */
+document.getElementById('btnCargar').addEventListener('click', function(){
+  document.getElementById('archivo').click();
+});
+document.getElementById('archivo').addEventListener('change', function(ev){
+  const f = ev.target.files[0];
+  if (!f) return;
+  const lector = new FileReader();
+  lector.onload = function(){
+    const recuperado = leerContenido(lector.result);
+    if (!recuperado){
+      alert('Ese archivo no lleva el registro de contenido.\n\n' +
+            'Solo se pueden reabrir los index.html generados por este editor.');
+      return;
+    }
+    estado = recuperado;
+    tras(true);
+    alert('Contenido cargado. Ya puede editarlo.');
+  };
+  lector.readAsText(f);
+  ev.target.value = '';
+});
+
+/* ── JSON ── */
+const dlg = document.getElementById('dlgJson');
+document.getElementById('btnJson').addEventListener('click', function(){
+  document.getElementById('areaJson').value = JSON.stringify(estado, null, 2);
+  dlg.showModal();
+});
+document.getElementById('btnCerrarJson').addEventListener('click', function(){ dlg.close(); });
+document.getElementById('btnCopiarJson').addEventListener('click', function(){
+  navigator.clipboard.writeText(document.getElementById('areaJson').value)
+    .then(function(){ alert('JSON copiado.'); })
+    .catch(function(){ alert('No se pudo copiar; seleccione el texto y cópielo a mano.'); });
+});
+document.getElementById('btnAplicarJson').addEventListener('click', function(){
+  try{
+    estado = JSON.parse(document.getElementById('areaJson').value);
+    tras(true);
+    dlg.close();
+  }catch(e){
+    alert('El JSON tiene un error de sintaxis:\n\n' + e.message);
+  }
+});
+
+/* ── Restaurar ── */
+document.getElementById('btnRestaurar').addEventListener('click', function(){
+  if (!confirm('Se descartará todo lo que haya editado y volverá al contenido base. ¿Continuar?')) return;
+  estado = clonar(CONTENIDO_BASE);
+  tras(true);
+});
+
+/* ── Arranque ── */
+pintarFormulario();
+document.getElementById('vista').srcdoc = paginaCompleta(estado);
+refrescarRevision();
+</script>
+</body>
+</html>
