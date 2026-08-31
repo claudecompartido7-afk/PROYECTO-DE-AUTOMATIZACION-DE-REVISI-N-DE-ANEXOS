@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v14.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v15.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
@@ -31,7 +31,7 @@ module.exports = {
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
   TOTAL_CRITERIOS, TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
   esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
-  ordenarPorFacultadYEstado_, avanceCombinado_
+  ordenarPorFacultadYEstado_, avanceCombinado_, filaDeTotales_
 };
 `;
 
@@ -212,7 +212,7 @@ bloque("Jerarquía — procesos con código de producto", function () {
 });
 
 bloque("Cobertura de los 16 procesos de Nivel 0", function () {
-  const vacia = M.filasNivel0_("FM", {});
+  const vacia = M.filasNivel0_("FM", {}, {});
   const porCodigo = function (c) { return vacia.find(function (f) { return f[1] === c; }); };
 
   chequear("son 16 procesos", vacia.length === 16);
@@ -224,7 +224,7 @@ bloque("Cobertura de los 16 procesos de Nivel 0", function () {
   chequear("un opcional ausente no puntúa", porCodigo("PE.03")[8] === "—");
 
   const conforme = M.clasificarFila_("PE.01_F01 GESTIÓN ESTRATÉGICA", function () { return true; }, "F01");
-  const llena = M.filasNivel0_("FM", { "PE.01": { fila: 7, cls: conforme } });
+  const llena = M.filasNivel0_("FM", { "PE.01": { fila: 7, cls: conforme } }, {});
   chequear("un Nivel 0 correcto sale CONFORME al 100%",
     llena[0][6] === "CONFORME" && llena[0][7] === "100%");
   chequear("y registra la fila del Anexo 1", llena[0][5] === 7);
@@ -901,7 +901,7 @@ bloque("Tres estados excluyentes en las hojas de detalle", function () {
   const fuente = require("fs").readFileSync(FUENTE, "utf8");
 
   chequear("un Nivel 0 ausente sale SIN REGISTRAR",
-    M.filasNivel0_("FM", {}).find(function (f) { return f[1] === "PE.01"; })[6] === "SIN REGISTRAR");
+    M.filasNivel0_("FM", {}, {}).find(function (f) { return f[1] === "PE.01"; })[6] === "SIN REGISTRAR");
   chequear("ya no se usa el estado FALTANTE",
     fuente.replace(/^[\s\S]*?const CONFIG_A1/, "").indexOf('"FALTANTE"') === -1);
 
@@ -991,6 +991,81 @@ bloque("La hoja dashboard queda retirada", function () {
   const ord = M.ordenarPorFacultadYEstado_(filas, 0, 6, 1, null);
   chequear("y sigue agrupando conforme, observado, sin registrar",
     ord[0][6] === "CONFORME" && ord[2][6] === "SIN REGISTRAR");
+});
+
+
+bloque("Un proceso existe si la pestaña le registró contenido", function () {
+  const porCodigo = function (filas, c) {
+    return filas.find(function (f) { return f[1] === c; });
+  };
+
+  // Sin encabezado y sin descendientes: ausencia real.
+  const vacia = M.filasNivel0_("FM", {}, {});
+  chequear("PE.03 ausente del todo es NO APLICA", porCodigo(vacia, "PE.03")[6] === "NO APLICA");
+  chequear("PS.08 ausente del todo es NO APLICA", porCodigo(vacia, "PS.08")[6] === "NO APLICA");
+  chequear("un obligatorio ausente es SIN REGISTRAR", porCodigo(vacia, "PE.01")[6] === "SIN REGISTRAR");
+
+  // Sin encabezado pero con descendientes: el proceso se ejecuta.
+  const conHijos = M.filasNivel0_("FFB", {}, { "PS.08": 32, "PS.06": 3 });
+  const ps08 = porCodigo(conHijos, "PS.08");
+  chequear("PS.08 con 32 códigos hijos deja de ser NO APLICA", ps08[6] !== "NO APLICA");
+  chequear("y pasa a contarse como OBSERVADO", ps08[6] === "OBSERVADO");
+  chequear("puntúa 4 de 5", ps08[8] === "4/" + M.TOTAL_CRITERIOS_PROCESO);
+  chequear("la observación dice que falta el encabezado",
+    /FALTA LA FILA DE ENCABEZADO/.test(ps08[9]));
+  chequear("y cuántos códigos dependen de él", /32 códigos que dependen de PS\.08/.test(ps08[9]));
+
+  const ps06 = porCodigo(conHijos, "PS.06");
+  chequear("un obligatorio con hijos tampoco es SIN REGISTRAR", ps06[6] === "OBSERVADO");
+
+  // Con encabezado: se evalúa como cualquier proceso.
+  const cls = M.clasificarFila_("PS.08_F04 GESTIÓN DE ACTIVIDADES PRODUCTIVAS",
+    function () { return false; }, "F04", "F04");
+  const conEnc = M.filasNivel0_("FFB", { "PS.08": { fila: 120, cls: cls } }, { "PS.08": 32 });
+  chequear("con encabezado se evalúa normalmente", porCodigo(conEnc, "PS.08")[6] === "CONFORME");
+  chequear("y registra su fila del Anexo", porCodigo(conEnc, "PS.08")[5] === 120);
+
+  chequear("el NO APLICA explica que no hay ni encabezado ni códigos",
+    /ni ningún código que dependa de él/.test(porCodigo(vacia, "PE.03")[9]));
+});
+
+bloque("Fila de totales del resumen", function () {
+  const met = [
+    { totalProd: 10, prodConformes: 10, prodObservados: 0, prodSinRegistrar: 0,
+      totalProc: 2, n0Conformes: 2, n0Observados: 0, n0SinRegistrar: 0,
+      subConformes: 0, subObservados: 0, subSinRegistrar: 0,
+      cumplidosProd: [8,8,8,8,8,8,8,8,8,8], cumplidosProc: [5,5] },
+    { totalProd: 2, prodConformes: 0, prodObservados: 1, prodSinRegistrar: 1,
+      totalProc: 1, n0Conformes: 0, n0Observados: 1, n0SinRegistrar: 0,
+      subConformes: 0, subObservados: 0, subSinRegistrar: 0,
+      cumplidosProd: [4, 0], cumplidosProc: [0] }
+  ];
+  const t = M.filaDeTotales_(met);
+
+  chequear("la fila tiene 21 celdas", t.length === 21);
+  chequear("se identifica como TOTAL", t[0] === "TOTAL");
+  chequear("dice cuántas facultades resume", t[1] === "Las 2 facultades");
+
+  chequear("suma los productos", t[2] === 12 && t[3] === 10 && t[4] === 1 && t[5] === 1);
+  chequear("suma los procesos", t[9] === 3 && t[10] === 2 && t[11] === 1);
+
+  // 84 de 96 criterios de producto = 88 %; 10 de 15 de proceso = 67 %.
+  chequear("el avance de productos es ponderado", t[6] === "88%");
+  chequear("el avance de procesos es ponderado", t[16] === "67%");
+  // 94 de 111 criterios en total = 85 %.
+  chequear("el avance general suma ambos bloques", t[20] === "85%");
+
+  // Con el promedio simple saldría otra cosa: es la diferencia que se explica.
+  const avA = M.avanceCombinado_([{ cumplidos: met[0].cumplidosProd, porFila: M.TOTAL_CRITERIOS },
+                                  { cumplidos: met[0].cumplidosProc, porFila: M.TOTAL_CRITERIOS_PROCESO }]);
+  const avB = M.avanceCombinado_([{ cumplidos: met[1].cumplidosProd, porFila: M.TOTAL_CRITERIOS },
+                                  { cumplidos: met[1].cumplidosProc, porFila: M.TOTAL_CRITERIOS_PROCESO }]);
+  chequear("y no coincide con promediar las facultades",
+    parseInt(t[20], 10) !== Math.round((avA + avB) / 2));
+
+  chequear("el diagnóstico advierte que es ponderado",
+    /ponderado por criterios evaluados, no promedio/i.test(t[8]));
+  chequear("la columna de código de hoja queda vacía", t[19] === "—");
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
