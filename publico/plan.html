@@ -3,9 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inventario de Productos y Procesos — Universidad Nacional Mayor de San Marcos</title>
-<meta name="description" content="Estado de avance de la revisión del Anexo 1 remitido por las facultades, con el detalle de los documentos vigentes que rigen el llenado del formulario.">
-<meta name="robots" content="index,follow">
+<title>Plan de Gestión del Proyecto — Universidad Nacional Mayor de San Marcos</title>
+<meta name="description" content="Revisión y normalización del Anexo 1 — Inventario de productos y procesos de las facultades.">
 <style>
 :root{
   --tinta:#151A22; --granate:#8C1D2F; --oro:#C8A02E;
@@ -108,6 +107,64 @@ footer a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,25
   body{background:#fff}
   .indicadores{margin-top:24px}
 }
+
+.plan-cabecera{background:var(--tinta);color:#fff;padding:44px 0 40px}
+.plan-cabecera .volver{display:inline-block;font-size:13px;color:#9BA3AE;
+  text-decoration:none;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,.22);
+  padding-bottom:2px}
+.plan-cabecera .volver:hover{color:#fff}
+.plan-cabecera h1{font-family:var(--sans);font-weight:700;
+  font-size:clamp(26px,3.8vw,40px);line-height:1.15;margin:0 0 14px;letter-spacing:-.01em}
+.plan-cabecera .bajada{font-size:clamp(15px,1.7vw,18px);color:#D7DAE0;margin:0;max-width:62ch}
+.plan-sellos{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.plan-sellos span{font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--oro);
+  border:1px solid rgba(200,160,46,.45);border-radius:2px;padding:5px 11px}
+
+.plan-cuerpo{padding:44px 0 60px;display:grid;grid-template-columns:230px 1fr;gap:44px;
+  align-items:start}
+@media(max-width:860px){.plan-cuerpo{grid-template-columns:1fr;gap:26px}}
+
+.plan-indice{position:sticky;top:24px;border-left:2px solid var(--linea);padding-left:16px}
+@media(max-width:860px){.plan-indice{position:static;border-left:0;border-top:1px solid var(--linea);
+  border-bottom:1px solid var(--linea);padding:16px 0}}
+.plan-indice p{font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--suave);margin:0 0 12px;font-weight:600}
+.plan-indice a{display:block;font-size:13.5px;color:var(--texto);text-decoration:none;
+  padding:5px 0;line-height:1.35;border-bottom:1px solid transparent}
+.plan-indice a:hover{color:var(--granate)}
+
+.apartado{margin-bottom:40px;scroll-margin-top:20px}
+.apartado:last-child{margin-bottom:0}
+.apartado h2{font-family:var(--sans);font-weight:700;font-size:20px;
+  color:var(--tinta);margin:0 0 14px;padding-bottom:9px;border-bottom:2px solid var(--granate);
+  display:inline-block}
+.apartado p{margin:0 0 13px;max-width:76ch;line-height:1.65}
+.apartado ul{margin:0 0 13px;padding-left:20px;max-width:76ch}
+.apartado li{margin-bottom:7px;line-height:1.6}
+.apartado li::marker{color:var(--granate)}
+
+.plan-tabla{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:14px;
+  background:var(--blanco);border:1px solid var(--linea)}
+.plan-tabla th{background:#EFEDE8;text-align:left;font-family:var(--sans);
+  font-size:12.5px;letter-spacing:.02em;color:var(--tinta);padding:10px 13px;
+  border-bottom:2px solid var(--linea);vertical-align:bottom}
+.plan-tabla td{padding:10px 13px;border-bottom:1px solid var(--linea);
+  vertical-align:top;line-height:1.5}
+.plan-tabla tr:last-child td{border-bottom:0}
+.plan-tabla tr:nth-child(even) td{background:#FBFAF8}
+.envuelve-tabla{overflow-x:auto;margin-bottom:14px}
+
+@media print{
+  .plan-cabecera{background:#fff;color:#000;padding:0 0 20px}
+  .plan-cabecera h1,.plan-cabecera .bajada{color:#000}
+  .plan-cabecera .volver{display:none}
+  .plan-sellos span{color:#000;border-color:#999}
+  .plan-indice{display:none}
+  .plan-cuerpo{display:block;padding:0}
+  .apartado{break-inside:avoid;margin-bottom:24px}
+  .plan-tabla{font-size:11px}
+}
 </style>
 </head>
 <body>
@@ -121,48 +178,48 @@ footer a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,25
   </div>
 </header>
 
-<section class="hero">
+<section class="plan-cabecera">
   <div class="envoltura">
-    <h1>Inventario de Productos y Procesos</h1>
-    <p class="bajada">Estado de avance de la revisión del Anexo 1 remitido por las facultades, con el detalle de los documentos vigentes que rigen el llenado del formulario.</p>
-    <div class="periodo">Corte al 31 de agosto de 2026</div>
+    <a class="volver" href="index.html">&larr; Volver a la portada</a>
+    <h1>Plan de Gestión del Proyecto</h1>
+    <p class="bajada">Revisión y normalización del Anexo 1 — Inventario de productos y procesos de las facultades.</p>
+    <div class="plan-sellos">
+      <span>Versión 1.0</span>
+      <span>Oficina General de Planificación — Oficina de Racionalización</span>
+    </div>
   </div>
 </section>
 
-<div class="envoltura indicadores">
-  <div class="rejilla">
-<div class="tarjeta-kpi"><div class="cifra">63%</div><div class="etiqueta">Avance de la revisión</div><div class="detalle">Productos con revisión concluida</div></div>
-<div class="tarjeta-kpi"><div class="cifra">2 823</div><div class="etiqueta">Productos inventariados</div><div class="detalle">Registros recibidos en el Anexo 1</div></div>
-<div class="tarjeta-kpi"><div class="cifra">20</div><div class="etiqueta">Facultades</div><div class="detalle">Formularios remitidos a la OGPL</div></div>
-<div class="tarjeta-kpi"><div class="cifra">16</div><div class="etiqueta">Procesos de nivel 0</div><div class="detalle">Estratégicos, misionales y de soporte</div></div>
-  </div>
-</div>
-
 <div class="envoltura">
-
-  <section class="bloque">
-    <h2>Composición del avance</h2>
-<div class="panel"><div class="barra-avance" role="img" aria-label="1 779 conformes, 612 observados, 432 pendientes"><span class="seg-conforme"  style="width:63.02%"></span><span class="seg-observado" style="width:21.68%"></span><span class="seg-pendiente" style="width:15.30%"></span></div><div class="leyenda"><div><span class="punto seg-conforme"></span><span class="n">1 779</span> <span class="q">conformes · 63.02%</span></div><div><span class="punto seg-observado"></span><span class="n">612</span> <span class="q">observados · 21.68%</span></div><div><span class="punto seg-pendiente"></span><span class="n">432</span> <span class="q">pendientes · 15.30%</span></div></div><p class="nota-panel">La cifra de avance corresponde a los productos cuya revisión ya concluyó, sea con resultado conforme o con observación comunicada.</p></div>
-  </section>
-
-  <section class="bloque">
-    <h2>Documentos vigentes</h2>
-    <p class="bajada-seccion">Estos son los documentos de referencia para el llenado y la corrección del Anexo 1.</p>
-    <div class="docs">
-<article class="doc"><div class="cinta">Plan</div><h3>Plan de Gestión del Proyecto</h3><p>Alcance, entregables, hitos, responsabilidades, comunicaciones y riesgos de la revisión del Anexo 1.</p><a href="plan.html">Ver el documento &rarr;</a></article>
-<article class="doc"><div class="cinta">Instructivo</div><h3>Guía de llenado del Anexo 1</h3><p>Cómo se codifican los productos, qué exige cada columna y qué valores admite el formulario.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
-<article class="doc"><div class="cinta">Reglas</div><h3>Reglas de validación vigentes</h3><p>El conjunto de reglas que aplica la revisión automática, con el criterio de cada una.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
-<article class="doc"><div class="cinta">Bitácora</div><h3>Bitácora del proyecto</h3><p>Registro de hitos, incidencias y decisiones adoptadas a lo largo de la revisión.</p><span class="sin-enlace">Enlace pendiente de publicación</span></article>
-    </div>
-  </section>
-
-  <section class="bloque">
-    <div class="aviso">
-      <h2>¿Su facultad tiene observaciones?</h2>
-      <p>Las observaciones se comunican por oficio a cada facultad. Para consultas sobre el detalle de un registro, escriba a la Oficina de Racionalización indicando el código del producto.</p>
-    </div>
-  </section>
-
+  <div class="plan-cuerpo">
+    <nav class="plan-indice">
+      <p>Contenido</p>
+      <a href="#ap1">1. Objeto</a>
+      <a href="#ap2">2. Alcance</a>
+      <a href="#ap3">3. Fuera de alcance</a>
+      <a href="#ap4">4. Entregables</a>
+      <a href="#ap5">5. Hitos</a>
+      <a href="#ap6">6. Organización y responsabilidades</a>
+      <a href="#ap7">7. Gestión de la calidad</a>
+      <a href="#ap8">8. Comunicaciones</a>
+      <a href="#ap9">9. Riesgos</a>
+      <a href="#ap10">10. Control de cambios</a>
+    </nav>
+    <main>
+<section class="apartado" id="ap1"><h2>1. Objeto</h2><p>Este plan ordena la revisión del Anexo 1 remitido por las veinte facultades, de modo que el inventario de productos y procesos quede codificado con un criterio único y verificable.</p>
+<p>La revisión no reescribe el contenido de las facultades: detecta lo que se aparta de las reglas, lo comunica por oficio y registra la respuesta.</p></section>
+<section class="apartado" id="ap2"><h2>2. Alcance</h2><p>Queda comprendido en el alcance:</p><ul><li>La validación de las columnas B a I de cada formulario, según las reglas vigentes.</li><li>La verificación del sufijo de formulario que corresponde a cada facultad.</li><li>La comprobación de la jerarquía de códigos y de los procesos de nivel 0.</li><li>La comunicación de observaciones a cada facultad y el registro de su respuesta.</li></ul></section>
+<section class="apartado" id="ap3"><h2>3. Fuera de alcance</h2><ul><li>La redacción del contenido sustantivo de los productos, que es responsabilidad de cada facultad.</li><li>El Anexo 3 — Ficha técnica, que se atenderá en una etapa posterior.</li><li>La aprobación formal del inventario, que corresponde a las instancias de gobierno.</li></ul></section>
+<section class="apartado" id="ap4"><h2>4. Entregables</h2><div class="envuelve-tabla"><table class="plan-tabla"><thead><tr><th>Entregable</th><th>Descripción</th><th>Responsable</th></tr></thead><tbody><tr><td>Resumen ejecutivo</td><td>Estado consolidado por facultad y por proceso.</td><td>Oficina de Racionalización</td></tr><tr><td>Detalle de productos</td><td>Observación por registro, con la regla que la origina.</td><td>Oficina de Racionalización</td></tr><tr><td>Observaciones de proceso</td><td>Reparos sobre la hoja de procesos de cada facultad.</td><td>Oficina de Racionalización</td></tr><tr><td>Oficios de observación</td><td>Comunicación formal a cada facultad.</td><td>Jefatura de la OGPL</td></tr><tr><td>Inventario normalizado</td><td>Anexo 1 con las observaciones subsanadas.</td><td>Facultades</td></tr></tbody></table></div></section>
+<section class="apartado" id="ap5"><h2>5. Hitos</h2><p>Las fechas se ajustan a la disponibilidad de las facultades y se comunican con antelación por oficio.</p><div class="envuelve-tabla"><table class="plan-tabla"><thead><tr><th>Hito</th><th>Estado</th></tr></thead><tbody><tr><td>Recepción de los formularios de las veinte facultades</td><td>Concluido</td></tr><tr><td>Primera corrida de la revisión automática</td><td>Concluido</td></tr><tr><td>Comunicación de observaciones por oficio</td><td>En curso</td></tr><tr><td>Subsanación por las facultades</td><td>En curso</td></tr><tr><td>Corrida de verificación</td><td>Programado</td></tr><tr><td>Consolidación del inventario</td><td>Programado</td></tr></tbody></table></div></section>
+<section class="apartado" id="ap6"><h2>6. Organización y responsabilidades</h2><div class="envuelve-tabla"><table class="plan-tabla"><thead><tr><th>Rol</th><th>Responsabilidad</th></tr></thead><tbody><tr><td>Jefatura de la OGPL</td><td>Aprueba el plan y suscribe las comunicaciones a las facultades.</td></tr><tr><td>Oficina de Racionalización</td><td>Ejecuta la revisión, mantiene las reglas y consolida los resultados.</td></tr><tr><td>Dueño de proceso</td><td>Valida que los productos de su proceso estén completos y bien clasificados.</td></tr><tr><td>Decanato de la facultad</td><td>Dispone la subsanación de las observaciones comunicadas.</td></tr><tr><td>Responsable designado por la facultad</td><td>Corrige el formulario y responde las observaciones.</td></tr></tbody></table></div></section>
+<section class="apartado" id="ap7"><h2>7. Gestión de la calidad</h2><p>La revisión se apoya en un conjunto de reglas escritas y versionadas, no en el criterio de quien revisa. Cada regla declara qué exige y por qué, de modo que una observación siempre puede rastrearse hasta la regla que la origina.</p>
+<p>Las reglas cuentan con pruebas automáticas que se ejecutan antes de cada corrida. Una regla que no pasa sus pruebas no se aplica.</p></section>
+<section class="apartado" id="ap8"><h2>8. Comunicaciones</h2><div class="envuelve-tabla"><table class="plan-tabla"><thead><tr><th>Qué</th><th>A quién</th><th>Cómo</th><th>Cuándo</th></tr></thead><tbody><tr><td>Estado de avance</td><td>Facultades y dueños de proceso</td><td>Portada pública</td><td>Permanente</td></tr><tr><td>Observaciones del Anexo 1</td><td>Decanato de la facultad</td><td>Oficio</td><td>Al cierre de cada corrida</td></tr><tr><td>Consultas sobre un registro</td><td>Oficina de Racionalización</td><td>Correo institucional</td><td>A demanda</td></tr><tr><td>Cambios en las reglas</td><td>Facultades</td><td>Oficio y portada pública</td><td>Antes de aplicarse</td></tr></tbody></table></div></section>
+<section class="apartado" id="ap9"><h2>9. Riesgos</h2><div class="envuelve-tabla"><table class="plan-tabla"><thead><tr><th>Riesgo</th><th>Efecto</th><th>Respuesta</th></tr></thead><tbody><tr><td>Subsanación tardía de una facultad</td><td>Retrasa la consolidación del inventario.</td><td>Reiterar por oficio y escalar al decanato.</td></tr><tr><td>Interpretación dispar de una regla</td><td>Observaciones discutidas y reprocesos.</td><td>Precisar la regla por escrito y volver a correr la revisión.</td></tr><tr><td>Cambio en la estructura del formulario</td><td>Invalida el mapa de columnas.</td><td>Versionar las reglas y conservar la versión anterior.</td></tr><tr><td>Ausencia temporal de personal de la oficina</td><td>Detiene la atención de consultas.</td><td>Documentar el procedimiento y designar un reemplazo.</td></tr></tbody></table></div></section>
+<section class="apartado" id="ap10"><h2>10. Control de cambios</h2><p>Toda modificación de las reglas queda registrada con su versión y su fecha, y se comunica a las facultades antes de aplicarse. Las versiones anteriores se conservan, de modo que siempre es posible saber con qué criterio se revisó una corrida pasada.</p></section>
+    </main>
+  </div>
 </div>
 
 <footer>

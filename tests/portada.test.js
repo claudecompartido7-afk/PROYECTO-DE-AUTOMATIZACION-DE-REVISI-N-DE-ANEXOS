@@ -12,7 +12,7 @@
  */
 
 const {
-  CONTENIDO_BASE, paginaCompleta, leerContenido, revisarAntesDePublicar
+  CONTENIDO_BASE, paginaCompleta, paginaPlan, leerContenido, revisarAntesDePublicar
 } = require('../publico/portada.js');
 
 let fallos = 0, corridas = 0;
@@ -106,11 +106,15 @@ grupo('Revisión: enlaces');
 const sinEnlaces = revisarAntesDePublicar(CONTENIDO_BASE);
 ok('avisa de cada documento sin enlace',
    sinEnlaces.filter(function (r) { return r.nombre === 'Enlace sin definir'; }).length === 3);
+// El índice 0 es la tarjeta del Plan, que apunta a una página del propio sitio
+// y por eso no lleva enlace externo; se prueba sobre una que sí lo lleva.
 ok('rechaza un enlace que no sea https',
-   marca(con(function (c) { c.documentos.lista[0].enlace = 'http://ejemplo.pe'; }), 'Enlace inseguro'));
+   marca(con(function (c) { c.documentos.lista[1].enlace = 'http://ejemplo.pe'; }), 'Enlace inseguro'));
 
 const conEnlaces = copia();
-conEnlaces.documentos.lista.forEach(function (d) { d.enlace = 'https://docs.google.com/x'; });
+conEnlaces.documentos.lista.forEach(function (d) {
+  if (!d.pagina) d.enlace = 'https://docs.google.com/x';
+});
 ok('con los enlaces puestos, el contenido base queda sin reparos',
    revisarAntesDePublicar(conEnlaces).length === 0);
 
@@ -153,6 +157,75 @@ ok('una lista de documentos vacía no rompe la generación', (function () {
   c.indicadores = [];
   try { return typeof paginaCompleta(c) === 'string'; } catch (e) { return false; }
 })());
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+grupo('Plan de Gestión del Proyecto');
+
+const plan = paginaPlan(CONTENIDO_BASE);
+const aps = CONTENIDO_BASE.plan.apartados;
+
+ok('se dibuja un apartado por cada uno del contenido',
+   (plan.match(/class="apartado"/g) || []).length === aps.length);
+ok('el índice lateral tiene una entrada por apartado',
+   (plan.match(/class="plan-indice"/g) || []).length === 1 &&
+   aps.every(function (_, i) { return plan.includes('href="#ap' + (i + 1) + '"'); }));
+ok('cada apartado lleva su ancla',
+   aps.every(function (_, i) { return plan.includes('id="ap' + (i + 1) + '"'); }));
+ok('se dibujan las tablas que tienen encabezados',
+   (plan.match(/<table class="plan-tabla">/g) || []).length ===
+   aps.filter(function (a) { return a.tabla && a.tabla.encabezados.length; }).length);
+ok('el plan vuelve a la portada', plan.includes('href="index.html"'));
+ok('la portada enlaza al plan', paginaCompleta(CONTENIDO_BASE).includes('href="plan.html"'));
+
+ok('una línea en blanco separa dos párrafos', (function () {
+  const c = copia();
+  c.plan.apartados = [{ titulo: 'X', cuerpo: 'Uno.\n\nDos.', lista: [], tabla: null }];
+  // Se cuenta dentro del apartado: la cabecera de la página trae párrafos suyos.
+  const seccion = paginaPlan(c).match(/<section class="apartado"[\s\S]*?<\/section>/)[0];
+  return (seccion.match(/<p>/g) || []).length === 2 &&
+         seccion.includes('<p>Uno.</p>') && seccion.includes('<p>Dos.</p>');
+})());
+
+ok('un apartado vacío no dibuja lista ni tabla', (function () {
+  const c = copia();
+  c.plan.apartados = [{ titulo: 'X', cuerpo: '', lista: [], tabla: null }];
+  const h = paginaPlan(c);
+  return !h.includes('<ul>') && !h.includes('<table');
+})());
+
+ok('las viñetas en blanco se descartan', (function () {
+  const c = copia();
+  c.plan.apartados = [{ titulo: 'X', cuerpo: '', lista: ['Una', '', '   '], tabla: null }];
+  return (paginaPlan(c).match(/<li>/g) || []).length === 1;
+})());
+
+ok('el plan también lleva el registro para reabrirlo',
+   JSON.stringify(leerContenido(plan)) === JSON.stringify(CONTENIDO_BASE));
+ok('el plan tampoco necesita JavaScript',
+   (plan.match(/<script/g) || []).length === 1);
+ok('el contenido del plan pasa por la revisión', (function () {
+  const c = copia();
+  c.plan.apartados[0].cuerpo = 'Hospitalización del responsable.';
+  return marca(revisarAntesDePublicar(c), 'Información de salud');
+})());
+ok('una tarjeta con página interna no se exige que sea https',
+   !revisarAntesDePublicar(CONTENIDO_BASE).some(function (r) {
+     return r.campo.indexOf('documentos.lista[1]') === 0;
+   }));
+
+/* ─────────────────────────────────────────────────────────────────────────── */
+grupo('Ninguna página depende de un servidor ajeno');
+
+// Un <link> a una hoja de estilo remota bloquea el primer pintado: en una red
+// institucional lenta o filtrada la página quedaría en blanco. Y un recurso de
+// un tercero registra a cada lector de un documento oficial.
+[['index.html', paginaCompleta(CONTENIDO_BASE)], ['plan.html', plan]].forEach(function (par) {
+  ok(par[0] + ' no pide hojas de estilo ni fuentes remotas',
+     !/<link[^>]+href=["']https?:/i.test(par[1]));
+  ok(par[0] + ' no carga imágenes ni scripts remotos',
+     !/(src|href)=["']https?:\/\/(?!)/i.test(par[1].replace(/href="mailto:[^"]*"/g, '')) &&
+     !/<img/i.test(par[1]));
+});
 
 /* ─────────────────────────────────────────────────────────────────────────── */
 console.log('\n' + corridas + ' comprobaciones · ' +

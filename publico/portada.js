@@ -65,6 +65,15 @@ const CONTENIDO_BASE = {
             'corrección del Anexo 1.',
     lista: [
       {
+        etiqueta: 'Plan',
+        titulo: 'Plan de Gestión del Proyecto',
+        descripcion: 'Alcance, entregables, hitos, responsabilidades, ' +
+                     'comunicaciones y riesgos de la revisión del Anexo 1.',
+        // `pagina` en lugar de `enlace`: no sale a Drive, se publica junto a
+        // la portada y se edita en el mismo editor.
+        pagina: 'plan.html'
+      },
+      {
         etiqueta: 'Instructivo',
         titulo: 'Guía de llenado del Anexo 1',
         descripcion: 'Cómo se codifican los productos, qué exige cada columna ' +
@@ -93,6 +102,155 @@ const CONTENIDO_BASE = {
     texto: 'Las observaciones se comunican por oficio a cada facultad. Para ' +
            'consultas sobre el detalle de un registro, escriba a la Oficina ' +
            'de Racionalización indicando el código del producto.'
+  },
+
+  /**
+   * Plan de Gestión del Proyecto. Se publica como `plan.html`, una página
+   * aparte: es un documento formal, con su propia portada y su propia
+   * impresión, y meterlo dentro de la portada la volvería ilegible.
+   *
+   * Cada apartado admite tres formas, y puede combinarlas: `cuerpo` para los
+   * párrafos, `lista` para las viñetas y `tabla` para lo que se lee mejor en
+   * columnas. Lo que se deje vacío no se dibuja.
+   */
+  plan: {
+    titulo: 'Plan de Gestión del Proyecto',
+    bajada: 'Revisión y normalización del Anexo 1 — Inventario de productos ' +
+            'y procesos de las facultades.',
+    version: 'Versión 1.0',
+    aprobacion: 'Oficina General de Planificación — Oficina de Racionalización',
+
+    apartados: [
+      {
+        titulo: '1. Objeto',
+        cuerpo: 'Este plan ordena la revisión del Anexo 1 remitido por las ' +
+                'veinte facultades, de modo que el inventario de productos y ' +
+                'procesos quede codificado con un criterio único y verificable.\n\n' +
+                'La revisión no reescribe el contenido de las facultades: ' +
+                'detecta lo que se aparta de las reglas, lo comunica por ' +
+                'oficio y registra la respuesta.',
+        lista: [],
+        tabla: null
+      },
+      {
+        titulo: '2. Alcance',
+        cuerpo: 'Queda comprendido en el alcance:',
+        lista: [
+          'La validación de las columnas B a I de cada formulario, según las reglas vigentes.',
+          'La verificación del sufijo de formulario que corresponde a cada facultad.',
+          'La comprobación de la jerarquía de códigos y de los procesos de nivel 0.',
+          'La comunicación de observaciones a cada facultad y el registro de su respuesta.'
+        ],
+        tabla: null
+      },
+      {
+        titulo: '3. Fuera de alcance',
+        cuerpo: '',
+        lista: [
+          'La redacción del contenido sustantivo de los productos, que es responsabilidad de cada facultad.',
+          'El Anexo 3 — Ficha técnica, que se atenderá en una etapa posterior.',
+          'La aprobación formal del inventario, que corresponde a las instancias de gobierno.'
+        ],
+        tabla: null
+      },
+      {
+        titulo: '4. Entregables',
+        cuerpo: '',
+        lista: [],
+        tabla: {
+          encabezados: ['Entregable', 'Descripción', 'Responsable'],
+          filas: [
+            ['Resumen ejecutivo', 'Estado consolidado por facultad y por proceso.', 'Oficina de Racionalización'],
+            ['Detalle de productos', 'Observación por registro, con la regla que la origina.', 'Oficina de Racionalización'],
+            ['Observaciones de proceso', 'Reparos sobre la hoja de procesos de cada facultad.', 'Oficina de Racionalización'],
+            ['Oficios de observación', 'Comunicación formal a cada facultad.', 'Jefatura de la OGPL'],
+            ['Inventario normalizado', 'Anexo 1 con las observaciones subsanadas.', 'Facultades']
+          ]
+        }
+      },
+      {
+        titulo: '5. Hitos',
+        cuerpo: 'Las fechas se ajustan a la disponibilidad de las facultades ' +
+                'y se comunican con antelación por oficio.',
+        lista: [],
+        tabla: {
+          encabezados: ['Hito', 'Estado'],
+          filas: [
+            ['Recepción de los formularios de las veinte facultades', 'Concluido'],
+            ['Primera corrida de la revisión automática', 'Concluido'],
+            ['Comunicación de observaciones por oficio', 'En curso'],
+            ['Subsanación por las facultades', 'En curso'],
+            ['Corrida de verificación', 'Programado'],
+            ['Consolidación del inventario', 'Programado']
+          ]
+        }
+      },
+      {
+        titulo: '6. Organización y responsabilidades',
+        cuerpo: '',
+        lista: [],
+        tabla: {
+          encabezados: ['Rol', 'Responsabilidad'],
+          filas: [
+            ['Jefatura de la OGPL', 'Aprueba el plan y suscribe las comunicaciones a las facultades.'],
+            ['Oficina de Racionalización', 'Ejecuta la revisión, mantiene las reglas y consolida los resultados.'],
+            ['Dueño de proceso', 'Valida que los productos de su proceso estén completos y bien clasificados.'],
+            ['Decanato de la facultad', 'Dispone la subsanación de las observaciones comunicadas.'],
+            ['Responsable designado por la facultad', 'Corrige el formulario y responde las observaciones.']
+          ]
+        }
+      },
+      {
+        titulo: '7. Gestión de la calidad',
+        cuerpo: 'La revisión se apoya en un conjunto de reglas escritas y ' +
+                'versionadas, no en el criterio de quien revisa. Cada regla ' +
+                'declara qué exige y por qué, de modo que una observación ' +
+                'siempre puede rastrearse hasta la regla que la origina.\n\n' +
+                'Las reglas cuentan con pruebas automáticas que se ejecutan ' +
+                'antes de cada corrida. Una regla que no pasa sus pruebas no ' +
+                'se aplica.',
+        lista: [],
+        tabla: null
+      },
+      {
+        titulo: '8. Comunicaciones',
+        cuerpo: '',
+        lista: [],
+        tabla: {
+          encabezados: ['Qué', 'A quién', 'Cómo', 'Cuándo'],
+          filas: [
+            ['Estado de avance', 'Facultades y dueños de proceso', 'Portada pública', 'Permanente'],
+            ['Observaciones del Anexo 1', 'Decanato de la facultad', 'Oficio', 'Al cierre de cada corrida'],
+            ['Consultas sobre un registro', 'Oficina de Racionalización', 'Correo institucional', 'A demanda'],
+            ['Cambios en las reglas', 'Facultades', 'Oficio y portada pública', 'Antes de aplicarse']
+          ]
+        }
+      },
+      {
+        titulo: '9. Riesgos',
+        cuerpo: '',
+        lista: [],
+        tabla: {
+          encabezados: ['Riesgo', 'Efecto', 'Respuesta'],
+          filas: [
+            ['Subsanación tardía de una facultad', 'Retrasa la consolidación del inventario.', 'Reiterar por oficio y escalar al decanato.'],
+            ['Interpretación dispar de una regla', 'Observaciones discutidas y reprocesos.', 'Precisar la regla por escrito y volver a correr la revisión.'],
+            ['Cambio en la estructura del formulario', 'Invalida el mapa de columnas.', 'Versionar las reglas y conservar la versión anterior.'],
+            ['Ausencia temporal de personal de la oficina', 'Detiene la atención de consultas.', 'Documentar el procedimiento y designar un reemplazo.']
+          ]
+        }
+      },
+      {
+        titulo: '10. Control de cambios',
+        cuerpo: 'Toda modificación de las reglas queda registrada con su ' +
+                'versión y su fecha, y se comunica a las facultades antes de ' +
+                'aplicarse. Las versiones anteriores se conservan, de modo ' +
+                'que siempre es posible saber con qué criterio se revisó una ' +
+                'corrida pasada.',
+        lista: [],
+        tabla: null
+      }
+    ]
   },
 
   pie: {
@@ -239,6 +397,11 @@ function revisarAntesDePublicar(contenido) {
   lista.forEach(function (d, i) {
     const donde = 'documentos.lista[' + (i + 1) + '].enlace';
     const ruta = 'documentos.lista.' + i + '.enlace';
+    // Las tarjetas que apuntan a una página del propio sitio no llevan enlace
+    // externo, y exigirles https sería un reparo falso.
+    if (String(d.pagina || '').trim()) {
+      return;
+    }
     if (!d.enlace || !String(d.enlace).trim()) {
       reparos.push({
         gravedad: 'media', nombre: 'Enlace sin definir', campo: donde, ruta: ruta,
@@ -279,10 +442,18 @@ const HOJA_DE_ESTILO = `
   --papel:#F7F6F3; --blanco:#FFFFFF; --linea:#E4E0D9;
   --texto:#2B2F36; --suave:#6A7079;
   --verde:#2F6F4F;
+
+  /* Sin fuentes remotas: un <link> a un servidor de tipografías bloquea el
+     primer pintado, y en una red institucional lenta o filtrada la página
+     quedaría en blanco justo para quien tiene que leerla. Además evita que
+     cada lector de un documento oficial quede registrado en un tercero.
+     El carácter se consigue con el peso y el espaciado, no con la familia. */
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--papel);color:var(--texto);
-  font-family:'Source Sans 3','Segoe UI',system-ui,-apple-system,sans-serif;
+  font-family:var(--sans);
   font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .envoltura{max-width:1080px;margin:0 auto;padding:0 24px}
 
@@ -290,18 +461,18 @@ body{margin:0;background:var(--papel);color:var(--texto);
 .barra{background:var(--blanco);border-bottom:3px solid var(--granate)}
 .barra .envoltura{display:flex;align-items:center;justify-content:space-between;
   gap:16px;padding-top:14px;padding-bottom:14px;flex-wrap:wrap}
-.barra .casa{font-family:'Archivo','Arial Narrow',sans-serif;font-weight:700;
+.barra .casa{font-family:var(--sans);font-weight:700;
   font-size:15px;letter-spacing:.02em;color:var(--tinta);text-transform:uppercase;margin:0}
 .barra .oficina{font-size:13px;color:var(--suave);margin:2px 0 0}
-.barra .sello{font-family:'Archivo',sans-serif;font-size:11px;letter-spacing:.16em;
+.barra .sello{font-family:var(--sans);font-size:11px;letter-spacing:.16em;
   text-transform:uppercase;color:var(--granate);font-weight:600;white-space:nowrap}
 
 /* Hero */
 .hero{background:var(--tinta);color:#fff;padding:56px 0 60px}
-.hero h1{font-family:'Archivo','Arial Narrow',sans-serif;font-weight:700;
+.hero h1{font-family:var(--sans);font-weight:700;
   font-size:clamp(28px,4.4vw,46px);line-height:1.14;margin:0 0 18px;letter-spacing:-.01em}
 .hero .bajada{font-size:clamp(16px,1.9vw,19px);max-width:62ch;color:#D7DAE0;margin:0}
-.hero .periodo{display:inline-block;margin-top:26px;font-family:'IBM Plex Mono',ui-monospace,monospace;
+.hero .periodo{display:inline-block;margin-top:26px;font-family:var(--mono);
   font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--oro);
   border:1px solid rgba(200,160,46,.45);border-radius:2px;padding:6px 12px}
 
@@ -310,14 +481,14 @@ body{margin:0;background:var(--papel);color:var(--texto);
 .rejilla{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:16px}
 .tarjeta-kpi{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
   padding:22px 20px;border-top:3px solid var(--granate)}
-.tarjeta-kpi .cifra{font-family:'Archivo',sans-serif;font-weight:700;
+.tarjeta-kpi .cifra{font-family:var(--sans);font-weight:700;
   font-size:38px;line-height:1;color:var(--tinta);letter-spacing:-.02em}
 .tarjeta-kpi .etiqueta{font-weight:600;font-size:14px;margin-top:10px;color:var(--texto)}
 .tarjeta-kpi .detalle{font-size:13px;color:var(--suave);margin-top:3px;line-height:1.45}
 
 /* Secciones */
 section.bloque{margin-bottom:56px}
-h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:22px;color:var(--tinta);
+h2{font-family:var(--sans);font-weight:700;font-size:22px;color:var(--tinta);
   margin:0 0 6px;letter-spacing:-.005em}
 .bajada-seccion{color:var(--suave);font-size:15px;margin:0 0 22px;max-width:70ch}
 
@@ -332,7 +503,7 @@ h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:22px;color:var(--t
 .leyenda{display:flex;flex-wrap:wrap;gap:22px;margin-top:18px}
 .leyenda div{display:flex;align-items:baseline;gap:9px;font-size:14px}
 .punto{width:11px;height:11px;border-radius:2px;flex:none;transform:translateY(1px)}
-.leyenda .n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-weight:600;color:var(--tinta)}
+.leyenda .n{font-family:var(--mono);font-weight:600;color:var(--tinta)}
 .leyenda .q{color:var(--suave)}
 .nota-panel{margin:18px 0 0;font-size:13.5px;color:var(--suave);
   border-left:3px solid var(--linea);padding-left:14px;line-height:1.55}
@@ -341,9 +512,9 @@ h2{font-family:'Archivo',sans-serif;font-weight:700;font-size:22px;color:var(--t
 .docs{display:grid;grid-template-columns:repeat(auto-fit,minmax(258px,1fr));gap:16px}
 .doc{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
   padding:22px 20px;display:flex;flex-direction:column}
-.doc .cinta{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;
+.doc .cinta{font-family:var(--mono);font-size:11px;
   letter-spacing:.1em;text-transform:uppercase;color:var(--granate);font-weight:600;margin-bottom:12px}
-.doc h3{font-family:'Archivo',sans-serif;font-size:17px;color:var(--tinta);margin:0 0 8px;line-height:1.3}
+.doc h3{font-family:var(--sans);font-size:17px;color:var(--tinta);margin:0 0 8px;line-height:1.3}
 .doc p{font-size:14px;color:var(--suave);margin:0 0 18px;flex:1;line-height:1.55}
 .doc a{align-self:flex-start;font-weight:600;font-size:14px;color:var(--granate);
   text-decoration:none;border-bottom:1.5px solid rgba(140,29,47,.3);padding-bottom:2px}
@@ -381,10 +552,16 @@ function bloqueIndicador(k) {
 
 /** Una tarjeta de documento. */
 function bloqueDocumento(d) {
+  const pagina = String(d.pagina || '').trim();
   const enlace = String(d.enlace || '').trim();
-  const pie = enlace
-    ? '<a href="' + esc(enlace) + '" target="_blank" rel="noopener noreferrer">Abrir documento →</a>'
-    : '<span class="sin-enlace">Enlace pendiente de publicación</span>';
+
+  // Una página interna se abre en la misma pestaña —es parte del sitio—;
+  // un documento de Drive se abre aparte, para no perder la portada.
+  const pie = pagina
+    ? '<a href="' + esc(pagina) + '">Ver el documento &rarr;</a>'
+    : enlace
+      ? '<a href="' + esc(enlace) + '" target="_blank" rel="noopener noreferrer">Abrir documento &rarr;</a>'
+      : '<span class="sin-enlace">Enlace pendiente de publicación</span>';
   return '' +
     '<article class="doc">' +
       (d.etiqueta ? '<div class="cinta">' + esc(d.etiqueta) + '</div>' : '') +
@@ -450,9 +627,6 @@ function paginaCompleta(contenido) {
 '<title>' + esc(por.titulo) + ' — ' + esc(ins.universidad) + '</title>\n' +
 '<meta name="description" content="' + esc(por.bajada) + '">\n' +
 '<meta name="robots" content="index,follow">\n' +
-'<link rel="preconnect" href="https://fonts.googleapis.com">\n' +
-'<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n' +
-'<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">\n' +
 '<style>' + HOJA_DE_ESTILO + '</style>\n' +
 '</head>\n' +
 '<body>\n' +
@@ -518,6 +692,185 @@ function paginaCompleta(contenido) {
 '</html>\n';
 }
 
+
+/* ─────────────────────── página del Plan de Gestión ─────────────────────── */
+
+const ESTILO_PLAN = `
+.plan-cabecera{background:var(--tinta);color:#fff;padding:44px 0 40px}
+.plan-cabecera .volver{display:inline-block;font-size:13px;color:#9BA3AE;
+  text-decoration:none;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,.22);
+  padding-bottom:2px}
+.plan-cabecera .volver:hover{color:#fff}
+.plan-cabecera h1{font-family:var(--sans);font-weight:700;
+  font-size:clamp(26px,3.8vw,40px);line-height:1.15;margin:0 0 14px;letter-spacing:-.01em}
+.plan-cabecera .bajada{font-size:clamp(15px,1.7vw,18px);color:#D7DAE0;margin:0;max-width:62ch}
+.plan-sellos{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+.plan-sellos span{font-family:var(--mono);font-size:11.5px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--oro);
+  border:1px solid rgba(200,160,46,.45);border-radius:2px;padding:5px 11px}
+
+.plan-cuerpo{padding:44px 0 60px;display:grid;grid-template-columns:230px 1fr;gap:44px;
+  align-items:start}
+@media(max-width:860px){.plan-cuerpo{grid-template-columns:1fr;gap:26px}}
+
+.plan-indice{position:sticky;top:24px;border-left:2px solid var(--linea);padding-left:16px}
+@media(max-width:860px){.plan-indice{position:static;border-left:0;border-top:1px solid var(--linea);
+  border-bottom:1px solid var(--linea);padding:16px 0}}
+.plan-indice p{font-family:var(--mono);font-size:10.5px;
+  letter-spacing:.11em;text-transform:uppercase;color:var(--suave);margin:0 0 12px;font-weight:600}
+.plan-indice a{display:block;font-size:13.5px;color:var(--texto);text-decoration:none;
+  padding:5px 0;line-height:1.35;border-bottom:1px solid transparent}
+.plan-indice a:hover{color:var(--granate)}
+
+.apartado{margin-bottom:40px;scroll-margin-top:20px}
+.apartado:last-child{margin-bottom:0}
+.apartado h2{font-family:var(--sans);font-weight:700;font-size:20px;
+  color:var(--tinta);margin:0 0 14px;padding-bottom:9px;border-bottom:2px solid var(--granate);
+  display:inline-block}
+.apartado p{margin:0 0 13px;max-width:76ch;line-height:1.65}
+.apartado ul{margin:0 0 13px;padding-left:20px;max-width:76ch}
+.apartado li{margin-bottom:7px;line-height:1.6}
+.apartado li::marker{color:var(--granate)}
+
+.plan-tabla{width:100%;border-collapse:collapse;margin:6px 0 14px;font-size:14px;
+  background:var(--blanco);border:1px solid var(--linea)}
+.plan-tabla th{background:#EFEDE8;text-align:left;font-family:var(--sans);
+  font-size:12.5px;letter-spacing:.02em;color:var(--tinta);padding:10px 13px;
+  border-bottom:2px solid var(--linea);vertical-align:bottom}
+.plan-tabla td{padding:10px 13px;border-bottom:1px solid var(--linea);
+  vertical-align:top;line-height:1.5}
+.plan-tabla tr:last-child td{border-bottom:0}
+.plan-tabla tr:nth-child(even) td{background:#FBFAF8}
+.envuelve-tabla{overflow-x:auto;margin-bottom:14px}
+
+@media print{
+  .plan-cabecera{background:#fff;color:#000;padding:0 0 20px}
+  .plan-cabecera h1,.plan-cabecera .bajada{color:#000}
+  .plan-cabecera .volver{display:none}
+  .plan-sellos span{color:#000;border-color:#999}
+  .plan-indice{display:none}
+  .plan-cuerpo{display:block;padding:0}
+  .apartado{break-inside:avoid;margin-bottom:24px}
+  .plan-tabla{font-size:11px}
+}
+`;
+
+/** Convierte el texto de un apartado en párrafos; la línea en blanco separa. */
+function parrafos(texto) {
+  return String(texto || '').split(/\n\s*\n/)
+    .map(function (t) { return t.trim(); })
+    .filter(Boolean)
+    .map(function (t) { return '<p>' + esc(t).replace(/\n/g, '<br>') + '</p>'; })
+    .join('\n');
+}
+
+/** Dibuja la tabla de un apartado, si la tiene. */
+function bloqueTabla(t) {
+  if (!t || !t.encabezados || !t.encabezados.length) return '';
+  const filas = t.filas || [];
+  return '<div class="envuelve-tabla"><table class="plan-tabla">' +
+    '<thead><tr>' +
+      t.encabezados.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') +
+    '</tr></thead><tbody>' +
+      filas.map(function (f) {
+        return '<tr>' + (f || []).map(function (c) {
+          return '<td>' + esc(c) + '</td>';
+        }).join('') + '</tr>';
+      }).join('') +
+    '</tbody></table></div>';
+}
+
+/** Un ancla estable por apartado, para el índice lateral. */
+function anclaApartado(i) { return 'ap' + (i + 1); }
+
+function bloqueApartado(a, i) {
+  const lista = (a.lista || []).filter(function (x) { return String(x || '').trim(); });
+  return '<section class="apartado" id="' + anclaApartado(i) + '">' +
+    '<h2>' + esc(a.titulo) + '</h2>' +
+    parrafos(a.cuerpo) +
+    (lista.length ? '<ul>' + lista.map(function (x) {
+      return '<li>' + esc(x) + '</li>';
+    }).join('') + '</ul>' : '') +
+    bloqueTabla(a.tabla) +
+  '</section>';
+}
+
+/**
+ * Devuelve `plan.html`: el Plan de Gestión del Proyecto como página completa.
+ *
+ * Igual que la portada, es HTML y CSS; el JSON del final es el mismo registro
+ * del contenido íntegro, de modo que cualquiera de las dos páginas publicadas
+ * sirve para reabrir el editor.
+ */
+function paginaPlan(contenido) {
+  const c = contenido || CONTENIDO_BASE;
+  const ins = c.institucion || {};
+  const pl = c.plan || {};
+  const pie = c.pie || {};
+  const apartados = pl.apartados || [];
+
+  const registro = JSON.stringify(c, null, 2).replace(/</g, '\\u003c');
+
+  return '<!doctype html>\n' +
+'<html lang="es">\n' +
+'<head>\n' +
+'<meta charset="utf-8">\n' +
+'<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
+'<title>' + esc(pl.titulo) + ' — ' + esc(ins.universidad) + '</title>\n' +
+'<meta name="description" content="' + esc(pl.bajada) + '">\n' +
+'<style>' + HOJA_DE_ESTILO + ESTILO_PLAN + '</style>\n' +
+'</head>\n' +
+'<body>\n' +
+
+'<header class="barra">\n' +
+'  <div class="envoltura">\n' +
+'    <div>\n' +
+'      <p class="casa">' + esc(ins.universidad) + '</p>\n' +
+'      <p class="oficina">' + esc(ins.oficina) + '</p>\n' +
+'    </div>\n' +
+(ins.sello ? '    <div class="sello">' + esc(ins.sello) + '</div>\n' : '') +
+'  </div>\n' +
+'</header>\n\n' +
+
+'<section class="plan-cabecera">\n' +
+'  <div class="envoltura">\n' +
+'    <a class="volver" href="index.html">&larr; Volver a la portada</a>\n' +
+'    <h1>' + esc(pl.titulo) + '</h1>\n' +
+(pl.bajada ? '    <p class="bajada">' + esc(pl.bajada) + '</p>\n' : '') +
+((pl.version || pl.aprobacion) ?
+'    <div class="plan-sellos">\n' +
+(pl.version ? '      <span>' + esc(pl.version) + '</span>\n' : '') +
+(pl.aprobacion ? '      <span>' + esc(pl.aprobacion) + '</span>\n' : '') +
+'    </div>\n' : '') +
+'  </div>\n' +
+'</section>\n\n' +
+
+'<div class="envoltura">\n' +
+'  <div class="plan-cuerpo">\n' +
+'    <nav class="plan-indice">\n' +
+'      <p>Contenido</p>\n' +
+      apartados.map(function (a, i) {
+        return '      <a href="#' + anclaApartado(i) + '">' + esc(a.titulo) + '</a>';
+      }).join('\n') + '\n' +
+'    </nav>\n' +
+'    <main>\n' +
+      apartados.map(bloqueApartado).join('\n') + '\n' +
+'    </main>\n' +
+'  </div>\n' +
+'</div>\n\n' +
+
+'<footer>\n' +
+'  <div class="envoltura">\n' +
+'    <div>' + (pie.contacto ? 'Consultas: <a href="mailto:' + esc(pie.contacto) + '">' + esc(pie.contacto) + '</a>' : '') + '</div>\n' +
+'    <div>' + (pie.actualizado ? 'Actualizado al ' + esc(pie.actualizado) : '') + '</div>\n' +
+'  </div>\n' +
+'</footer>\n\n' +
+
+'<script type="application/json" id="contenido-portada">\n' + registro + '\n<\/script>\n' +
+'</body>\n' +
+'</html>\n';
+}
+
 /**
  * Recupera el contenido incrustado en un index.html ya generado.
  * Devuelve null si el archivo no lleva el registro (no fue hecho por el editor).
@@ -539,6 +892,7 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     CONTENIDO_BASE: CONTENIDO_BASE,
     paginaCompleta: paginaCompleta,
+    paginaPlan: paginaPlan,
     leerContenido: leerContenido,
     revisarAntesDePublicar: revisarAntesDePublicar
   };

@@ -5,25 +5,24 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Editor de la portada pública — OGPL</title>
 <meta name="robots" content="noindex,nofollow">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700&family=IBM+Plex+Mono:wght@500&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
 <style>
 :root{
   --tinta:#151A22; --granate:#8C1D2F; --oro:#C8A02E;
   --papel:#F2F1EE; --blanco:#fff; --linea:#DDD9D2;
   --texto:#2B2F36; --suave:#6A7079; --rojo:#B3261E; --ambar:#8A6100;
+  --sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
 }
 *{box-sizing:border-box}
 html,body{height:100%}
 body{margin:0;background:var(--papel);color:var(--texto);
-  font-family:'Source Sans 3','Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.55}
+  font-family:var(--sans);font-size:15px;line-height:1.55}
 
 /* Barra superior */
 .superior{background:var(--tinta);color:#fff;display:flex;align-items:center;
   justify-content:space-between;gap:16px;padding:11px 20px;flex-wrap:wrap;
   position:sticky;top:0;z-index:20;border-bottom:3px solid var(--granate)}
-.superior h1{font-family:'Archivo',sans-serif;font-size:15px;margin:0;font-weight:700;
+.superior h1{font-family:var(--sans);font-size:15px;margin:0;font-weight:700;
   letter-spacing:.02em;text-transform:uppercase}
 .superior .sub{font-size:12.5px;color:#A8AEB7;margin:1px 0 0}
 .acciones{display:flex;gap:8px;flex-wrap:wrap}
@@ -51,7 +50,7 @@ button{font:inherit;font-weight:600;font-size:13.5px;border-radius:3px;cursor:po
 /* Secciones del formulario */
 details.seccion{background:var(--blanco);border:1px solid var(--linea);border-radius:3px;
   margin-bottom:12px;overflow:hidden}
-details.seccion>summary{cursor:pointer;padding:13px 16px;font-family:'Archivo',sans-serif;
+details.seccion>summary{cursor:pointer;padding:13px 16px;font-family:var(--sans);
   font-weight:600;font-size:14px;color:var(--tinta);list-style:none;
   display:flex;align-items:center;justify-content:space-between;gap:10px}
 details.seccion>summary::-webkit-details-marker{display:none}
@@ -78,7 +77,7 @@ textarea{min-height:70px;line-height:1.5}
   border-radius:3px;padding:13px;margin-bottom:11px;background:#FCFCFB}
 .ficha-cabeza{display:flex;align-items:center;justify-content:space-between;
   gap:8px;margin-bottom:11px}
-.ficha-cabeza b{font-family:'IBM Plex Mono',monospace;font-size:11.5px;
+.ficha-cabeza b{font-family:var(--mono);font-size:11.5px;
   color:var(--granate);letter-spacing:.06em;text-transform:uppercase}
 .ficha-botones{display:flex;gap:5px}
 
@@ -95,7 +94,7 @@ iframe{background:#fff;border:0;width:100%;height:100%;box-shadow:0 4px 20px rgb
 /* Revisión */
 .revision{margin-bottom:12px;border-radius:3px;border:1px solid var(--linea);
   background:var(--blanco);overflow:hidden}
-.revision-cabeza{padding:12px 16px;font-family:'Archivo',sans-serif;font-weight:600;
+.revision-cabeza{padding:12px 16px;font-family:var(--sans);font-weight:600;
   font-size:14px;display:flex;align-items:center;gap:9px}
 .revision.limpia .revision-cabeza{color:#1E5A3C;background:#EAF5EF}
 .revision.sucia .revision-cabeza{color:var(--rojo);background:#FCECEA}
@@ -105,24 +104,52 @@ iframe{background:#fff;border:0;width:100%;height:100%;box-shadow:0 4px 20px rgb
 .reparo:focus-visible{outline:2px solid var(--granate);outline-offset:-2px}
 .reparo:hover .donde{color:var(--granate)}
 .reparo .tit{font-weight:600;display:flex;gap:8px;align-items:center}
-.sello{font-size:10px;font-family:'IBM Plex Mono',monospace;letter-spacing:.07em;
+.sello{font-size:10px;font-family:var(--mono);letter-spacing:.07em;
   padding:1px 6px;border-radius:2px;text-transform:uppercase;font-weight:600}
 .sello.alta{background:#FCECEA;color:var(--rojo);border:1px solid #F0C4BF}
 .sello.media{background:#FDF4E3;color:var(--ambar);border:1px solid #EBD9AE}
-.reparo .donde{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--suave);margin-top:3px}
+.reparo .donde{font-family:var(--mono);font-size:11.5px;color:var(--suave);margin-top:3px}
 .reparo .por{color:var(--texto);margin-top:4px}
 .reparo .cita{margin-top:5px;padding:6px 9px;background:var(--papel);border-radius:2px;
   font-size:12.5px;color:var(--suave);border-left:2px solid var(--linea)}
 
 .aviso-guardado{font-size:12px;color:#A8AEB7}
+
+/* Pestañas de modo */
+.pestanas{display:flex;gap:6px;margin-bottom:14px;border-bottom:1px solid var(--linea)}
+.pestanas button{background:transparent;border:0;border-bottom:2px solid transparent;
+  border-radius:0;padding:9px 14px;color:var(--suave);font-family:var(--sans);
+  font-size:13.5px}
+.pestanas button:hover{color:var(--texto)}
+.pestanas button.activo{color:var(--granate);border-bottom-color:var(--granate)}
+
+/* Editor de tablas */
+.tabla-ed{width:100%;border-collapse:collapse;margin:8px 0;font-size:13px}
+.tabla-ed th,.tabla-ed td{border:1px solid var(--linea);padding:0;vertical-align:middle}
+.tabla-ed th{background:#EFEDE8}
+.tabla-ed input{border:0;border-radius:0;background:transparent;padding:6px 7px;font-size:13px}
+.tabla-ed th input{font-weight:600;font-family:var(--sans)}
+.tabla-ed input:focus{box-shadow:inset 0 0 0 2px rgba(140,29,47,.35);background:#fff}
+.tabla-ed .mando{width:26px;text-align:center;background:var(--papel)}
+.tabla-ed .mando button{width:100%;border:0;background:transparent;color:#A6ADB5;
+  padding:5px 0;font-size:12px;border-radius:0}
+.tabla-ed .mando button:hover{color:var(--rojo);background:#FCECEA}
+.tabla-botones{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.sub{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--suave);font-weight:600;margin:14px 0 7px}
+.vineta{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.vineta input{flex:1}
+.vineta button{flex:none;padding:5px 9px;font-size:12px;background:var(--blanco);
+  border:1px solid var(--linea);color:var(--suave)}
+.vineta button:hover{border-color:var(--rojo);color:var(--rojo)}
 dialog{border:1px solid var(--linea);border-radius:4px;padding:0;max-width:min(760px,92vw);
   width:100%;box-shadow:0 16px 50px rgba(0,0,0,.3)}
 dialog::backdrop{background:rgba(21,26,34,.55)}
 .dlg-cabeza{padding:14px 18px;border-bottom:1px solid var(--linea);
-  font-family:'Archivo',sans-serif;font-weight:600;display:flex;
+  font-family:var(--sans);font-weight:600;display:flex;
   justify-content:space-between;align-items:center;gap:12px}
 .dlg-cuerpo{padding:18px;max-height:62vh;overflow:auto}
-.dlg-cuerpo textarea{min-height:340px;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.dlg-cuerpo textarea{min-height:340px;font-family:var(--mono);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -137,19 +164,23 @@ dialog::backdrop{background:rgba(21,26,34,.55)}
     <button class="b-lisa" id="btnCargar">Cargar index.html</button>
     <button class="b-lisa" id="btnJson">Ver JSON</button>
     <button class="b-lisa" id="btnRestaurar">Restaurar base</button>
-    <button class="b-principal" id="btnPublicar">Descargar index.html</button>
+    <button class="b-principal" id="btnPublicar">Descargar las 2 páginas</button>
   </div>
 </div>
 
 <div class="tablero">
   <div class="columna-form">
+    <div class="pestanas">
+      <button data-modo="portada" class="activo">Portada</button>
+      <button data-modo="plan">Plan de Gestión</button>
+    </div>
     <div id="revision"></div>
     <div id="formulario"></div>
   </div>
 
   <div class="columna-vista">
     <div class="vista-barra">
-      <span>Vista previa — así se publica</span>
+      <span id="rotuloVista">Vista previa — así se publica</span>
       <div class="anchos">
         <button data-ancho="100%" class="activo">Escritorio</button>
         <button data-ancho="820px">Tableta</button>
@@ -192,6 +223,9 @@ dialog::backdrop{background:rgba(21,26,34,.55)}
 const LLAVE_BORRADOR = 'ogpl.portada.borrador';
 
 let estado = cargarBorrador() || clonar(CONTENIDO_BASE);
+
+/** Qué página se está editando: 'portada' o 'plan'. */
+let modo = 'portada';
 
 function clonar(o){ return JSON.parse(JSON.stringify(o)); }
 
@@ -265,7 +299,98 @@ function botonesFicha(lista, i, total){
   '</div>';
 }
 
-function pintarFormulario(){
+/** Los controles de una viñeta suelta dentro de un apartado del plan. */
+function campoVineta(ruta, i, total){
+  return '<div class="vineta">' +
+    '<input type="text" data-ruta="' + ruta + '.' + i + '" value="' +
+      escAtr(leer(estado, ruta + '.' + i)) + '">' +
+    '<button data-mover="' + ruta + '" data-i="' + i + '" data-d="-1"' +
+      (i === 0 ? ' disabled' : '') + ' title="Subir">↑</button>' +
+    '<button data-mover="' + ruta + '" data-i="' + i + '" data-d="1"' +
+      (i === total - 1 ? ' disabled' : '') + ' title="Bajar">↓</button>' +
+    '<button data-quitar-simple="' + ruta + '" data-i="' + i + '" title="Quitar">✕</button>' +
+  '</div>';
+}
+
+/**
+ * El editor de una tabla: una rejilla de casillas, más los mandos para quitar
+ * una fila o una columna. Se edita con la misma forma que tendrá al publicarse,
+ * que es más claro que una lista de valores separados por comas.
+ */
+function editorTabla(ruta){
+  const t = leer(estado, ruta);
+  if (!t) {
+    return '<div class="tabla-botones">' +
+      '<button class="b-chico" data-tabla-nueva="' + ruta + '">+ Añadir una tabla</button></div>';
+  }
+  const enc = t.encabezados || [];
+  const filas = t.filas || [];
+
+  let html = '<table class="tabla-ed"><thead><tr>';
+  enc.forEach(function(h,c){
+    html += '<th><input type="text" data-ruta="' + ruta + '.encabezados.' + c + '" value="' +
+      escAtr(h) + '"></th>';
+  });
+  html += '<th class="mando"></th></tr>' +
+    '<tr>' + enc.map(function(_,c){
+      return '<th class="mando"><button data-quitar-col="' + ruta + '" data-c="' + c +
+             '" title="Quitar la columna">✕</button></th>';
+    }).join('') + '<th class="mando"></th></tr></thead><tbody>';
+
+  filas.forEach(function(f,r){
+    html += '<tr>';
+    enc.forEach(function(_,c){
+      html += '<td><input type="text" data-ruta="' + ruta + '.filas.' + r + '.' + c +
+              '" value="' + escAtr((f || [])[c]) + '"></td>';
+    });
+    html += '<td class="mando"><button data-quitar-fila="' + ruta + '" data-r="' + r +
+            '" title="Quitar la fila">✕</button></td></tr>';
+  });
+  html += '</tbody></table>' +
+    '<div class="tabla-botones">' +
+      '<button class="b-chico" data-fila-nueva="' + ruta + '">+ Fila</button>' +
+      '<button class="b-chico" data-col-nueva="' + ruta + '">+ Columna</button>' +
+      '<button class="b-chico b-quitar" data-tabla-fuera="' + ruta + '">Quitar la tabla</button>' +
+    '</div>';
+  return html;
+}
+
+/** El formulario del Plan de Gestión. */
+function formularioPlan(){
+  const aps = (estado.plan && estado.plan.apartados) || [];
+
+  const cabecera = seccion('plan-cabecera', 'Cabecera del documento',
+    campoTexto('plan.titulo', 'Título') +
+    campoArea('plan.bajada', 'Bajada') +
+    '<div class="par">' +
+      campoTexto('plan.version', 'Versión') +
+      campoTexto('plan.aprobacion', 'Aprobado por') +
+    '</div>', true);
+
+  const cuerpo = aps.map(function(a,i){
+    const raiz = 'plan.apartados.' + i;
+    const vin = a.lista || [];
+    return '<div class="ficha">' +
+      '<div class="ficha-cabeza"><b>Apartado ' + (i+1) + '</b>' +
+        botonesFicha('plan.apartados', i, aps.length) + '</div>' +
+      campoTexto(raiz + '.titulo', 'Título del apartado') +
+      campoArea(raiz + '.cuerpo', 'Párrafos',
+                'Una línea en blanco separa un párrafo del siguiente.') +
+      '<div class="sub">Viñetas</div>' +
+      vin.map(function(_,j){ return campoVineta(raiz + '.lista', j, vin.length); }).join('') +
+      '<button class="b-chico" data-agregar-simple="' + raiz + '.lista">+ Añadir viñeta</button>' +
+      '<div class="sub">Tabla</div>' +
+      editorTabla(raiz + '.tabla') +
+    '</div>';
+  }).join('');
+
+  return cabecera +
+    seccion('plan-apartados', 'Apartados (' + aps.length + ')',
+      cuerpo + '<button class="b-chico" data-agregar="plan.apartados">+ Añadir apartado</button>',
+      true);
+}
+
+function formularioPortada(){
   const ind = estado.indicadores || [];
   const docs = (estado.documentos && estado.documentos.lista) || [];
 
@@ -289,13 +414,18 @@ function pintarFormulario(){
         campoTexto('documentos.lista.' + i + '.titulo', 'Título') +
       '</div>' +
       campoArea('documentos.lista.' + i + '.descripcion', 'Descripción') +
-      campoTexto('documentos.lista.' + i + '.enlace', 'Enlace', 'Debe empezar por https:// · vacío = «pendiente de publicación»') +
+      // Una tarjeta que apunta a una página del propio sitio no lleva enlace
+      // externo: ofrecer el campo invitaría a escribir en algo que no se usa.
+      (d.pagina
+        ? '<div class="pista">Abre <b>' + escTxt(d.pagina) + '</b>, una página de este ' +
+          'mismo sitio. Su contenido se edita en la pestaña «Plan de Gestión».</div>'
+        : campoTexto('documentos.lista.' + i + '.enlace', 'Enlace',
+            'Debe empezar por https:// · vacío = «pendiente de publicación»')) +
     '</div>';
   }).join('') +
   '<button class="b-chico" data-agregar="documentos.lista">+ Añadir documento</button>';
 
-  document.getElementById('formulario').innerHTML =
-    seccion('portada', 'Encabezado y título',
+  return seccion('portada', 'Encabezado y título',
       campoTexto('portada.titulo', 'Título principal') +
       campoArea('portada.bajada', 'Bajada', 'Dos o tres líneas. Es lo primero que se lee.') +
       campoTexto('portada.periodo', 'Fecha de corte'), true) +
@@ -329,6 +459,18 @@ function pintarFormulario(){
       '<hr style="border:0;border-top:1px solid var(--linea);margin:16px 0">' +
       campoTexto('pie.contacto', 'Correo de contacto') +
       campoTexto('pie.actualizado', 'Fecha de actualización'));
+}
+
+function pintarFormulario(){
+  document.getElementById('formulario').innerHTML =
+    modo === 'plan' ? formularioPlan() : formularioPortada();
+
+  document.querySelectorAll('.pestanas button').forEach(function(b){
+    b.classList.toggle('activo', b.dataset.modo === modo);
+  });
+  document.getElementById('rotuloVista').textContent = modo === 'plan'
+    ? 'Vista previa de plan.html — así se publica'
+    : 'Vista previa de index.html — así se publica';
 
   actualizarSuma();
 }
@@ -351,7 +493,8 @@ let temporizadorVista;
 function refrescarVista(){
   clearTimeout(temporizadorVista);
   temporizadorVista = setTimeout(function(){
-    document.getElementById('vista').srcdoc = paginaCompleta(estado);
+    document.getElementById('vista').srcdoc =
+      modo === 'plan' ? paginaPlan(estado) : paginaCompleta(estado);
   }, 220);
 }
 
@@ -397,6 +540,12 @@ function tras(cambioEstructural){
  */
 function irAlCampo(ruta){
   if (!ruta) return;
+
+  // Un reparo puede señalar un campo de la otra página; cambiar de pestaña es
+  // parte de llevar al usuario hasta él.
+  const destino = ruta.indexOf('plan.') === 0 ? 'plan' : 'portada';
+  if (destino !== modo){ modo = destino; pintarFormulario(); refrescarVista(); }
+
   const control = document.querySelector('[data-ruta="' + ruta.replace(/"/g,'\\"') + '"]');
   if (!control) return;
 
@@ -447,9 +596,12 @@ document.getElementById('formulario').addEventListener('click', function(ev){
   if (b.dataset.agregar){
     ev.preventDefault();
     const lista = leer(estado, b.dataset.agregar);
-    lista.push(b.dataset.agregar === 'indicadores'
-      ? { valor:'0', etiqueta:'Nuevo indicador', detalle:'' }
-      : { etiqueta:'', titulo:'Nuevo documento', descripcion:'', enlace:'' });
+    lista.push(
+      b.dataset.agregar === 'indicadores'
+        ? { valor:'0', etiqueta:'Nuevo indicador', detalle:'' }
+      : b.dataset.agregar === 'plan.apartados'
+        ? { titulo:'Nuevo apartado', cuerpo:'', lista:[], tabla:null }
+        : { etiqueta:'', titulo:'Nuevo documento', descripcion:'', enlace:'' });
     tras(true);
     return;
   }
@@ -458,8 +610,73 @@ document.getElementById('formulario').addEventListener('click', function(ev){
     ev.preventDefault();
     const lista = leer(estado, b.dataset.quitar);
     const i = +b.dataset.i;
-    const nombre = lista[i].titulo || lista[i].etiqueta || 'este elemento';
+    const nombre = (lista[i] && (lista[i].titulo || lista[i].etiqueta)) || 'este elemento';
     if (confirm('¿Quitar «' + nombre + '»?')){ lista.splice(i,1); tras(true); }
+    return;
+  }
+
+  // Viñetas: listas de cadenas sueltas, sin ficha propia.
+  if (b.dataset.agregarSimple){
+    ev.preventDefault();
+    leer(estado, b.dataset.agregarSimple).push('');
+    tras(true);
+    return;
+  }
+  if (b.dataset.quitarSimple){
+    ev.preventDefault();
+    leer(estado, b.dataset.quitarSimple).splice(+b.dataset.i, 1);
+    tras(true);
+    return;
+  }
+
+  // Tablas.
+  if (b.dataset.tablaNueva){
+    ev.preventDefault();
+    fijar(estado, b.dataset.tablaNueva,
+      { encabezados:['Columna 1','Columna 2'], filas:[['',''],['','']] });
+    tras(true);
+    return;
+  }
+  if (b.dataset.tablaFuera){
+    ev.preventDefault();
+    if (confirm('¿Quitar la tabla entera de este apartado?')){
+      fijar(estado, b.dataset.tablaFuera, null);
+      tras(true);
+    }
+    return;
+  }
+  if (b.dataset.filaNueva){
+    ev.preventDefault();
+    const t = leer(estado, b.dataset.filaNueva);
+    t.filas.push(t.encabezados.map(function(){ return ''; }));
+    tras(true);
+    return;
+  }
+  if (b.dataset.colNueva){
+    ev.preventDefault();
+    const t = leer(estado, b.dataset.colNueva);
+    t.encabezados.push('Columna ' + (t.encabezados.length + 1));
+    t.filas.forEach(function(f){ f.push(''); });
+    tras(true);
+    return;
+  }
+  if (b.dataset.quitarFila){
+    ev.preventDefault();
+    leer(estado, b.dataset.quitarFila).filas.splice(+b.dataset.r, 1);
+    tras(true);
+    return;
+  }
+  if (b.dataset.quitarCol){
+    ev.preventDefault();
+    const t = leer(estado, b.dataset.quitarCol);
+    if (t.encabezados.length <= 1){
+      alert('Una tabla necesita al menos una columna. Quite la tabla entera si ya no hace falta.');
+      return;
+    }
+    const c = +b.dataset.c;
+    t.encabezados.splice(c, 1);
+    t.filas.forEach(function(f){ f.splice(c, 1); });
+    tras(true);
     return;
   }
 
@@ -482,6 +699,14 @@ document.querySelector('.vista-barra .anchos').addEventListener('click', functio
   document.getElementById('vista').style.width = b.dataset.ancho;
 });
 
+document.querySelector('.pestanas').addEventListener('click', function(ev){
+  const b = ev.target.closest('button');
+  if (!b || b.dataset.modo === modo) return;
+  modo = b.dataset.modo;
+  pintarFormulario();
+  refrescarVista();
+});
+
 /* ── Publicar ── */
 document.getElementById('btnPublicar').addEventListener('click', function(){
   const reparos = revisarAntesDePublicar(estado);
@@ -493,16 +718,22 @@ document.getElementById('btnPublicar').addEventListener('click', function(){
                  detalle + '\n\nEsta página la verán todas las facultades. ¿Descargar igualmente?')) return;
   }
 
-  const html = paginaCompleta(estado);
+  // Las dos páginas se publican juntas: la portada enlaza al plan y el plan
+  // vuelve a la portada, así que bajar solo una dejaría un enlace roto.
+  descargar('index.html', paginaCompleta(estado));
+  setTimeout(function(){ descargar('plan.html', paginaPlan(estado)); }, 500);
+});
+
+function descargar(nombre, html){
   const enlace = document.createElement('a');
   const url = URL.createObjectURL(new Blob([html], {type:'text/html;charset=utf-8'}));
   enlace.href = url;
-  enlace.download = 'index.html';
+  enlace.download = nombre;
   document.body.appendChild(enlace);
   enlace.click();
   document.body.removeChild(enlace);
   setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
-});
+}
 
 /* ── Cargar un index.html publicado para seguir editándolo ── */
 document.getElementById('btnCargar').addEventListener('click', function(){

@@ -27,6 +27,7 @@ tests/validadores.test.js                Pruebas de los validadores (Node)
 publico/editor.html                      Editor de la portada pública
 publico/portada.js                       Contenido, generador y revisor previo
 publico/index.html                       Portada publicada (se genera)
+publico/plan.html                        Plan de Gestión publicado (se genera)
 publico/LEEME.md                         Cómo editar y publicar
 tests/portada.test.js                    Pruebas de la portada (Node)
 ```
@@ -35,8 +36,10 @@ tests/portada.test.js                    Pruebas de la portada (Node)
 
 Lo que ven los jefes, los dueños de proceso y los decanos se edita en
 `publico/editor.html`, que se abre en el navegador sin instalar nada: muestra en
-vivo la página que se va a publicar y revisa los textos antes de dejar
-descargarla. El detalle está en [`publico/LEEME.md`](publico/LEEME.md).
+vivo las páginas que se van a publicar y revisa los textos antes de dejar
+descargarlas. Son dos, y se publican juntas: la portada (`index.html`) y el Plan
+de Gestión del Proyecto (`plan.html`), que se abre desde ella. El detalle está
+en [`publico/LEEME.md`](publico/LEEME.md).
 
 En `publico/` va **solo contenido público** —cifras agregadas y enlaces a
 documentos vigentes—. El diagnóstico interno no vive ahí y no debe añadirse.
