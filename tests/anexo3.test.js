@@ -35,7 +35,8 @@ module.exports = {
   peorSeveridad_, severidadPorDefecto_, severidadDeErrorDeCodigo_, severidadDeFicha_,
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
   emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_,
-  claveDenominacion_, leerCatalogoAnexo1_, expandirCombinadas_
+  claveDenominacion_, leerCatalogoAnexo1_, expandirCombinadas_,
+  porcentajeANumero_, leerAvancesAnexo1_, combinarAvances_
 };
 module.exports.SpreadsheetApp = SpreadsheetApp;
 `;
@@ -913,6 +914,66 @@ bloque("Semáforo de avance por facultad", function () {
     M.estadoDeFacultad_(30, 2).clave === "critico");
   chequear("y conserva el aviso",
     M.estadoDeFacultad_(30, 2).rotulo.indexOf("crítico") !== -1);
+});
+
+bloque("Avance general de los dos anexos (50/50)", function () {
+  chequear("los pesos son mitad y mitad",
+    M.CONFIG_A3.PESOS_ANEXOS.A1 === 0.5 && M.CONFIG_A3.PESOS_ANEXOS.A3 === 0.5);
+
+  chequear("lee un porcentaje con signo", M.porcentajeANumero_("85%") === 85);
+  chequear("con espacio y coma decimal", M.porcentajeANumero_(" 85,5 % ") === 85.5);
+  chequear("un número suelto se toma tal cual", M.porcentajeANumero_(85) === 85);
+  chequear("una celda con formato de porcentaje llega como fracción",
+    M.porcentajeANumero_(0.85) === 85);
+  chequear("el 100% no se confunde con una fracción", M.porcentajeANumero_(100) === 100);
+  chequear("el cero es un dato, no un vacío", M.porcentajeANumero_(0) === 0);
+  chequear("una celda vacía no es cero", M.porcentajeANumero_("") === null);
+  chequear("un guion tampoco", M.porcentajeANumero_("—") === null);
+  chequear("ni un texto cualquiera", M.porcentajeANumero_("NO INICIADO") === null);
+
+  // La hoja del Anexo 1 tal como la deja su auditoría.
+  const hojaA1 = [
+    ["", "", ""],
+    ["FACULTAD", "NOMBRE", "AVANCE GENERAL DEL ANEXO 1"],
+    ["FM", "FACULTAD DE MEDICINA", "72%"],
+    ["FDCP", "FACULTAD DE DERECHO", "90%"],
+    ["FLCH", "FACULTAD DE LETRAS", ""]
+  ];
+  const avances = M.leerAvancesAnexo1_(hojaA1);
+  chequear("se ubica el encabezado aunque no esté en la primera fila", avances["FM"] === 72);
+  chequear("y se leen las demás facultades", avances["FDCP"] === 90);
+  chequear("una facultad sin dato no entra", avances["FLCH"] === undefined);
+
+  const movida = [["NOMBRE", "AVANCE GENERAL DEL ANEXO 1", "FACULTAD"],
+                  ["FACULTAD DE MEDICINA", "72%", "FM"]];
+  chequear("las columnas se buscan por nombre, no por posición",
+    M.leerAvancesAnexo1_(movida)["FM"] === 72);
+  chequear("sin la columna esperada no se inventa nada",
+    Object.keys(M.leerAvancesAnexo1_([["FACULTAD", "OTRA COSA"], ["FM", "72%"]])).length === 0);
+  chequear("la fila TOTAL no se toma por facultad",
+    M.leerAvancesAnexo1_([["FACULTAD", "AVANCE GENERAL DEL ANEXO 1"], ["TOTAL", "80%"]])["TOTAL"] === undefined);
+
+  const ambos = M.combinarAvances_(90, 70);
+  chequear("con los dos anexos se promedia 50/50", ambos.general === 80);
+  chequear("y se marca como completo", ambos.completo === true);
+  chequear("sin nota que aclarar", ambos.nota === "");
+
+  chequear("el 50/50 no pondera por tamaño: 100 y 0 dan 50",
+    M.combinarAvances_(100, 0).general === 50);
+  chequear("otros pesos también funcionan",
+    M.combinarAvances_(100, 0, { A1: 0.4, A3: 0.6 }).general === 40);
+
+  const soloA3 = M.combinarAvances_(null, 70);
+  chequear("si falta el Anexo 1 NO se promedia con cero", soloA3.general === 70);
+  chequear("y se dice que falta", soloA3.nota.indexOf("Sin dato del Anexo 1") !== -1);
+  chequear("marcándolo como incompleto", soloA3.completo === false);
+
+  const soloA1 = M.combinarAvances_(90, null);
+  chequear("lo mismo al revés", soloA1.general === 90 && soloA1.completo === false);
+  chequear("sin ninguno de los dos no hay general",
+    M.combinarAvances_(null, null).general === null);
+
+  chequear("un cero real sí se promedia", M.combinarAvances_(0, 80).general === 40);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

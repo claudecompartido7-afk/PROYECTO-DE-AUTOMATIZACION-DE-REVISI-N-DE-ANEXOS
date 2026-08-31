@@ -97,8 +97,26 @@ const CONFIG_A3 = {
     DETALLE:    'DETALLE_REVISION_A3',
     RESUMEN:    'RESUMEN_FICHAS_A3',
     RESUMEN_20: 'RESUMEN_20_FACULTADES_A3',
-    MAESTRO:    'REGISTRO_MAESTRO_CODIGOS_A3'
+    MAESTRO:    'REGISTRO_MAESTRO_CODIGOS_A3',
+    GENERAL:    'RESUMEN_GENERAL'
   },
+
+  /**
+   * Hoja del Anexo 1 de la que se toma su avance por facultad, y encabezado de
+   * la columna donde está. Si el auditor del Anexo 1 renombra la hoja o la
+   * columna, se cambia aquí: la búsqueda es por NOMBRE de encabezado, no por
+   * posición, para que insertar una columna no rompa nada.
+   */
+  HOJA_RESUMEN_A1: 'RESUMEN_EJECUTIVO_A1',
+  COLUMNA_AVANCE_A1: 'AVANCE GENERAL DEL ANEXO 1',
+  COLUMNA_FACULTAD_A1: 'FACULTAD',
+
+  /**
+   * Peso de cada anexo en el avance general. 50/50 por decisión de la OGPL: son
+   * dos entregables distintos y a la facultad se le exigen ambos, así que
+   * ninguno pesa más por tener más celdas que revisar.
+   */
+  PESOS_ANEXOS: { A1: 0.5, A3: 0.5 },
 
   /**
    * Fuente con la que se escribe el archivo de salida. Es formato del reporte,
@@ -1899,9 +1917,169 @@ function escribirResultado_(ss, facultades) {
      'FICHAS EN QUE APARECE', '¿DENOMINACIÓN CONSISTENTE?', 'OBSERVACIÓN'],
     maestro, sevMaestro);
 
+  /* Hoja 5 — Avance general de los dos anexos */
+  escribirResumenGeneral_(ss, facultades);
+
   // El libro es compartido con la auditoría del Anexo 1: no se borra ninguna
-  // hoja ajena, solo se reescriben las cuatro del Anexo 3.
-  ss.setActiveSheet(ss.getSheetByName(H.RESUMEN_20));
+  // hoja ajena, solo se reescriben las del Anexo 3.
+  ss.setActiveSheet(ss.getSheetByName(H.GENERAL));
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AVANCE GENERAL DE LOS DOS ANEXOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Convierte a número (0–100) un porcentaje escrito de cualquiera de las formas
+ * en que puede venir de otra hoja: `85`, `85%`, `"85 %"`, `0.85` o `85,3`.
+ *
+ * Devuelve null cuando no hay dato, para poder distinguir «0 % de avance» de
+ * «no hay dato del Anexo 1»: promediar un vacío como si fuera cero castigaría a
+ * una facultad por algo que nadie midió.
+ */
+function porcentajeANumero_(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  if (typeof valor === 'number') {
+    if (isNaN(valor)) return null;
+    // Una celda con formato de porcentaje llega como fracción: 0,85 = 85 %.
+    return valor > 0 && valor <= 1 ? valor * 100 : valor;
+  }
+  const texto = valor.toString().trim().replace('%', '').replace(',', '.');
+  if (!texto || isNaN(Number(texto))) return null;
+  return Number(texto);
+}
+
+/**
+ * Lee la matriz de `RESUMEN_EJECUTIVO_A1` y devuelve { sigla: avance } con el
+ * avance general del Anexo 1 de cada facultad.
+ *
+ * El encabezado se busca por NOMBRE, no por posición: la hoja del Anexo 1 ha
+ * cambiado de columnas varias veces y fijar un índice la volvería a romper.
+ */
+function leerAvancesAnexo1_(valores) {
+  const resultado = {};
+  if (!valores || !valores.length) return resultado;
+
+  const objetivo = normalizar_(CONFIG_A3.COLUMNA_AVANCE_A1);
+  const columnaFacultad = normalizar_(CONFIG_A3.COLUMNA_FACULTAD_A1);
+
+  let filaEnc = -1, colAvance = -1, colSigla = -1;
+  for (let f = 0; f < valores.length && filaEnc === -1; f++) {
+    let avance = -1, sigla = -1;
+    for (let c = 0; c < valores[f].length; c++) {
+      const n = normalizar_(valores[f][c]);
+      if (avance === -1 && n === objetivo) avance = c;
+      if (sigla === -1 && n === columnaFacultad) sigla = c;
+    }
+    if (avance !== -1 && sigla !== -1) { filaEnc = f; colAvance = avance; colSigla = sigla; }
+  }
+  if (filaEnc === -1) return resultado;
+
+  for (let f = filaEnc + 1; f < valores.length; f++) {
+    const sigla = normalizar_(valores[f][colSigla]);
+    if (!sigla || sigla === 'TOTAL') continue;
+    const avance = porcentajeANumero_(valores[f][colAvance]);
+    if (avance !== null) resultado[sigla] = avance;
+  }
+  return resultado;
+}
+
+/**
+ * Avance general de una facultad a partir de los dos anexos.
+ *
+ * Los pesos son una decisión, no un dato: 50/50 significa que cada anexo vale
+ * lo mismo aunque el Anexo 1 evalúe muchas más celdas. Si falta el avance de
+ * uno de los dos, NO se promedia con cero: se informa el que hay y se dice que
+ * el otro falta.
+ */
+function combinarAvances_(avanceA1, avanceA3, pesos) {
+  const p = pesos || CONFIG_A3.PESOS_ANEXOS;
+  const hayA1 = (avanceA1 !== null && avanceA1 !== undefined);
+  const hayA3 = (avanceA3 !== null && avanceA3 !== undefined);
+
+  if (hayA1 && hayA3) {
+    const suma = p.A1 + p.A3;
+    return {
+      general: Math.round(((avanceA1 * p.A1 + avanceA3 * p.A3) / suma) * 10) / 10,
+      completo: true,
+      nota: ''
+    };
+  }
+  if (hayA3) {
+    return { general: avanceA3, completo: false,
+             nota: 'Sin dato del Anexo 1: el general muestra solo el avance del Anexo 3.' };
+  }
+  if (hayA1) {
+    return { general: avanceA1, completo: false,
+             nota: 'Sin dato del Anexo 3: el general muestra solo el avance del Anexo 1.' };
+  }
+  return { general: null, completo: false, nota: 'Sin datos de ninguno de los dos anexos.' };
+}
+
+/**
+ * Hoja RESUMEN_GENERAL: una fila por facultad con el avance de cada anexo y el
+ * general 50/50. Se escribe en el mismo libro, así que el Anexo 1 se lee de la
+ * hoja que su auditoría ya dejó ahí.
+ */
+function escribirResumenGeneral_(ss, facultades) {
+  const hojaA1 = ss.getSheetByName(CONFIG_A3.HOJA_RESUMEN_A1);
+  const avancesA1 = hojaA1 ? leerAvancesAnexo1_(hojaA1.getDataRange().getValues()) : {};
+  const hayHojaA1 = !!hojaA1;
+
+  const pesoA1 = Math.round(CONFIG_A3.PESOS_ANEXOS.A1 * 100);
+  const pesoA3 = Math.round(CONFIG_A3.PESOS_ANEXOS.A3 * 100);
+
+  const filas = [];
+  const estados = [];
+  const generales = [];
+
+  facultades.forEach(function (fac) {
+    const a1 = avancesA1[normalizar_(fac.sigla)];
+    const combinado = combinarAvances_(a1 === undefined ? null : a1, fac.avance);
+    const notas = [];
+    if (!hayHojaA1) {
+      notas.push('No se encontró la hoja ' + CONFIG_A3.HOJA_RESUMEN_A1 +
+                 ': ejecute primero la auditoría del Anexo 1.');
+    } else if (combinado.nota) {
+      notas.push(combinado.nota);
+    }
+    if (fac.criticos) notas.push(fac.criticos + ' hallazgo(s) crítico(s) en el Anexo 3.');
+
+    if (combinado.completo) generales.push(combinado.general);
+    const estado = estadoDeFacultad_(combinado.general === null ? 0 : combinado.general,
+                                     fac.criticos);
+    filas.push([fac.sigla, fac.nombre || '(sin nombre en el catálogo)',
+                a1 === undefined ? '—' : a1 / 100,
+                fac.avance / 100,
+                combinado.general === null ? '—' : combinado.general / 100,
+                estado.rotulo, notas.join(' ')]);
+    estados.push(estado.clave);
+  });
+
+  // El total trata a cada facultad por igual, en coherencia con el 50/50: los
+  // pesos son una decisión institucional, no el tamaño de cada hoja.
+  const promedio = generales.length
+    ? Math.round((generales.reduce(function (a, x) { return a + x; }, 0) / generales.length) * 10) / 10
+    : null;
+  const criticosTotal = facultades.reduce(function (a, f) { return a + f.criticos; }, 0);
+  const estadoTotal = estadoDeFacultad_(promedio === null ? 0 : promedio, criticosTotal);
+
+  filas.push(['TOTAL', 'PROMEDIO DE LAS ' + facultades.length + ' FACULTADES',
+              '', '', promedio === null ? '—' : promedio / 100, estadoTotal.rotulo,
+              'Promedio simple de las ' + generales.length + ' facultad(es) con avance en los dos ' +
+              'anexos. Cada facultad pesa igual, y dentro de cada una el Anexo 1 vale ' +
+              pesoA1 + ' % y el Anexo 3 ' + pesoA3 + ' %.']);
+  estados.push(estadoTotal.clave);
+
+  const hoja = escribirHoja_(ss, CONFIG_A3.HOJAS.GENERAL,
+    ['SIGLA', 'FACULTAD', '% ANEXO 1', '% ANEXO 3', '% GENERAL', 'ESTADO', 'NOTAS'],
+    filas, estados);
+  if (filas.length) {
+    hoja.getRange(2, 3, filas.length, 3).setNumberFormat('0.0%');
+    aplicarSemaforoDeAvance_(hoja, 5, filas.length);
+    hoja.getRange(filas.length + 1, 1, 1, 8).setFontWeight('bold');
+  }
+  return hoja;
 }
 
 /**
@@ -1970,7 +2148,8 @@ function ejecutarRevisionAnexo3() {
   const url = ss.getUrl();
   const fichas = revisadas.reduce(function (a, f) { return a + f.efectivas.length; }, 0);
   const hojas = [CONFIG_A3.HOJAS.DETALLE, CONFIG_A3.HOJAS.RESUMEN,
-                 CONFIG_A3.HOJAS.RESUMEN_20, CONFIG_A3.HOJAS.MAESTRO].join(', ');
+                 CONFIG_A3.HOJAS.RESUMEN_20, CONFIG_A3.HOJAS.MAESTRO,
+                 CONFIG_A3.HOJAS.GENERAL].join(', ');
   Logger.log('Revisión del Anexo 3 — ' + revisadas.length + ' facultad(es), ' +
              fichas + ' ficha(s). Hojas: ' + hojas + '. ' + url);
   notificarA3_('Revisión del Anexo 3 terminada.\n\n' + revisadas.length +

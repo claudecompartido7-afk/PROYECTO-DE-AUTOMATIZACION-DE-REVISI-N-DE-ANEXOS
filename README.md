@@ -52,7 +52,7 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 273 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 300 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 el registro maestro de códigos, el cotejo con el Anexo 1
 la detección automática de las pestañas `F##_SIGLA`, el producto final
@@ -93,9 +93,10 @@ en el registro (Ver › Registro) cada pestaña y si se reconoce como facultad.
 Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
 
 El reporte se escribe en el mismo libro que usa la auditoría del Anexo 1
-(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cuatro hojas con sufijo `_A3`:
-`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_20_FACULTADES_A3` y
-`REGISTRO_MAESTRO_CODIGOS_A3`. Conviven con las `*_A1` sin pisarse: cada corrida
+(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cinco hojas:
+`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_20_FACULTADES_A3`,
+`REGISTRO_MAESTRO_CODIGOS_A3` y `RESUMEN_GENERAL`, esta última con el avance de
+los dos anexos combinado 50/50. Conviven con las `*_A1` sin pisarse: cada corrida
 reescribe solo las suyas. Todas abren con la sigla y el nombre de la facultad,
 en el orden F01 → F20.
 

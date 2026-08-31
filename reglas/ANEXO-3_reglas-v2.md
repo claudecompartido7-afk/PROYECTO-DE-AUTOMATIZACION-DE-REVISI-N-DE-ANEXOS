@@ -265,6 +265,7 @@ los porcentajes.
 | `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
 | `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, fichas esperadas, completas, incompletas, críticas, sin producto, observaciones, % avance, estado y notas |
 | `RESUMEN_FICHAS` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
+| `RESUMEN_GENERAL` | Una fila por facultad con `% ANEXO 1`, `% ANEXO 3` y el `% GENERAL` |
 | `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |
 
 **6.1 Ubicación de cada hallazgo.** El detalle indica dónde está el dato en la
@@ -299,6 +300,26 @@ formalización incompleta · entradas y salidas · productos finales.
 OGPL: el script no lee las fuentes de la hoja ni reporta nada sobre ellas. La
 fuente del archivo de salida (`CONFIG_A3.FUENTE_REPORTE`) es formato del
 reporte, no un criterio de revisión.
+
+**6.3.1 Avance general de los dos anexos.** `RESUMEN_GENERAL` combina el avance
+del Anexo 1 —leído de la hoja `RESUMEN_EJECUTIVO_A1` que deja su auditoría en el
+mismo libro— con el del Anexo 3:
+
+```
+% GENERAL = % Anexo 1 × 0,5  +  % Anexo 3 × 0,5
+```
+
+Los pesos son una **decisión institucional**, no un dato: cada anexo vale lo
+mismo aunque el Anexo 1 evalúe muchas más celdas. Se configuran en
+`CONFIG_A3.PESOS_ANEXOS`.
+
+- La columna del Anexo 1 se busca **por el nombre del encabezado**, no por
+  posición, para que insertar una columna en su resumen no rompa el cruce.
+- Si falta el avance de uno de los dos anexos, **no se promedia con cero**: se
+  informa el que hay y la nota dice cuál falta. Un cero real sí se promedia.
+- La fila `TOTAL` es el promedio **simple** de las facultades que tienen los dos
+  anexos: coherente con el 50/50, donde el peso lo fija la decisión y no el
+  tamaño de cada hoja.
 
 **6.4 Semáforo de avance por facultad.** En `RESUMEN_20_FACULTADES` la columna
 `% AVANCE` lleva formato condicional:
