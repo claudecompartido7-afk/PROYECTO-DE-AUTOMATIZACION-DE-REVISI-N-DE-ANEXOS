@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v15.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v16.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
@@ -444,7 +444,10 @@ bloque("Rescate de columnas tras el cambio de formato de la hoja", function () {
 
 
 bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
-  const fo = M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === "FO"; });
+  const F = function (sigla) {
+    return M.CONFIG_A1.FACULTADES.find(function (f) { return f.sigla === sigla; });
+  };
+  const fo = F("FO");
 
   const ajeno = M.clasificarFila_("PS.10_F04 GESTIÓN DE LA COMUNICACIÓN",
     padreEntre(["PS.10"]), fo.formulario);
@@ -456,14 +459,32 @@ bloque("El formulario oficial manda sobre el uso de la pestaña", function () {
     padreEntre(["PS.10"]), fo.formulario);
   chequear("_F05 no se marca", propio.checks.sufijo === true);
 
-  // Pestañas cuyo uso observado no coincide con el formulario oficial.
-  const desfase = { FCF: "F02", FCCSS: "F02", FIGMMG: "F06", FII: "F17",
-                    FPSIC: "F18", FIEE: "F17", FISI: "F02" };
-  Object.keys(desfase).forEach(function (sigla) {
-    const f = M.CONFIG_A1.FACULTADES.find(function (x) { return x.sigla === sigla; });
-    chequear(sigla + ": el uso observado (" + desfase[sigla] + ") difiere del oficial (" + f.formulario + ")",
-      f.formulario !== desfase[sigla]);
-  });
+  // [C41] Sufijo que cada pestaña usa mayoritariamente HOY en el Anexo 1,
+  // medido sobre las 3 668 filas del libro. Cinco no coinciden con el oficial.
+  const usoReal = {
+    FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
+    FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
+    FCF: "F02", FCM: "F14", FCCSS: "F02", FIGMMG: "F06", FII: "F17",
+    FPSIC: "F18", FIEE: "F17", FISI: "F02"
+  };
+  const ajenas = M.CONFIG_A1.FACULTADES
+    .filter(function (f) { return usoReal[f.sigla] !== f.formulario; })
+    .map(function (f) { return f.sigla; });
+
+  chequear("solo cinco pestañas usan un formulario ajeno",
+    ajenas.join(",") === "FCF,FCCSS,FIGMMG,FIEE,FISI");
+
+  // Estas dos se marcaban por el desfase del catálogo, no por la hoja.
+  chequear("la FII deja de marcarse: usa _F17 y su oficial es _F17",
+    M.celdaFormulario_(F("FII"), usoReal.FII) === "F17");
+  chequear("la FPSIC deja de marcarse: usa _F18 y su oficial es _F18",
+    M.celdaFormulario_(F("FPSIC"), usoReal.FPSIC) === "F18");
+
+  // Estas dos siguen marcadas, pero contra el número oficial corregido.
+  chequear("la FIEE sigue marcada contra su oficial corregido _F19",
+    M.celdaFormulario_(F("FIEE"), usoReal.FIEE) === "F19 (la hoja usa F17)");
+  chequear("la FISI sigue marcada contra su oficial corregido _F20",
+    M.celdaFormulario_(F("FISI"), usoReal.FISI) === "F20 (la hoja usa F02)");
 });
 
 bloque("Los nombres oficiales no rompen la localización de pestañas", function () {
@@ -513,8 +534,8 @@ bloque("Formularios oficiales por facultad", function () {
   const oficiales = {
     FM: "F01", FDCP: "F02", FLCH: "F03", FFB: "F04", FO: "F05", FE: "F06",
     FQIQ: "F07", FMV: "F08", FCA: "F09", FCB: "F10", FCC: "F11", FCE: "F12",
-    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F20",
-    FPSIC: "F17", FIEE: "F18", FISI: "F19"
+    FCF: "F13", FCM: "F14", FCCSS: "F15", FIGMMG: "F16", FII: "F17",
+    FPSIC: "F18", FIEE: "F19", FISI: "F20"
   };
   Object.keys(oficiales).forEach(function (sigla) {
     chequear(sigla + " = " + oficiales[sigla], F(sigla).formulario === oficiales[sigla]);
@@ -522,8 +543,11 @@ bloque("Formularios oficiales por facultad", function () {
 
   chequear("los 20 formularios están declarados",
     M.CONFIG_A1.FACULTADES.every(function (f) { return !!f.formulario; }));
-  chequear("la numeración no es posicional: FII lleva F20",
-    F("FII").formulario === "F20" && M.CONFIG_A1.FACULTADES.indexOf(F("FII")) === 16);
+  chequear("la numeración es posicional: cada facultad lleva el F de su puesto",
+    M.CONFIG_A1.FACULTADES.every(function (f, i) {
+      const n = i + 1;
+      return f.formulario === "F" + (n < 10 ? "0" + n : n);
+    }));
 
   chequear("los 20 formularios son distintos",
     new Set(M.CONFIG_A1.FACULTADES.map(function (f) { return f.formulario; })).size === 20);
