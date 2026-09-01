@@ -756,6 +756,20 @@ function localizarHoja_(hojas, fac, yaAsignadas) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   MENÚ DE USUARIO
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi().createMenu("Auditoría OGPL")
+      .addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1")
+      .addToUi();
+  } catch (e) {
+    // Sin interfaz disponible (ejecución desde editor sin UI)
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    PROCESO PRINCIPAL
    ═══════════════════════════════════════════════════════════════════════════ */
 
