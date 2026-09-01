@@ -812,10 +812,16 @@ function ejecutarAuditoriaAnexo1() {
   // esta corrida, no releyendo una celda del resumen recién escrito.
   const avanceA1 = avanceGeneralAnexo1_(metricas);
   if (typeof registrarRevision === "function") {
-    registrarRevision("Anexo 1", avanceA1);
+    try {
+      registrarRevision("Anexo 1", avanceA1);
+    } catch (e) {
+      Logger.log("No se pudo registrar el avance del Anexo 1 (" + avanceA1 + "%) en el " +
+                 "historial: " + e.message);
+    }
   } else {
     Logger.log("No se encontró la función registrarRevision(): el avance del Anexo 1 (" +
-               avanceA1 + "%) no se registró en el historial.");
+               avanceA1 + "%) no se registró. Falta el archivo HistorialRevisiones.gs " +
+               "en el proyecto.");
   }
 
   notificar_("Auditoría del Anexo 1 completada. " + detalle.length + " productos y " +

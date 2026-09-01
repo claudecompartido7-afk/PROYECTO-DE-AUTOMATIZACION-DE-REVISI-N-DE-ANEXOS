@@ -2154,15 +2154,21 @@ function ejecutarRevisionAnexo3() {
   const revisadas = facultades.map(revisarFacultad_);
   const ss = abrirLibroDestino_();
   escribirResultado_(ss, revisadas);
-  // El historial de revisiones vive en otro archivo del proyecto: si no está
-  // presente, la revisión se completa igual en vez de caerse al final, con las
-  // hojas ya escritas.
+  // El historial de revisiones vive en otro archivo del proyecto. Se protege
+  // por partida doble: si la función no está, la revisión se completa igual; y
+  // si está pero falla, tampoco se pierde el reporte ya escrito.
   const avanceA3 = calcularPorcentajeGeneralAnexo3_(revisadas);
   if (typeof registrarRevision === 'function') {
-    registrarRevision('Anexo 3', avanceA3);
+    try {
+      registrarRevision('Anexo 3', avanceA3);
+    } catch (e) {
+      Logger.log('No se pudo registrar el avance del Anexo 3 (' + avanceA3 + '%) en el ' +
+                 'historial: ' + e.message);
+    }
   } else {
     Logger.log('No se encontró la función registrarRevision(): el avance del Anexo 3 (' +
-               avanceA3 + '%) no se registró en el historial.');
+               avanceA3 + '%) no se registró. Falta el archivo HistorialRevisiones.gs ' +
+               'en el proyecto.');
   }
 
   const url = ss.getUrl();

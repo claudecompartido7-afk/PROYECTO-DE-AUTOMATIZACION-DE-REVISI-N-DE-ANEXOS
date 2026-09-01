@@ -14,6 +14,7 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
+apps-script/HistorialRevisiones.gs       Historial de avances de los anexos
 apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
 apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
@@ -41,6 +42,7 @@ docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
 tests/anexo3.test.js                     Pruebas de los validadores del Anexo 3 (Node)
+tests/historial.test.js                  Pruebas del historial de revisiones (Node)
 dashboard/dashboard.html                 Dashboard visual de la última corrida
 ```
 
@@ -49,6 +51,7 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 ```
 node tests/validadores.test.js
 node tests/anexo3.test.js
+node tests/historial.test.js
 ```
 
 Anexo 1: 388 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
