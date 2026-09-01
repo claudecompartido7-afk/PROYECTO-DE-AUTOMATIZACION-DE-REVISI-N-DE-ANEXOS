@@ -251,10 +251,10 @@ const CONFIG_A3 = {
     { sigla: 'FCM',    formulario: 'F14', nombre: 'FACULTAD DE CIENCIAS MATEMÁTICAS' },
     { sigla: 'FCCSS',  formulario: 'F15', nombre: 'FACULTAD DE CIENCIAS SOCIALES' },
     { sigla: 'FIGMMG', formulario: 'F16', nombre: 'FACULTAD DE INGENIERÍA GEOLÓGICA, MINERA, METALÚRGICA Y GEOGRÁFICA' },
-    { sigla: 'FII',    formulario: 'F20', nombre: 'FACULTAD DE INGENIERÍA INDUSTRIAL' },
-    { sigla: 'FPSIC',  formulario: null,  nombre: 'FACULTAD DE PSICOLOGÍA' },
-    { sigla: 'FIEE',   formulario: null,  nombre: 'FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA' },
-    { sigla: 'FISI',   formulario: null,  nombre: 'FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA' }
+    { sigla: 'FII',    formulario: 'F17', nombre: 'FACULTAD DE INGENIERÍA INDUSTRIAL' },
+    { sigla: 'FPSIC',  formulario: 'F18', nombre: 'FACULTAD DE PSICOLOGÍA' },
+    { sigla: 'FIEE',   formulario: 'F19', nombre: 'FACULTAD DE INGENIERÍA ELECTRÓNICA Y ELÉCTRICA' },
+    { sigla: 'FISI',   formulario: 'F20', nombre: 'FACULTAD DE INGENIERÍA DE SISTEMAS E INFORMÁTICA' }
   ]
 };
 
