@@ -21,6 +21,7 @@ apps-script/Anexo1_Auditoria_v4.gs              v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs              v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs                 v2, conservada como referencia
 apps-script/Anexo3_Revision_v3.gs               Auditor del Anexo 3 — VERSIÓN VIGENTE (con historial)
+apps-script/Anexo4_Revision_v1.gs               Auditor del Anexo 4 — VERSIÓN VIGENTE (template + historial)
 apps-script/HistorialRevisiones.gs              Registro de revisiones por anexo
 apps-script/ExportarJSON.gs                     Exporta datos completos a Drive (bypass 250 líneas)
 reglas/ANEXO-1_reglas-v6.md                     Reglas vigentes
