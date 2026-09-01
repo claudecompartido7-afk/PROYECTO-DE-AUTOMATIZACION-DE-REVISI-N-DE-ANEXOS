@@ -9,12 +9,21 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 |---|---|
 | Anexo 1 — Inventario de productos y procesos | en desarrollo |
 | Anexo 2 — (migrado al Anexo 1) | fuera de alcance |
-| Anexo 3 — Ficha técnica | pendiente |
+| Anexo 3 — Ficha técnica | en desarrollo — 20 facultades |
+| Anexo 4 — Indicadores estandarizados | en desarrollo |
 
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v16.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/HistorialRevisiones.gs       Historial de avances de los anexos
+apps-script/ExportarJSON.gs              Exportación del tablero a JSON
+apps-script/Anexo4_Revision_v2.gs        Revisión del Anexo 4 — VERSIÓN VIGENTE
+apps-script/Anexo4_Revision_v1.gs        v1 (plantilla), conservada como referencia
+apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
+apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
+apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
+apps-script/Anexo1_Auditoria_v17.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v16.gs      v16, conservada como referencia
 apps-script/Anexo1_Auditoria_v15.gs      v15, conservada como referencia
 apps-script/Anexo1_Auditoria_v14.gs      v14, conservada como referencia
 apps-script/Anexo1_Auditoria_v13.gs      v13, conservada como referencia
@@ -29,11 +38,17 @@ apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v16.md             Reglas vigentes
+reglas/ANEXO-3_reglas-v2.md              Reglas vigentes del Anexo 3
+reglas/ANEXO-3_reglas-v1.md              v1 (piloto FDCP), conservada como referencia
+reglas/ANEXO-1_reglas-v16.md             Reglas vigentes del Anexo 1
 reglas/ANEXO-1_reglas-v15.md             Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
-tests/validadores.test.js                Pruebas de los validadores (Node)
+tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
+tests/anexo3.test.js                     Pruebas de los validadores del Anexo 3 (Node)
+tests/anexo4.test.js                     Pruebas de los validadores del Anexo 4 (Node)
+tests/historial.test.js                  Pruebas del historial de revisiones (Node)
+tests/proyecto.test.js                   Vigila los nombres duplicados entre archivos (Node)
 dashboard/dashboard.html                 Dashboard visual de la última corrida
 ```
 
@@ -41,20 +56,38 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 
 ```
 node tests/validadores.test.js
+node tests/anexo3.test.js
+node tests/anexo4.test.js
+node tests/historial.test.js
+node tests/proyecto.test.js
 ```
 
-381 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+`proyecto.test.js` comprueba que dos archivos del proyecto de Apps Script no
+declaren el mismo nombre: en Apps Script todos comparten un único ámbito global,
+así que dos `const` iguales rompen el proyecto entero y dos funciones iguales se
+pisan en silencio.
+
+Anexo 1: 388 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios —incluida la
 numeración posicional F01–F20 de la relación corregida—, puntuación de las filas
 de proceso y preservación de las columnas del revisor.
 
+Anexo 3: 308 comprobaciones sobre los validadores de codificación, la partición
+de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
+el registro maestro de códigos, el cotejo con el Anexo 1
+la detección automática de las pestañas `F##_SIGLA`, el producto final
+obligatorio, el emparejado de código y denominación por líneas, la coherencia fila por
+fila de la descripción, los códigos duplicados, la clasificación en cuatro niveles, el
+semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
+
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v16.gs`
-3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v17.gs`
+3. Ejecutar `ejecutarAuditoriaAnexo1`, o **Auditoría OGPL › Ejecutar auditoría
+   del Anexo 1**, y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
    `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
    `OBSERVACIONES_DE_PROCESO_A1`
@@ -62,6 +95,46 @@ de proceso y preservación de las columnas del revisor.
 La hoja `COBERTURA_PROCESOS_A1` se **renombra** a `OBSERVACIONES_DE_PROCESO_A1`
 en la primera corrida de la v5; no se crea una hoja nueva, para que las contra
 observaciones ya escritas viajen con ella.
+
+## Anexo 3 — revisión de fichas técnicas
+
+1. Abrir `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES` → **Extensiones › Apps Script**
+2. Agregar un archivo con el contenido de `apps-script/Anexo3_Revision_v3.gs`
+   (junto al del Anexo 1, en el mismo proyecto)
+3. Revisar el bloque `CONFIG_A3` del inicio (carpeta de salida y Anexo 1 para el
+   cotejo). Las pestañas de facultad se detectan solas por su nombre
+   `F##_SIGLA`; deje `SOURCE_TAB_NAME` vacío para revisarlas todas, o escriba
+   siglas separadas por coma para revisar solo algunas. También puede
+   configurarse desde una pestaña `CONFIG_A3` del propio Anexo 3: columna A =
+   clave, columna B = valor.
+4. Recargar el libro y usar **Auditoría OGPL › Ejecutar revisión del Anexo 3**
+   (o ejecutar `ejecutarRevisionAnexo3` desde el editor)
+
+Si alguna facultad no aparece en el reporte, ejecute `listarPestanasA3`: escribe
+en el registro (Ver › Registro) cada pestaña y si se reconoce como facultad.
+Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
+
+El reporte se escribe en el mismo libro que usa la auditoría del Anexo 1
+(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cinco hojas:
+`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_20_FACULTADES_A3`,
+`REGISTRO_MAESTRO_CODIGOS_A3` y `RESUMEN_GENERAL`, esta última con el avance de
+los dos anexos combinado 50/50. Conviven con las `*_A1` sin pisarse: cada corrida
+reescribe solo las suyas. Todas abren con la sigla y el nombre de la facultad,
+en el orden F01 → F20.
+
+Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
+por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese
+mismo estado se escribe en la columna `ESTADO`, de modo que la hoja se lea igual
+impresa en blanco y negro. El `DASHBOARD` cierra con la leyenda.
+
+Los hallazgos se clasifican en cuatro niveles —**Correcto**, **Incompleto**,
+**Observación** y **Crítico**— y el resumen de las 20 facultades lleva semáforo
+de avance (95–100 verde, 80–94 ámbar, 60–79 naranja, 0–59 rojo). Una facultad
+con hallazgos críticos no se considera satisfactoria por alto que sea su
+porcentaje.
+
+La FDCP trabaja procesos y productos de nivel 2: el nivel adicional de código se
+admite como excepción y se anota, no se marca como error.
 
 ## Columna CONTRA OBSERVACIÓN
 

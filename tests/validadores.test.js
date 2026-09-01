@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v16.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo1_Auditoria_v17.gs");
 
 const SHIM = `
 var SpreadsheetApp = { getUi: function () { throw new Error("sin interfaz"); },
@@ -31,7 +31,8 @@ module.exports = {
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
   TOTAL_CRITERIOS, TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
   esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
-  ordenarPorFacultadYEstado_, avanceCombinado_, filaDeTotales_
+  ordenarPorFacultadYEstado_, avanceCombinado_, filaDeTotales_,
+  avanceGeneralAnexo1_, calcularPorcentajeGeneralAnexo1_
 };
 `;
 
@@ -1093,6 +1094,37 @@ bloque("Fila de totales del resumen", function () {
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
+
+bloque("[C42] Avance general para el historial de revisiones", function () {
+  const metricas = [
+    { cumplidosProd: [8, 8, 4], cumplidosProc: [5, 5] },
+    { cumplidosProd: [8, 0],    cumplidosProc: [5] }
+  ];
+  // 5 productos x 8 + 3 procesos x 5 = 55 criterios; cumplidos 28 + 15 = 43.
+  const esperado = Math.round((43 / 55) * 100);
+
+  chequear("se calcula con las métricas de la corrida",
+    M.avanceGeneralAnexo1_(metricas) === esperado);
+  chequear("devuelve 0 a 100, no una fracción", M.avanceGeneralAnexo1_(metricas) > 1);
+  chequear("sin métricas no divide por cero", M.avanceGeneralAnexo1_([]) === 0);
+  chequear("sin argumento tampoco revienta", M.avanceGeneralAnexo1_() === 0);
+  chequear("el nombre anterior sigue funcionando",
+    M.calcularPorcentajeGeneralAnexo1_(metricas) === esperado);
+  chequear("una facultad sin productos no rompe el total",
+    M.avanceGeneralAnexo1_([{ cumplidosProd: [], cumplidosProc: [] },
+                            { cumplidosProd: [8], cumplidosProc: [] }]) === 100);
+
+  // Es el mismo número que ya publica la fila TOTAL del resumen.
+  const completas = metricas.map(function (m) {
+    return Object.assign({}, m, {
+      totalProd: m.cumplidosProd.length, prodConformes: 0, prodObservados: 0, prodSinRegistrar: 0,
+      totalProc: m.cumplidosProc.length, n0Conformes: 0, n0Observados: 0, n0SinRegistrar: 0,
+      subConformes: 0, subObservados: 0, subSinRegistrar: 0
+    });
+  });
+  chequear("coincide con la columna de la fila TOTAL",
+    M.filaDeTotales_(completas)[20] === esperado + "%");
+});
 
 console.log("\n" + (fallas === 0
   ? "TODAS LAS PRUEBAS PASAN (" + total + ")"
