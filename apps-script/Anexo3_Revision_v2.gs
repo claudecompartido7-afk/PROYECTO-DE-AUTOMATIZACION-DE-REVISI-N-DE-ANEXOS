@@ -96,7 +96,7 @@ const CONFIG_A3 = {
   HOJAS: {
     DETALLE:    'DETALLE_REVISION_A3',
     RESUMEN:    'RESUMEN_FICHAS_A3',
-    RESUMEN_20: 'RESUMEN_20_FACULTADES_A3',
+    RESUMEN_20: 'RESUMEN_EJECUTIVO_A3',
     MAESTRO:    'REGISTRO_MAESTRO_CODIGOS_A3',
     GENERAL:    'RESUMEN_GENERAL'
   },
@@ -1592,6 +1592,9 @@ function escribirHoja_(ss, nombre, encabezados, filas, estados) {
   let hoja = ss.getSheetByName(nombre);
   if (!hoja) hoja = ss.insertSheet(nombre);
   hoja.clear();
+  
+  const filtroExistente = hoja.getFilter();
+  if (filtroExistente) filtroExistente.remove();
 
   const conEstado = !!estados;
   const cabecera = conEstado ? encabezados.concat(['CLASIFICACIÓN (color)']) : encabezados.slice();
