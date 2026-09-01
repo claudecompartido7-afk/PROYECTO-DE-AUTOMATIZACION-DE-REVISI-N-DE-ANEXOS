@@ -2162,6 +2162,15 @@ function ejecutarRevisionAnexo3() {
   return url;
 }
 
+function onOpen() {
+  try {
+    SpreadsheetApp.getUi().createMenu("Auditoría OGPL")
+      .addItem("Ejecutar auditoría del Anexo 3", "ejecutarRevisionAnexo3").addToUi();
+  } catch (e) {
+    // Sin interfaz disponible: no hay menú que crear.
+  }
+}
+
 /**
  * Alias de compatibilidad: en la v1 esta función recorría las facultades una
  * por una y dejaba un archivo por cada una. Ahora `ejecutarRevisionAnexo3` ya
