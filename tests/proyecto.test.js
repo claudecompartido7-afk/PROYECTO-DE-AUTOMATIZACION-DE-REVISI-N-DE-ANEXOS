@@ -24,7 +24,7 @@ const DIRECTORIO = path.join(__dirname, "..", "apps-script");
 const DEL_PROYECTO = [
   "Anexo1_Auditoria_v17.gs",
   "Anexo3_Revision_v3.gs",
-  "Anexo4_Revision_v1.gs",
+  "Anexo4_Revision_v2.gs",
   "ExportarJSON.gs",
   "HistorialRevisiones.gs"
 ];

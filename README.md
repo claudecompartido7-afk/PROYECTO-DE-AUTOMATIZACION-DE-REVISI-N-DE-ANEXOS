@@ -10,13 +10,15 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 | Anexo 1 — Inventario de productos y procesos | en desarrollo |
 | Anexo 2 — (migrado al Anexo 1) | fuera de alcance |
 | Anexo 3 — Ficha técnica | en desarrollo — 20 facultades |
+| Anexo 4 — Indicadores estandarizados | en desarrollo |
 
 ## Contenido
 
 ```
 apps-script/HistorialRevisiones.gs       Historial de avances de los anexos
 apps-script/ExportarJSON.gs              Exportación del tablero a JSON
-apps-script/Anexo4_Revision_v1.gs        Revisión del Anexo 4
+apps-script/Anexo4_Revision_v2.gs        Revisión del Anexo 4 — VERSIÓN VIGENTE
+apps-script/Anexo4_Revision_v1.gs        v1 (plantilla), conservada como referencia
 apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
 apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
@@ -44,6 +46,7 @@ docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
 tests/anexo3.test.js                     Pruebas de los validadores del Anexo 3 (Node)
+tests/anexo4.test.js                     Pruebas de los validadores del Anexo 4 (Node)
 tests/historial.test.js                  Pruebas del historial de revisiones (Node)
 tests/proyecto.test.js                   Vigila los nombres duplicados entre archivos (Node)
 dashboard/dashboard.html                 Dashboard visual de la última corrida
@@ -54,6 +57,7 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 ```
 node tests/validadores.test.js
 node tests/anexo3.test.js
+node tests/anexo4.test.js
 node tests/historial.test.js
 node tests/proyecto.test.js
 ```

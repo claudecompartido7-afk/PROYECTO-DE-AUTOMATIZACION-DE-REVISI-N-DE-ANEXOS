@@ -2202,6 +2202,9 @@ function onOpen() {
     if (typeof ejecutarRevisionAnexo3 === "function") {
       menu.addItem("Ejecutar revisión del Anexo 3", "ejecutarRevisionAnexo3");
     }
+    if (typeof ejecutarRevisionAnexo4 === "function") {
+      menu.addItem("Ejecutar revisión del Anexo 4", "ejecutarRevisionAnexo4");
+    }
     if (typeof convertirSeparadorAntiguo === "function") {
       menu.addSeparator()
           .addItem("Convertir observaciones antiguas a renglones", "convertirSeparadorAntiguo");
