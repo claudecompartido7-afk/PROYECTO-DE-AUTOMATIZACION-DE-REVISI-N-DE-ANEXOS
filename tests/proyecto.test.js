@@ -121,6 +121,22 @@ bloque("La excepción de onOpen es deliberada", function () {
   chequear("y los dos construyen el mismo menú", items[0] === items[1]);
 });
 
+bloque("Los cinco archivos compilan juntos", function () {
+  // Apps Script concatena todos los archivos en un único ámbito. Esta es la
+  // misma prueba que hace el editor al guardar: si un nombre está repetido o
+  // falta una llave, aquí revienta igual que allá -y allá el síntoma es que el
+  // desplegable de funciones se queda vacío-.
+  let junto = "";
+  presentes.forEach(function (archivo) {
+    junto += "\n" + fs.readFileSync(path.join(DIRECTORIO, archivo), "utf8");
+  });
+  let error = null;
+  try { new Function(junto); } catch (e) { error = e.message; }
+  chequear("compilan sin errores" + (error ? " — " + error : ""), error === null);
+
+  chequear("y son los cinco del proyecto", presentes.length === DEL_PROYECTO.length);
+});
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 console.log("\n" + total + " comprobaciones, " + fallas + " fallas.");
