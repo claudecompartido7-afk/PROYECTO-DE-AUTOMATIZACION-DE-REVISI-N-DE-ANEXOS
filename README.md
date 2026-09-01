@@ -14,7 +14,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v6.gs              Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v16.gs             Auditor del Anexo 1 — VERSIÓN VIGENTE (con historial)
+apps-script/Anexo1_Auditoria_v6.gs              v6, conservada como referencia
 apps-script/Anexo1_Auditoria_v5.gs              v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs              v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs              v3, conservada como referencia
