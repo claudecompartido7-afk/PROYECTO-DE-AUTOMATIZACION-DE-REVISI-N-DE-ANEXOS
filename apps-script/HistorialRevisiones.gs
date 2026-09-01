@@ -11,7 +11,13 @@
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
-const CONFIG_HISTORIAL = {
+/**
+ * Se llama CONFIG_HISTORIAL_REVISIONES y no CONFIG_HISTORIAL porque ese nombre
+ * ya lo usa `ExportarJSON.gs` para otra cosa. En Apps Script todos los archivos
+ * comparten un único ámbito global, y dos `const` con el mismo nombre son un
+ * SyntaxError que impide ejecutar CUALQUIER función del proyecto.
+ */
+const CONFIG_HISTORIAL_REVISIONES = {
 
   /**
    * Libro donde vive el historial: `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`,
@@ -30,12 +36,12 @@ const CONFIG_HISTORIAL = {
 /** Libro del historial: el declarado por ID; el activo solo como respaldo. */
 function libroDelHistorial_() {
   try {
-    return SpreadsheetApp.openById(CONFIG_HISTORIAL.ID_LIBRO);
+    return SpreadsheetApp.openById(CONFIG_HISTORIAL_REVISIONES.ID_LIBRO);
   } catch (e) {
     const activo = SpreadsheetApp.getActiveSpreadsheet();
     if (activo) return activo;
-    throw new Error('No se pudo abrir el libro del historial (' + CONFIG_HISTORIAL.ID_LIBRO +
-                    '). Verifique el ID en CONFIG_HISTORIAL.ID_LIBRO y su permiso de edición. ' +
+    throw new Error('No se pudo abrir el libro del historial (' + CONFIG_HISTORIAL_REVISIONES.ID_LIBRO +
+                    '). Verifique el ID en CONFIG_HISTORIAL_REVISIONES.ID_LIBRO y su permiso de edición. ' +
                     'Detalle: ' + e.message);
   }
 }
@@ -88,11 +94,11 @@ function registrarRevision(anexo, porcentaje) {
   }
 
   const libro = libroDelHistorial_();
-  let hoja = libro.getSheetByName(CONFIG_HISTORIAL.HOJA);
+  let hoja = libro.getSheetByName(CONFIG_HISTORIAL_REVISIONES.HOJA);
   if (!hoja) {
-    hoja = libro.insertSheet(CONFIG_HISTORIAL.HOJA);
-    hoja.appendRow(CONFIG_HISTORIAL.ENCABEZADOS);
-    hoja.getRange(1, 1, 1, CONFIG_HISTORIAL.ENCABEZADOS.length).setFontWeight('bold');
+    hoja = libro.insertSheet(CONFIG_HISTORIAL_REVISIONES.HOJA);
+    hoja.appendRow(CONFIG_HISTORIAL_REVISIONES.ENCABEZADOS);
+    hoja.getRange(1, 1, 1, CONFIG_HISTORIAL_REVISIONES.ENCABEZADOS.length).setFontWeight('bold');
     hoja.setFrozenRows(1);
   }
 
@@ -109,7 +115,7 @@ function registrarRevision(anexo, porcentaje) {
  */
 function historialParaJSON() {
   const libro = libroDelHistorial_();
-  const hoja = libro.getSheetByName(CONFIG_HISTORIAL.HOJA);
+  const hoja = libro.getSheetByName(CONFIG_HISTORIAL_REVISIONES.HOJA);
   if (!hoja) return [];
 
   const datos = hoja.getDataRange().getValues();
@@ -144,10 +150,10 @@ function historialParaJSON() {
  */
 function revisarHistorial() {
   const libro = libroDelHistorial_();
-  const hoja = libro.getSheetByName(CONFIG_HISTORIAL.HOJA);
+  const hoja = libro.getSheetByName(CONFIG_HISTORIAL_REVISIONES.HOJA);
   if (!hoja) {
     Logger.log('El libro "' + libro.getName() + '" todavía no tiene la hoja ' +
-               CONFIG_HISTORIAL.HOJA + '. Se creará en el primer registro.');
+               CONFIG_HISTORIAL_REVISIONES.HOJA + '. Se creará en el primer registro.');
     return [];
   }
   const datos = hoja.getDataRange().getValues();

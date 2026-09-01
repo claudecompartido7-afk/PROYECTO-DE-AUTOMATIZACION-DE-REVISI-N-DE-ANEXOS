@@ -15,6 +15,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 
 ```
 apps-script/HistorialRevisiones.gs       Historial de avances de los anexos
+apps-script/ExportarJSON.gs              Exportación del tablero a JSON
+apps-script/Anexo4_Revision_v1.gs        Revisión del Anexo 4
 apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
 apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
@@ -43,6 +45,7 @@ docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
 tests/anexo3.test.js                     Pruebas de los validadores del Anexo 3 (Node)
 tests/historial.test.js                  Pruebas del historial de revisiones (Node)
+tests/proyecto.test.js                   Vigila los nombres duplicados entre archivos (Node)
 dashboard/dashboard.html                 Dashboard visual de la última corrida
 ```
 
@@ -52,7 +55,13 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 node tests/validadores.test.js
 node tests/anexo3.test.js
 node tests/historial.test.js
+node tests/proyecto.test.js
 ```
+
+`proyecto.test.js` comprueba que dos archivos del proyecto de Apps Script no
+declaren el mismo nombre: en Apps Script todos comparten un único ámbito global,
+así que dos `const` iguales rompen el proyecto entero y dos funciones iguales se
+pisan en silencio.
 
 Anexo 1: 388 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad

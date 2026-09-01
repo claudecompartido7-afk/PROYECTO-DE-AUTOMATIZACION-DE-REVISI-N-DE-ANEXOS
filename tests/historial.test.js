@@ -16,7 +16,7 @@ const FUENTE = path.join(__dirname, "..", "apps-script", "HistorialRevisiones.gs
 
 const SHIM = `
 module.exports = {
-  CONFIG_HISTORIAL, registrarRevision, historialParaJSON, normalizarPorcentaje_,
+  CONFIG_HISTORIAL_REVISIONES, registrarRevision, historialParaJSON, normalizarPorcentaje_,
   libroDelHistorial_,
   _stubs: function (nuevo) { SpreadsheetApp = nuevo.SpreadsheetApp; Logger = nuevo.Logger; }
 };
@@ -50,7 +50,7 @@ function bloque(titulo, fn) {
 function libroFalso(opciones) {
   const op = opciones || {};
   const hojas = {};
-  if (op.conHoja) hojas[M.CONFIG_HISTORIAL.HOJA] = { nombre: M.CONFIG_HISTORIAL.HOJA, filas: [M.CONFIG_HISTORIAL.ENCABEZADOS] };
+  if (op.conHoja) hojas[M.CONFIG_HISTORIAL_REVISIONES.HOJA] = { nombre: M.CONFIG_HISTORIAL_REVISIONES.HOJA, filas: [M.CONFIG_HISTORIAL_REVISIONES.ENCABEZADOS] };
 
   function envolver(h) {
     return {
@@ -64,7 +64,7 @@ function libroFalso(opciones) {
     getName: function () { return op.nombre || "LIBRO DE PRUEBA"; },
     getSheetByName: function (n) { return hojas[n] ? envolver(hojas[n]) : null; },
     insertSheet: function (n) { hojas[n] = { nombre: n, filas: [] }; return envolver(hojas[n]); },
-    _filas: function () { return hojas[M.CONFIG_HISTORIAL.HOJA] ? hojas[M.CONFIG_HISTORIAL.HOJA].filas : null; }
+    _filas: function () { return hojas[M.CONFIG_HISTORIAL_REVISIONES.HOJA] ? hojas[M.CONFIG_HISTORIAL_REVISIONES.HOJA].filas : null; }
   };
 }
 
@@ -128,7 +128,7 @@ bloque("La hoja se crea si no existe", function () {
   const libro = montar({ conHoja: false });
   chequear("el registro funciona igual", M.registrarRevision("Anexo 3", 70) === true);
   chequear("con encabezados",
-    libro._filas()[0].join() === M.CONFIG_HISTORIAL.ENCABEZADOS.join());
+    libro._filas()[0].join() === M.CONFIG_HISTORIAL_REVISIONES.ENCABEZADOS.join());
   chequear("y la fila del anexo debajo", libro._filas()[1][1] === "Anexo 3");
 });
 
