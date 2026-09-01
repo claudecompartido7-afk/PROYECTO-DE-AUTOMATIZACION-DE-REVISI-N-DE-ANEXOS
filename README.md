@@ -17,7 +17,11 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
 apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
-apps-script/Anexo1_Auditoria_v13.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v17.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v16.gs      v16, conservada como referencia
+apps-script/Anexo1_Auditoria_v15.gs      v15, conservada como referencia
+apps-script/Anexo1_Auditoria_v14.gs      v14, conservada como referencia
+apps-script/Anexo1_Auditoria_v13.gs      v13, conservada como referencia
 apps-script/Anexo1_Auditoria_v12.gs      v12, conservada como referencia
 apps-script/Anexo1_Auditoria_v11.gs      v11, conservada como referencia
 apps-script/Anexo1_Auditoria_v10.gs      v10, conservada como referencia
@@ -31,8 +35,8 @@ apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
 reglas/ANEXO-3_reglas-v2.md              Reglas vigentes del Anexo 3
 reglas/ANEXO-3_reglas-v1.md              v1 (piloto FDCP), conservada como referencia
-reglas/ANEXO-1_reglas-v12.md             Reglas vigentes del Anexo 1
-reglas/ANEXO-1_reglas-v11.md             Reglas previas
+reglas/ANEXO-1_reglas-v16.md             Reglas vigentes del Anexo 1
+reglas/ANEXO-1_reglas-v15.md             Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
@@ -47,11 +51,12 @@ node tests/validadores.test.js
 node tests/anexo3.test.js
 ```
 
-Anexo 1: 374 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+Anexo 1: 381 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
-regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
-las filas de proceso y preservación de las columnas del revisor.
+regla de mayúsculas, catálogo oficial de facultades y formularios —incluida la
+numeración posicional F01–F20 de la relación corregida—, puntuación de las filas
+de proceso y preservación de las columnas del revisor.
 
 Anexo 3: 308 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
@@ -64,11 +69,11 @@ semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v13.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v17.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1`, o **Auditoría OGPL › Ejecutar auditoría
    del Anexo 1**, y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
-   `dashboard`, `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
+   `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
    `OBSERVACIONES_DE_PROCESO_A1`
 
 La hoja `COBERTURA_PROCESOS_A1` se **renombra** a `OBSERVACIONES_DE_PROCESO_A1`
