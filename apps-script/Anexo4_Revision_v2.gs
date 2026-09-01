@@ -19,8 +19,9 @@
  *       identificación, objetivo, indicador y formalización.
  *    5. Recalcula el avance y lo contrasta con el «PROMEDIO TOTAL» y el «Total
  *       de Indicadores Aprobados» que la propia hoja muestra.
- *    6. Escribe el reporte en el libro de revisión y registra el avance en el
- *       historial.
+ *    6. Escribe el reporte en UNA hoja del libro de revisión —una fila por
+ *       indicador, con sus observaciones en la propia fila— y registra el
+ *       avance en el historial.
  *
  *   El Anexo 4 NO se modifica: solo se lee.
  *
@@ -44,9 +45,15 @@ const CONFIG_A4 = {
   /* ── Salida ───────────────────────────────────────────────────────────── */
 
   HOJAS: {
-    RESUMEN: 'RESUMEN_EJECUTIVO_A4',
-    DETALLE: 'DETALLE_INDICADORES_A4'
+    RESUMEN: 'RESUMEN_EJECUTIVO_A4'
   },
+
+  /**
+   * Hojas que este script generó en versiones anteriores y ahora sobran. Se
+   * borran al correr para que no queden datos viejos conviviendo con los
+   * nuevos, que es peor que no tenerlos.
+   */
+  HOJAS_RETIRADAS: ['DETALLE_INDICADORES_A4'],
 
   FUENTE_REPORTE: 'Arial',
 
@@ -496,9 +503,9 @@ function ejecutarRevisionAnexo4() {
                     'PORCENTAJE en las pestañas: ' + nombresDeHojas.join(', ') + '.');
   }
 
-  const detalle = [];
-  const sevDetalle = [];
   const porIndicador = [];
+  const severidadesHuerfanas = [];
+  const filasHuerfanas = [];
 
   resumen.indicadores.forEach(function (ind) {
     const hallazgos = revisarIndicadorA4_(ind, nombresDeHojas);
@@ -527,23 +534,10 @@ function ejecutarRevisionAnexo4() {
       }
     }
 
-    hallazgos.forEach(function (h) {
-      detalle.push([ind.codigo, ind.proceso, ind.hoja, recortarA4_(ind.indicador, 90),
-                    ind.estado, ind.porcentaje === null ? '—' : ind.porcentaje / 100,
-                    'fila ' + ind.fila, h.campo, h.observacion]);
-      sevDetalle.push(h.severidad);
-    });
-    if (!hallazgos.length) {
-      detalle.push([ind.codigo, ind.proceso, ind.hoja, recortarA4_(ind.indicador, 90),
-                    ind.estado, ind.porcentaje === null ? '—' : ind.porcentaje / 100,
-                    'fila ' + ind.fila, '—', 'Sin observaciones.']);
-      sevDetalle.push('correcto');
-    }
-
     porIndicador.push({
       ind: ind, severidad: severidad, tipo: tipo,
       camposFicha: ficha ? ficha.completos + ' de ' + ficha.total : '—',
-      hallazgos: hallazgos.length
+      hallazgos: hallazgos
     });
   });
 
@@ -554,28 +548,20 @@ function ejecutarRevisionAnexo4() {
     return declaradas.indexOf(normalizarA4_(n)) === -1;
   });
   huerfanas.forEach(function (n) {
-    detalle.push(['—', '—', n, '—', '—', '—', '—', 'Pestaña sin declarar',
-                  'La pestaña "' + n + '" no figura en el resumen de indicadores. Agréguela al ' +
-                  'resumen o retírela del libro.']);
-    sevDetalle.push('observacion');
+    filasHuerfanas.push(['—', '—', n, '(pestaña no declarada en el resumen)', '—', '', '—', '—', 1,
+                         'La pestaña "' + n + '" no figura en el resumen de indicadores. ' +
+                         'Agréguela al resumen o retírela del libro.',
+                         CONFIG_A4.COLORES.observacion.rotulo]);
+    severidadesHuerfanas.push('observacion');
   });
 
   const avance = avanceGeneralAnexo4_(resumen.indicadores);
-  const criticos = sevDetalle.filter(function (s) { return s === 'critico'; }).length;
+  const criticos = porIndicador.reduce(function (a, r) {
+    return a + r.hallazgos.filter(function (h) { return h.severidad === 'critico'; }).length;
+  }, 0);
   const aprobados = resumen.indicadores.filter(function (i) {
     return normalizarA4_(i.estado) === normalizarA4_('Aprobado');
   }).length;
-
-  /* Hoja 1 — Resumen ejecutivo del Anexo 4 */
-  const filasResumen = porIndicador.map(function (r) {
-    return [r.ind.codigo, r.ind.proceso, r.ind.hoja, recortarA4_(r.ind.indicador, 90),
-            r.ind.estado, r.ind.porcentaje === null ? '—' : r.ind.porcentaje / 100,
-            r.tipo === 'ficha' ? 'Ficha de indicador' :
-              (r.tipo === 'reporte' ? 'Hoja de reporte' : 'Sin identificar'),
-            r.camposFicha, r.hallazgos,
-            (CONFIG_A4.COLORES[r.severidad] || CONFIG_A4.COLORES.correcto).rotulo];
-  });
-  const severidades = porIndicador.map(function (r) { return r.severidad; });
 
   const notas = [];
   if (resumen.promedioDeclarado !== null && Math.abs(resumen.promedioDeclarado - avance) > 0.5) {
@@ -586,26 +572,59 @@ function ejecutarRevisionAnexo4() {
     notas.push('La hoja declara ' + resumen.aprobadosDeclarados + ' indicador(es) aprobado(s) y se ' +
                'contaron ' + aprobados + '.');
   }
+
+  /* Hoja única — Resumen ejecutivo del Anexo 4.
+   *
+   * Una fila por indicador, con sus observaciones en la misma fila y una por
+   * renglón: así el detalle no se pierde al juntar las dos hojas en una, y
+   * sigue siendo posible filtrar por clasificación.
+   */
+  const filasResumen = porIndicador.map(function (r) {
+    const observaciones = r.hallazgos.map(function (h) {
+      return '• [' + h.campo + '] ' + h.observacion;
+    }).join('\n') || 'Sin observaciones.';
+
+    return [r.ind.codigo, r.ind.proceso, r.ind.hoja, recortarA4_(r.ind.indicador, 90),
+            r.ind.estado, r.ind.porcentaje === null ? '—' : r.ind.porcentaje / 100,
+            r.tipo === 'ficha' ? 'Ficha de indicador' :
+              (r.tipo === 'reporte' ? 'Hoja de reporte' : 'Sin identificar'),
+            r.camposFicha, r.hallazgos.length, observaciones,
+            (CONFIG_A4.COLORES[r.severidad] || CONFIG_A4.COLORES.correcto).rotulo];
+  });
+  const severidades = porIndicador.map(function (r) { return r.severidad; });
+
+  filasHuerfanas.forEach(function (f, i) {
+    filasResumen.push(f);
+    severidades.push(severidadesHuerfanas[i]);
+  });
+
+  const totalHallazgos = porIndicador.reduce(function (a, r) { return a + r.hallazgos.length; }, 0) +
+                         filasHuerfanas.length;
   filasResumen.push(['TOTAL', 'Los ' + resumen.indicadores.length + ' indicadores', '', '', '',
-                     avance / 100, '', '', criticos,
+                     avance / 100, '', '', totalHallazgos,
+                     notas.length ? notas.join(' ') : 'Sin discrepancias con lo que declara la hoja.',
                      estadoDelAvanceA4_(avance, criticos).rotulo]);
   severidades.push(estadoDelAvanceA4_(avance, criticos).clave);
 
   const ss = SpreadsheetApp.openById(CONFIG_A4.DESTINO_SHEET_ID);
   const hojaResumenSalida = escribirHojaA4_(ss, CONFIG_A4.HOJAS.RESUMEN,
     ['CÓDIGO', 'PROCESO', 'PESTAÑA', 'INDICADOR', 'ESTADO', '% AVANCE', 'TIPO DE PESTAÑA',
-     'CAMPOS DE LA FICHA', 'HALLAZGOS', 'ESTADO DE LA REVISIÓN'],
+     'CAMPOS DE LA FICHA', 'HALLAZGOS', 'OBSERVACIONES', 'ESTADO DE LA REVISIÓN'],
     filasResumen, severidades);
   if (filasResumen.length) {
     hojaResumenSalida.getRange(2, 6, filasResumen.length, 1).setNumberFormat('0.0%');
-    hojaResumenSalida.getRange(filasResumen.length + 1, 1, 1, 11).setFontWeight('bold');
+    hojaResumenSalida.getRange(filasResumen.length + 1, 1, 1, 12).setFontWeight('bold');
   }
 
-  /* Hoja 2 — Detalle de hallazgos */
-  escribirHojaA4_(ss, CONFIG_A4.HOJAS.DETALLE,
-    ['CÓDIGO', 'PROCESO', 'PESTAÑA', 'INDICADOR', 'ESTADO', '% AVANCE', 'UBICACIÓN',
-     'CAMPO', 'OBSERVACIÓN'],
-    detalle, sevDetalle);
+  // Las hojas que este script dejó en versiones anteriores se retiran, para que
+  // no queden datos viejos junto a los nuevos.
+  CONFIG_A4.HOJAS_RETIRADAS.forEach(function (nombre) {
+    const sobrante = ss.getSheetByName(nombre);
+    if (sobrante && ss.getSheets().length > 1) {
+      ss.deleteSheet(sobrante);
+      Logger.log('Se retiró la hoja ' + nombre + ', que ya no forma parte del reporte.');
+    }
+  });
 
   ss.setActiveSheet(ss.getSheetByName(CONFIG_A4.HOJAS.RESUMEN));
 

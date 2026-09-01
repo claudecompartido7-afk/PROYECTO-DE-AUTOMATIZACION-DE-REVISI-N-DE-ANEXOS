@@ -244,6 +244,20 @@ bloque("Avance del Anexo 4", function () {
     conCriticos.rotulo.indexOf("2 hallazgo(s) crítico(s)") !== -1);
 });
 
+bloque("El reporte es una sola hoja", function () {
+  chequear("solo se declara RESUMEN_EJECUTIVO_A4",
+    Object.keys(M.CONFIG_A4.HOJAS).length === 1 &&
+    M.CONFIG_A4.HOJAS.RESUMEN === "RESUMEN_EJECUTIVO_A4");
+  chequear("la hoja de detalle queda como retirada",
+    M.CONFIG_A4.HOJAS_RETIRADAS.indexOf("DETALLE_INDICADORES_A4") !== -1);
+  chequear("y ninguna hoja retirada sigue en uso",
+    M.CONFIG_A4.HOJAS_RETIRADAS.every(function (n) {
+      return Object.keys(M.CONFIG_A4.HOJAS).every(function (k) {
+        return M.CONFIG_A4.HOJAS[k] !== n;
+      });
+    }));
+});
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
 console.log("\n" + total + " comprobaciones, " + fallas + " fallas.");
