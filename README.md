@@ -14,7 +14,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo3_Revision_v2.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
+apps-script/Anexo3_Revision_v3.gs        Revisión del Anexo 3 — VERSIÓN VIGENTE
+apps-script/Anexo3_Revision_v2.gs        v2, conservada como referencia
 apps-script/Anexo3_Revision.gs           v1 (piloto FDCP), conservada como referencia
 apps-script/Anexo1_Auditoria_v13.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
 apps-script/Anexo1_Auditoria_v12.gs      v12, conservada como referencia
@@ -52,7 +53,7 @@ variable, detección de procesos de Nivel 0 por código embebido o denominación
 regla de mayúsculas, catálogo oficial de facultades y formularios, puntuación de
 las filas de proceso y preservación de las columnas del revisor.
 
-Anexo 3: 300 comprobaciones sobre los validadores de codificación, la partición
+Anexo 3: 308 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
 el registro maestro de códigos, el cotejo con el Anexo 1
 la detección automática de las pestañas `F##_SIGLA`, el producto final
@@ -77,7 +78,7 @@ observaciones ya escritas viajen con ella.
 ## Anexo 3 — revisión de fichas técnicas
 
 1. Abrir `4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES` → **Extensiones › Apps Script**
-2. Agregar un archivo con el contenido de `apps-script/Anexo3_Revision_v2.gs`
+2. Agregar un archivo con el contenido de `apps-script/Anexo3_Revision_v3.gs`
    (junto al del Anexo 1, en el mismo proyecto)
 3. Revisar el bloque `CONFIG_A3` del inicio (carpeta de salida y Anexo 1 para el
    cotejo). Las pestañas de facultad se detectan solas por su nombre

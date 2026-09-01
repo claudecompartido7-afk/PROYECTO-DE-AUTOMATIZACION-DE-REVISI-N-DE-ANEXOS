@@ -13,7 +13,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 
-const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo3_Revision_v2.gs");
+const FUENTE = path.join(__dirname, "..", "apps-script", "Anexo3_Revision_v3.gs");
 
 const SHIM = `
 var SpreadsheetApp = {
@@ -36,7 +36,8 @@ module.exports = {
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
   emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_,
   claveDenominacion_, leerCatalogoAnexo1_, expandirCombinadas_,
-  porcentajeANumero_, leerAvancesAnexo1_, combinarAvances_
+  porcentajeANumero_, leerAvancesAnexo1_, combinarAvances_,
+  calcularPorcentajeGeneralAnexo3_
 };
 module.exports.SpreadsheetApp = SpreadsheetApp;
 `;
@@ -974,6 +975,32 @@ bloque("Avance general de los dos anexos (50/50)", function () {
     M.combinarAvances_(null, null).general === null);
 
   chequear("un cero real sí se promedia", M.combinarAvances_(0, 80).general === 40);
+});
+
+bloque("Porcentaje general del Anexo 3 para el historial", function () {
+  chequear("se calcula con los campos de la corrida",
+    M.calcularPorcentajeGeneralAnexo3_([{ campos: 300, completos: 255 },
+                                        { campos: 200, completos: 170 }]) === 85);
+  chequear("es el ponderado, no el promedio de porcentajes",
+    // 10% sobre 300 campos y 90% sobre 10: el ponderado es 12,6, no 50.
+    M.calcularPorcentajeGeneralAnexo3_([{ campos: 300, completos: 30 },
+                                        { campos: 10, completos: 9 }]) === 12.6);
+  chequear("devuelve 0 a 100, no una fracción",
+    M.calcularPorcentajeGeneralAnexo3_([{ campos: 100, completos: 85 }]) === 85);
+  chequear("sin facultades no divide por cero",
+    M.calcularPorcentajeGeneralAnexo3_([]) === 0);
+  chequear("sin argumento tampoco revienta",
+    M.calcularPorcentajeGeneralAnexo3_() === 0);
+  chequear("una facultad sin campos no rompe el total",
+    M.calcularPorcentajeGeneralAnexo3_([{ campos: 0, completos: 0 },
+                                        { campos: 100, completos: 50 }]) === 50);
+
+  // El defecto que traía la v3: la celda con formato de porcentaje devuelve la
+  // fracción, así que quitarle el signo dejaba 0.85 en vez de 85.
+  chequear("una fracción leída de celda se normaliza a porcentaje",
+    M.porcentajeANumero_(0.85) === 85);
+  chequear("mientras que el replace de la versión anterior devolvía 0.85",
+    Number((0.85).toString().replace("%", "")) === 0.85);
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */
