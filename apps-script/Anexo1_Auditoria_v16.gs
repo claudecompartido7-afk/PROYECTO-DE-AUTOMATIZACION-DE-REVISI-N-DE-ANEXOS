@@ -1285,15 +1285,17 @@ function ordenarPorFacultadYEstado_(filas, idxSigla, idxEstado, idxFila, grupoDe
  * @return {number} Porcentaje de cumplimiento (0-100)
  */
 function calcularPorcentajeGeneralAnexo1_(resumenArray) {
-  if (!Array.isArray(resumenArray) || resumenArray.length === 0) return 0;
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG_A1.ID_DASHBOARD);
+    const hoja = ss.getSheetByName('RESUMEN_EJECUTIVO_A1');
+    if (!hoja) return 0;
 
-  const filaTotal = resumenArray[resumenArray.length - 1];
-  if (!filaTotal || filaTotal[0] !== "TOTAL") return 0;
-
-  const porcentajeStr = filaTotal[6];
-  const porcentaje = Number((porcentajeStr || "0%").replace("%", "")) || 0;
-
-  return porcentaje;
+    const valor = hoja.getRange('U22').getValue();
+    const porcentaje = Number((valor.toString() || "0%").replace("%", "")) || 0;
+    return porcentaje;
+  } catch (e) {
+    return 0;
+  }
 }
 
 

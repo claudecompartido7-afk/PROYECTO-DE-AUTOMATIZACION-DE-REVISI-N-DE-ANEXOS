@@ -2189,18 +2189,17 @@ function revisarTodasLasFacultadesA3() {
  * @return {number} Porcentaje de cumplimiento (0-100)
  */
 function calcularPorcentajeGeneralAnexo3_(facultadesRevisadas) {
-  if (!Array.isArray(facultadesRevisadas) || facultadesRevisadas.length === 0) return 0;
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG_A3.DESTINO_SHEET_ID);
+    const hoja = ss.getSheetByName(CONFIG_A3.HOJAS.RESUMEN_20);
+    if (!hoja) return 0;
 
-  const avances = facultadesRevisadas
-    .filter(function (f) { return f.avance !== null && f.avance !== undefined && f.campos > 0; })
-    .map(function (f) { return f.avance; });
-
-  if (avances.length === 0) return 0;
-
-  // Promedio ponderado por campos revisados (igual al método usado en la hoja de resumen)
-  const camposTotal = facultadesRevisadas.reduce(function (a, f) { return a + (f.campos || 0); }, 0);
-  const completosTotal = facultadesRevisadas.reduce(function (a, f) { return a + (f.completos || 0); }, 0);
-  return camposTotal > 0 ? Math.round(completosTotal * 1000 / camposTotal) / 10 : 0;
+    const valor = hoja.getRange('L22').getValue();
+    const porcentaje = Number((valor.toString() || "0%").replace("%", "")) || 0;
+    return porcentaje;
+  } catch (e) {
+    return 0;
+  }
 }
 
 
