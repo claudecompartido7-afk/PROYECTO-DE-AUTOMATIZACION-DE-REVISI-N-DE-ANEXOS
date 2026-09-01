@@ -3,8 +3,13 @@
  *  REVISIÓN DE INDICADORES — ANEXO 4
  *  Oficina de Racionalización — OGPL (UNMSM)
  *
- *  VERSIÓN 1 — integración con historial de revisiones
+ *  VERSIÓN 1 — PLANTILLA, todavía sin la lógica de auditoría
  *  ─────────────────────────────────────────────────────────────────────────────
+ *   ATENCIÓN: `ejecutarRevisionAnexo4` está sin escribir —son los TODO de más
+ *   abajo— y `CONFIG_A4.SOURCE_SHEET_ID` no tiene todavía el ID del Anexo 4.
+ *   El archivo sirve de esqueleto: define el registro en el historial y la
+ *   estructura, pero aún no revisa nada.
+ *
  *   · Auditoría automática de indicadores del Anexo 4
  *   · Registro de cada revisión en HISTORIAL_REVISIONES
  *   · Exportación de datos a JSON sin limitación de 250 líneas
@@ -56,6 +61,11 @@ function ejecutarRevisionAnexo4() {
   // TODO: Reemplaza el contenido de esta función con tu lógica de auditoría
 
   // Ejemplo básico:
+  if (/^TODO/i.test(CONFIG_A4.SOURCE_SHEET_ID)) {
+    throw new Error('Falta declarar el ID del Anexo 4 en CONFIG_A4.SOURCE_SHEET_ID. ' +
+                    'Este archivo es una plantilla: su lógica de auditoría todavía está ' +
+                    'sin escribir (los TODO de ejecutarRevisionAnexo4).');
+  }
   const libro = SpreadsheetApp.openById(CONFIG_A4.SOURCE_SHEET_ID);
   const hoja = libro.getActiveSheet();
   const datos = hoja.getDataRange().getValues();
@@ -71,8 +81,22 @@ function ejecutarRevisionAnexo4() {
   const ss = SpreadsheetApp.openById(CONFIG_A4.DESTINO_SHEET_ID);
   // escribirResultadoAnexo4_(ss, indicadores);  // Implementar según tu estructura
 
-  // Registrar la revisión
-  registrarRevision('Anexo 4', porcentaje);
+  // Registrar la revisión. Igual que en los otros anexos, la llamada va
+  // protegida: `registrarRevision` vive en HistorialRevisiones.gs y, si ese
+  // archivo no está en el proyecto, la revisión debe terminar igual en vez de
+  // cortarse con un ReferenceError.
+  if (typeof registrarRevision === 'function') {
+    try {
+      registrarRevision('Anexo 4', porcentaje);
+    } catch (e) {
+      Logger.log('No se pudo registrar el avance del Anexo 4 (' + porcentaje + '%) en el ' +
+                 'historial: ' + e.message);
+    }
+  } else {
+    Logger.log('No se encontró la función registrarRevision(): el avance del Anexo 4 (' +
+               porcentaje + '%) no se registró. Falta el archivo HistorialRevisiones.gs ' +
+               'en el proyecto.');
+  }
 
   notificarA4_('Revisión del Anexo 4 completada. ' +
                'Porcentaje: ' + porcentaje + '%');

@@ -121,6 +121,21 @@ bloque("La excepción de onOpen es deliberada", function () {
   chequear("y los dos construyen el mismo menú", items[0] === items[1]);
 });
 
+bloque("Nadie llama a registrarRevision sin protegerse", function () {
+  // Vive en HistorialRevisiones.gs. Si ese archivo falta, una llamada directa
+  // corta la revisión con un ReferenceError cuando el trabajo ya está hecho.
+  presentes.forEach(function (archivo) {
+    if (archivo === "HistorialRevisiones.gs") return;
+    const texto = fs.readFileSync(path.join(DIRECTORIO, archivo), "utf8");
+    if (texto.indexOf("registrarRevision(") === -1) return;
+
+    const protegida = /typeof\s+registrarRevision\s*===\s*["']function["']/.test(texto);
+    chequear(archivo + " comprueba que la función exista antes de llamarla", protegida);
+    const enTryCatch = /try\s*\{[^}]*registrarRevision\(/.test(texto.replace(/\n/g, " "));
+    chequear(archivo + " la llama dentro de try/catch", enTryCatch);
+  });
+});
+
 bloque("Los cinco archivos compilan juntos", function () {
   // Apps Script concatena todos los archivos en un único ámbito. Esta es la
   // misma prueba que hace el editor al guardar: si un nombre está repetido o
