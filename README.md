@@ -51,7 +51,7 @@ node tests/validadores.test.js
 node tests/anexo3.test.js
 ```
 
-Anexo 1: 381 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+Anexo 1: 388 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios —incluida la

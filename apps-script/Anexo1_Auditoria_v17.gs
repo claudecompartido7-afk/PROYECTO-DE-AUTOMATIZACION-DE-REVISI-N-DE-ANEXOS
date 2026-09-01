@@ -5,8 +5,13 @@
  *
  *  VERSIÓN 17
  *  ─────────────────────────────────────────────────────────────────────────────
- *   Único cambio respecto de la v16: el menú "Auditoría OGPL" ofrece también la
- *   revisión del Anexo 3. La auditoría del Anexo 1 no se toca.
+ *   [C42] El avance que se registra en HISTORIAL_REVISIONES se calcula con las
+ *         métricas de la corrida, no leyendo la celda U22 del resumen: esa fila
+ *         solo es la del TOTAL mientras haya exactamente 20 facultades, y
+ *         releer el libro recién escrito devolvía 0 en silencio ante cualquier
+ *         problema. La auditoría en sí no cambia.
+ *
+ *   El menú "Auditoría OGPL" ofrece también la revisión del Anexo 3.
  *
  *   Apps Script ejecuta UNA sola función `onOpen` por proyecto, y el archivo del
  *   Anexo 3 declara la suya. Por eso ambas construyen el MISMO menú y cada ítem
@@ -802,6 +807,17 @@ function ejecutarAuditoriaAnexo1() {
   resumen.push(filaDeTotales_(metricas));
 
   escribirEnDashboard_(resumen, detalle, procesos);
+
+  // [C42] Historial de revisiones. El porcentaje se calcula con las métricas de
+  // esta corrida, no releyendo una celda del resumen recién escrito.
+  const avanceA1 = avanceGeneralAnexo1_(metricas);
+  if (typeof registrarRevision === "function") {
+    registrarRevision("Anexo 1", avanceA1);
+  } else {
+    Logger.log("No se encontró la función registrarRevision(): el avance del Anexo 1 (" +
+               avanceA1 + "%) no se registró en el historial.");
+  }
+
   notificar_("Auditoría del Anexo 1 completada. " + detalle.length + " productos y " +
              procesos.length + " procesos evaluados en " + CONFIG_A1.FACULTADES.length + " facultades.");
 }
@@ -899,6 +915,38 @@ function filasNivel0_(sigla, encontrados, descendientes) {
  * hundiría el total tanto como una grande. Ponderando, cada facultad pesa lo que
  * aportó al trabajo de revisión.
  */
+/**
+ * [C42] Avance general del Anexo 1 (0–100) de toda la corrida.
+ *
+ * Es el mismo número que la columna "AVANCE GENERAL DEL ANEXO 1" de la fila
+ * TOTAL, pero calculado con las métricas en memoria. Leerlo de la celda `U22`
+ * era frágil por tres motivos:
+ *
+ *  · La fila 22 solo es la del TOTAL mientras el catálogo tenga exactamente 20
+ *    facultades; con una menos, o con una fila insertada a mano, U22 cae sobre
+ *    otra facultad.
+ *  · Obligaba a releer el libro recién escrito, de modo que cualquier problema
+ *    de permiso o de nombre de hoja devolvía 0 en silencio, como si el avance
+ *    fuera nulo.
+ *  · Si algún día esa columna pasa a tener formato de porcentaje en vez de
+ *    texto, `getValue()` devolvería 0,813 y quitarle el signo dejaría 0,813 en
+ *    lugar de 81,3.
+ */
+function avanceGeneralAnexo1_(metricas) {
+  const juntar = function (campo) {
+    return (metricas || []).reduce(function (a, m) { return a.concat(m[campo]); }, []);
+  };
+  return avanceCombinado_([
+    { cumplidos: juntar("cumplidosProd"), porFila: TOTAL_CRITERIOS },
+    { cumplidos: juntar("cumplidosProc"), porFila: TOTAL_CRITERIOS_PROCESO }
+  ]);
+}
+
+/** Nombre anterior de la función, conservado por compatibilidad. */
+function calcularPorcentajeGeneralAnexo1_(metricas) {
+  return avanceGeneralAnexo1_(metricas);
+}
+
 function filaDeTotales_(metricas) {
   const suma = function (campo) {
     return metricas.reduce(function (a, m) { return a + m[campo]; }, 0);
