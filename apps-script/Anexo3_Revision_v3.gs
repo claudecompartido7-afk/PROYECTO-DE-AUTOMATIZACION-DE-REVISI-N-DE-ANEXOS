@@ -2189,13 +2189,16 @@ function ejecutarRevisionAnexo3() {
 function onOpen() {
   try {
     const menu = SpreadsheetApp.getUi().createMenu("Auditoría OGPL");
-    if (typeof ejecutarAuditoriaAnexo1 === 'function') {
+
+    if (typeof ejecutarAuditoriaAnexo1 === "function") {
       menu.addItem("Ejecutar auditoría del Anexo 1", "ejecutarAuditoriaAnexo1");
     }
-    menu.addItem("Ejecutar revisión del Anexo 3", "ejecutarRevisionAnexo3");
-    if (typeof convertirSeparadorAntiguo === 'function') {
-      menu.addSeparator().addItem("Convertir observaciones antiguas a renglones",
-                                  "convertirSeparadorAntiguo");
+    if (typeof ejecutarRevisionAnexo3 === "function") {
+      menu.addItem("Ejecutar revisión del Anexo 3", "ejecutarRevisionAnexo3");
+    }
+    if (typeof convertirSeparadorAntiguo === "function") {
+      menu.addSeparator()
+          .addItem("Convertir observaciones antiguas a renglones", "convertirSeparadorAntiguo");
     }
     menu.addToUi();
   } catch (e) {
