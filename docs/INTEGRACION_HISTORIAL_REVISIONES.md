@@ -54,9 +54,18 @@ El script `Anexo1_Auditoria_v6.gs` ya contiene:
 
 **Nada más que hacer aquí.**
 
-## Anexo 3 V16 — Integración manual
+## Anexo 3 V3 — Ya integrado en el repositorio
 
-Dado que el script de Anexo 3 V16 se encuentra en Google Apps Script (no en este repositorio), debes realizar estos pasos manualmente en tu proyecto:
+El script `Anexo3_Revision_v3.gs` ya contiene:
+
+1. Nueva función `calcularPorcentajeGeneralAnexo3_(facultadesRevisadas)` que calcula el promedio simple de los avances por facultad
+2. Llamada a `registrarRevision('Anexo 3', porcentaje)` después de `escribirResultado_()`
+
+**Simplemente copia el contenido completo de `apps-script/Anexo3_Revision_v3.gs` a tu Apps Script del Anexo 3 y reemplaza la v2.**
+
+## Anexo 3 V2 (antigua) — Referencia
+
+Si aún usas la v2, sigue estos pasos manualmente en tu proyecto:
 
 ### Paso 1: Copiar ambos módulos
 
@@ -104,12 +113,15 @@ Donde `resumen` sea tu array de filas del resumen.
 
 ## Anexo 4 — Integración manual
 
-Sigue el mismo patrón que Anexo 3:
+Sigue el mismo patrón que Anexo 1 y Anexo 3:
 
-1. Copia `HistorialRevisiones.gs` y `ExportarJSON.gs` a tu script de Anexo 4
-2. Rellenar `CONFIG_HISTORIAL` con tus nombres de hojas (especialmente `indicadoresAnexo4`)
-3. Verifica que `calcularPorcentajeGeneralAnexo4_()` entienda tu estructura de indicadores
-4. Llama a `registrarRevision('Anexo 4', calcularPorcentajeGeneralAnexo4_(indicadores))` después de escribir el resumen
+1. Copia `HistorialRevisiones.gs` y `ExportarJSON.gs` a tu Apps Script del Anexo 4
+2. Rellena `CONFIG_HISTORIAL` con tus nombres de hojas (especialmente `indicadoresAnexo4`)
+3. Verifica/adapta `calcularPorcentajeGeneralAnexo4_()` para entender tu estructura de indicadores
+   - Asume que los indicadores tienen una columna de estado ("Aprobado", "Pendiente", etc.)
+   - Cuenta aprobados ÷ total
+4. Encuentra dónde tu auditor escribe el resumen del Anexo 4
+5. Llama a `registrarRevision('Anexo 4', calcularPorcentajeGeneralAnexo4_(indicadores))` después de esa escritura
 
 ## Ejecución
 
