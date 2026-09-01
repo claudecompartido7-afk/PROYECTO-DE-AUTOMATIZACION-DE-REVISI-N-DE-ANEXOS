@@ -2192,14 +2192,15 @@ function calcularPorcentajeGeneralAnexo3_(facultadesRevisadas) {
   if (!Array.isArray(facultadesRevisadas) || facultadesRevisadas.length === 0) return 0;
 
   const avances = facultadesRevisadas
-    .filter(function (f) { return f.avance !== undefined; })
+    .filter(function (f) { return f.avance !== null && f.avance !== undefined && f.campos > 0; })
     .map(function (f) { return f.avance; });
 
   if (avances.length === 0) return 0;
 
-  // Promedio simple de los avances por facultad
-  const suma = avances.reduce(function (a, x) { return a + x; }, 0);
-  return Math.round((suma / avances.length) * 10) / 10;
+  // Promedio ponderado por campos revisados (igual al método usado en la hoja de resumen)
+  const camposTotal = facultadesRevisadas.reduce(function (a, f) { return a + (f.campos || 0); }, 0);
+  const completosTotal = facultadesRevisadas.reduce(function (a, f) { return a + (f.completos || 0); }, 0);
+  return camposTotal > 0 ? Math.round(completosTotal * 1000 / camposTotal) / 10 : 0;
 }
 
 

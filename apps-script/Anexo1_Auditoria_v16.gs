@@ -1285,21 +1285,15 @@ function ordenarPorFacultadYEstado_(filas, idxSigla, idxEstado, idxFila, grupoDe
  * @return {number} Porcentaje de cumplimiento (0-100)
  */
 function calcularPorcentajeGeneralAnexo1_(resumenArray) {
-  let totalConforme = 0;
-  let totalProductos = 0;
-
   if (!Array.isArray(resumenArray) || resumenArray.length === 0) return 0;
 
-  resumenArray.forEach(function(fila) {
-    const conforme = Number(fila[2]) || 0;
-    const total = Number(fila[3]) || 0;
-    totalConforme += conforme;
-    totalProductos += total;
-  });
+  const filaTotal = resumenArray[resumenArray.length - 1];
+  if (!filaTotal || filaTotal[0] !== "TOTAL") return 0;
 
-  return totalProductos > 0
-    ? Math.round((totalConforme / totalProductos) * 1000) / 10
-    : 0;
+  const porcentajeStr = filaTotal[6];
+  const porcentaje = Number((porcentajeStr || "0%").replace("%", "")) || 0;
+
+  return porcentaje;
 }
 
 
