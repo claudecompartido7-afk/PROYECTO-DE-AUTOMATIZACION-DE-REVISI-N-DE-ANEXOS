@@ -671,6 +671,7 @@ function ejecutarAuditoriaAnexo1() {
   });
 
   escribirEnDashboard_(resumen, detalle, procesos);
+  registrarRevision('Anexo 1', calcularPorcentajeGeneralAnexo1_(resumen));
   notificar_("Auditoría del Anexo 1 completada. " + detalle.length + " productos y " +
              procesos.length + " procesos evaluados en " + CONFIG_A1.FACULTADES.length + " facultades.");
 }
@@ -1017,6 +1018,34 @@ function volcarHoja_(ss, nombre, encabezados, filas, idxEstado, colorCabecera, c
   hoja.autoResizeColumns(1, Math.max(1, nGen - 1));
   hoja.setColumnWidth(nGen, 520);
   for (let i = 0; i < manuales.length; i++) hoja.setColumnWidth(nGen + 1 + i, 340);
+}
+
+/**
+ * Calcula el porcentaje general del Anexo 1 desde el resumen.
+ * Suma todos los productos conformes de todas las facultades, suma el total,
+ * y calcula la proporción.
+ *
+ * Estructura esperada: [SIGLA, FACULTAD, CONFORME, TOTAL, PORCENTAJE, ...]
+ *
+ * @param {Array} resumenArray - Array de filas del RESUMEN_EJECUTIVO_A1 (sin encabezados)
+ * @return {number} Porcentaje de cumplimiento (0-100)
+ */
+function calcularPorcentajeGeneralAnexo1_(resumenArray) {
+  let totalConforme = 0;
+  let totalProductos = 0;
+
+  if (!Array.isArray(resumenArray) || resumenArray.length === 0) return 0;
+
+  resumenArray.forEach(function(fila) {
+    const conforme = Number(fila[2]) || 0;
+    const total = Number(fila[3]) || 0;
+    totalConforme += conforme;
+    totalProductos += total;
+  });
+
+  return totalProductos > 0
+    ? Math.round((totalConforme / totalProductos) * 1000) / 10
+    : 0;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
