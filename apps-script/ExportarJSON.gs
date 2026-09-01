@@ -7,9 +7,9 @@ const CONFIG_HISTORIAL = {
   resumenAnexo1: 'RESUMEN_EJECUTIVO_A1',
   detalleProductosAnexo1: 'DETALLADO_PRODUCTOS_A1',
   detalleProcesosAnexo1: 'OBSERVACIONES_DE_PROCESO_A1',
-  resumenAnexo3: 'TODO: nombre de la pestaña de resumen del Anexo 3',
-  detalleFichasAnexo3: 'TODO: nombre de la pestaña de detalle de fichas',
-  indicadoresAnexo4: 'TODO: nombre de la pestaña de indicadores',
+  resumenAnexo3: 'RESUMEN_EJECUTIVO_A3',
+  detalleFichasAnexo3: 'RESUMEN_FICHAS_A3',
+  indicadoresAnexo4: 'RESUMEN_INDICADORES',
   historialRevisiones: 'HISTORIAL_REVISIONES'
 };
 
