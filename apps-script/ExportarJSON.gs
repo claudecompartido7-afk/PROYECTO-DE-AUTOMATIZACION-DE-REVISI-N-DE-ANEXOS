@@ -1,15 +1,16 @@
 /**
- * Configuración de nombres de hojas origen para exportación.
- * Modifica los valores TODO con los nombres reales de tus pestañas.
+ * Nombres de las pestañas del libro «4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES».
+ * Son los reales; ojo con el espacio suelto de la hoja de codificación, que
+ * está tal cual en el libro.
  */
 const CONFIG_HISTORIAL = {
-  catalogoFacultades: 'TODO: nombre de la pestaña con N°/SIGLA/FACULTAD/CODIGO',
+  catalogoFacultades: 'CODIFICACION_ DE_LAS_FACULTADES',
   resumenAnexo1: 'RESUMEN_EJECUTIVO_A1',
   detalleProductosAnexo1: 'DETALLADO_PRODUCTOS_A1',
   detalleProcesosAnexo1: 'OBSERVACIONES_DE_PROCESO_A1',
   resumenAnexo3: 'RESUMEN_EJECUTIVO_A3',
   detalleFichasAnexo3: 'RESUMEN_FICHAS_A3',
-  indicadoresAnexo4: 'RESUMEN_INDICADORES',
+  indicadoresAnexo4: 'RESUMEN_EJECUTIVO_A4',
   historialRevisiones: 'HISTORIAL_REVISIONES'
 };
 
