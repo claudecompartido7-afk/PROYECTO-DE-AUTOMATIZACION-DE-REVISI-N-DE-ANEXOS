@@ -14,7 +14,8 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 ## Contenido
 
 ```
-apps-script/Anexo1_Auditoria_v16.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v17.gs      Auditor del Anexo 1 — VERSIÓN VIGENTE
+apps-script/Anexo1_Auditoria_v16.gs      v16, conservada como referencia
 apps-script/Anexo1_Auditoria_v15.gs      v15, conservada como referencia
 apps-script/Anexo1_Auditoria_v14.gs      v14, conservada como referencia
 apps-script/Anexo1_Auditoria_v13.gs      v13, conservada como referencia
@@ -29,8 +30,8 @@ apps-script/Anexo1_Auditoria_v5.gs       v5, conservada como referencia
 apps-script/Anexo1_Auditoria_v4.gs       v4, conservada como referencia
 apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
-reglas/ANEXO-1_reglas-v16.md             Reglas vigentes
-reglas/ANEXO-1_reglas-v15.md             Reglas previas
+reglas/ANEXO-1_reglas-v17.md             Reglas vigentes
+reglas/ANEXO-1_reglas-v16.md             Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores (Node)
@@ -43,17 +44,18 @@ dashboard/dashboard.html                 Dashboard visual de la última corrida
 node tests/validadores.test.js
 ```
 
-381 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+384 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios —incluida la
-numeración posicional F01–F20 de la relación corregida—, puntuación de las filas
-de proceso y preservación de las columnas del revisor.
+numeración posicional F01–F20 de la relación corregida—, el avance general
+promediado por proceso (no por criterio) y su fila de totales, puntuación de las
+filas de proceso y preservación de las columnas del revisor.
 
 ## Cómo se ejecuta
 
 1. Abrir el Anexo 1 → **Extensiones › Apps Script**
-2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v16.gs`
+2. Pegar el contenido de `apps-script/Anexo1_Auditoria_v17.gs`
 3. Ejecutar `ejecutarAuditoriaAnexo1` y autorizar los permisos
 4. El resultado se escribe en el dashboard, pestañas
    `RESUMEN_EJECUTIVO_A1`, `DETALLADO_PRODUCTOS_A1` y
