@@ -265,7 +265,6 @@ los porcentajes.
 | `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
 | `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, fichas esperadas, completas, incompletas, críticas, sin producto, observaciones, % avance, estado y notas |
 | `RESUMEN_FICHAS` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
-| `RESUMEN_GENERAL` | Una fila por facultad con `% ANEXO 1`, `% ANEXO 3` y el `% GENERAL` |
 | `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |
 
 **6.1 Ubicación de cada hallazgo.** El detalle indica dónde está el dato en la
@@ -301,25 +300,39 @@ OGPL: el script no lee las fuentes de la hoja ni reporta nada sobre ellas. La
 fuente del archivo de salida (`CONFIG_A3.FUENTE_REPORTE`) es formato del
 reporte, no un criterio de revisión.
 
-**6.3.1 Avance general de los dos anexos.** `RESUMEN_GENERAL` combina el avance
-del Anexo 1 —leído de la hoja `RESUMEN_EJECUTIVO_A1` que deja su auditoría en el
-mismo libro— con el del Anexo 3:
+**6.3.1 Avance general de los dos anexos — script aparte.** El combinado de
+`RESUMEN_EJECUTIVO_A1` y `RESUMEN_EJECUTIVO_A3` (50/50) **ya no lo genera este
+script**. Vivía aquí hasta que recalcularlo en cada corrida del Anexo 3 —sin
+depender de su propia lógica de revisión— empezó a saturarla.
+
+Pasó a `apps-script/ResumenGeneral.gs`, que **solo lee** las dos hojas de
+resumen ya escritas por sus auditores (no vuelve a auditar nada) y escribe
+`RESUMEN_GENERAL` con el mismo cálculo:
 
 ```
 % GENERAL = % Anexo 1 × 0,5  +  % Anexo 3 × 0,5
 ```
 
-Los pesos son una **decisión institucional**, no un dato: cada anexo vale lo
-mismo aunque el Anexo 1 evalúe muchas más celdas. Se configuran en
-`CONFIG_A3.PESOS_ANEXOS`.
-
-- La columna del Anexo 1 se busca **por el nombre del encabezado**, no por
-  posición, para que insertar una columna en su resumen no rompa el cruce.
+- Se dispara con el ítem de menú **Auditoría OGPL › Actualizar resumen
+  general**, cada vez que cambie el Anexo 1 o el Anexo 3 — no en automático.
+- Los pesos son una **decisión institucional**, no un dato: cada anexo vale lo
+  mismo aunque el Anexo 1 evalúe muchas más celdas. Se configuran en
+  `CONFIG_GENERAL.PESOS`.
+- Las columnas de ambas hojas de origen se buscan **por el nombre del
+  encabezado**, no por posición, para que insertar una columna no rompa el
+  cruce. `RESUMEN_EJECUTIVO_A3` trae además la columna `CRÍTICOS (TOTAL)`
+  —el conteo real de hallazgos críticos por facultad, no solo `OTROS
+  CRÍTICOS`— para que el script del resumen general pueda igualar el criterio
+  que usaba antes sin tener que adivinarlo desde el texto del estado.
 - Si falta el avance de uno de los dos anexos, **no se promedia con cero**: se
   informa el que hay y la nota dice cuál falta. Un cero real sí se promedia.
 - La fila `TOTAL` es el promedio **simple** de las facultades que tienen los dos
   anexos: coherente con el 50/50, donde el peso lo fija la decisión y no el
   tamaño de cada hoja.
+- Todos los nombres internos de `ResumenGeneral.gs` llevan el sufijo `RG_`,
+  para no repetir un nombre que ya use otro archivo del proyecto (Apps Script
+  comparte un único ámbito global entre todos los archivos de un mismo
+  proyecto).
 
 **6.4 Semáforo de avance por facultad.** En `RESUMEN_20_FACULTADES` la columna
 `% AVANCE` lleva formato condicional:

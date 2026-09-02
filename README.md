@@ -16,6 +16,7 @@ Auditoría automática de los anexos de inventario de productos y procesos de la
 
 ```
 apps-script/HistorialRevisiones.gs       Historial de avances de los anexos
+apps-script/ResumenGeneral.gs            Combina el avance de A1 y A3 (menú "Actualizar resumen general")
 apps-script/ExportarJSON.gs              Exportación del tablero a JSON
 apps-script/Anexo4_Revision_v2.gs        Revisión del Anexo 4 — VERSIÓN VIGENTE
 apps-script/Anexo4_Revision_v1.gs        v1 (plantilla), conservada como referencia
@@ -47,6 +48,7 @@ docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
 tests/anexo3.test.js                     Pruebas de los validadores del Anexo 3 (Node)
 tests/anexo4.test.js                     Pruebas de los validadores del Anexo 4 (Node)
+tests/resumengeneral.test.js             Pruebas de ResumenGeneral.gs (Node)
 tests/historial.test.js                  Pruebas del historial de revisiones (Node)
 tests/proyecto.test.js                   Vigila los nombres duplicados entre archivos (Node)
 dashboard/dashboard.html                 Dashboard visual de la última corrida
@@ -59,6 +61,7 @@ node tests/validadores.test.js
 node tests/anexo3.test.js
 node tests/anexo4.test.js
 node tests/historial.test.js
+node tests/resumengeneral.test.js
 node tests/proyecto.test.js
 ```
 
@@ -115,17 +118,32 @@ en el registro (Ver › Registro) cada pestaña y si se reconoce como facultad.
 Casi siempre es que su nombre no sigue el formato `F##_SIGLA`.
 
 El reporte se escribe en el mismo libro que usa la auditoría del Anexo 1
-(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cinco hojas:
-`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_20_FACULTADES_A3`,
-`REGISTRO_MAESTRO_CODIGOS_A3` y `RESUMEN_GENERAL`, esta última con el avance de
-los dos anexos combinado 50/50. Conviven con las `*_A1` sin pisarse: cada corrida
+(`4_REVISIÓN_INTERNA DE_AVANCES_ACTIVIDADES`), en cuatro hojas:
+`DETALLE_REVISION_A3`, `RESUMEN_FICHAS_A3`, `RESUMEN_EJECUTIVO_A3` y
+`REGISTRO_MAESTRO_CODIGOS_A3`. Conviven con las `*_A1` sin pisarse: cada corrida
 reescribe solo las suyas. Todas abren con la sigla y el nombre de la facultad,
 en el orden F01 → F20.
 
 Cada fila va pintada según su estado — **verde** correcta, **ámbar** incompleta o
 por verificar, **rojo** con algo que corregir, **gris** campo opcional — y ese
-mismo estado se escribe en la columna `ESTADO`, de modo que la hoja se lea igual
-impresa en blanco y negro. El `DASHBOARD` cierra con la leyenda.
+mismo estado se escribe en la columna `ESTADO` o `CLASIFICACIÓN`, de modo que la
+hoja se lea igual impresa en blanco y negro.
+
+## Resumen general — Anexo 1 + Anexo 3 combinados
+
+`apps-script/ResumenGeneral.gs` es un script aparte, en el mismo proyecto de
+Apps Script que los auditores. **No vuelve a auditar nada**: solo lee
+`RESUMEN_EJECUTIVO_A1` y `RESUMEN_EJECUTIVO_A3`, ya escritas por sus respectivos
+auditores en el libro de revisión, y combina el avance de cada facultad **50/50**
+en una hoja `RESUMEN_GENERAL` — la misma información que antes generaba
+`Anexo3_Revision_v3.gs` en cada corrida, pero calculada aparte para no cargar la
+revisión del Anexo 3 con una hoja que no depende de su propia lógica.
+
+Se dispara desde el menú **Auditoría OGPL › Actualizar resumen general**, cada
+vez que cambie el Anexo 1 o el Anexo 3, o ejecutando `actualizarResumenGeneral`
+desde el editor. Todos sus nombres internos llevan el sufijo `RG_`, para no
+repetir con ningún otro archivo del proyecto un nombre ya usado (`CONFIG_A1`,
+`CONFIG_A3`… ya provocaron ese choque antes).
 
 Los hallazgos se clasifican en cuatro niveles —**Correcto**, **Incompleto**,
 **Observación** y **Crítico**— y el resumen de las 20 facultades lleva semáforo

@@ -26,7 +26,8 @@ const DEL_PROYECTO = [
   "Anexo3_Revision_v3.gs",
   "Anexo4_Revision_v2.gs",
   "ExportarJSON.gs",
-  "HistorialRevisiones.gs"
+  "HistorialRevisiones.gs",
+  "ResumenGeneral.gs"
 ];
 
 /**
@@ -136,7 +137,7 @@ bloque("Nadie llama a registrarRevision sin protegerse", function () {
   });
 });
 
-bloque("Los cinco archivos compilan juntos", function () {
+bloque("Los seis archivos compilan juntos", function () {
   // Apps Script concatena todos los archivos en un único ámbito. Esta es la
   // misma prueba que hace el editor al guardar: si un nombre está repetido o
   // falta una llave, aquí revienta igual que allá -y allá el síntoma es que el

@@ -1533,6 +1533,10 @@ function onOpen() {
     if (typeof ejecutarRevisionAnexo4 === "function") {
       menu.addItem("Ejecutar revisión del Anexo 4", "ejecutarRevisionAnexo4");
     }
+    if (typeof actualizarResumenGeneral === "function") {
+      menu.addSeparator()
+          .addItem("Actualizar resumen general", "actualizarResumenGeneral");
+    }
     if (typeof convertirSeparadorAntiguo === "function") {
       menu.addSeparator()
           .addItem("Convertir observaciones antiguas a renglones", "convertirSeparadorAntiguo");
