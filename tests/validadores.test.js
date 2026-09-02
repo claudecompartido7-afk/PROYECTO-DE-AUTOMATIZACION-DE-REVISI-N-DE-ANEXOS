@@ -31,7 +31,7 @@ module.exports = {
   filasNivel0_, filaDeProceso_, puntuarProceso_, sufijoDe_, CRITERIOS_PROCESO,
   TOTAL_CRITERIOS, TOTAL_CRITERIOS_PROCESO, celdaFormulario_, avanceSobreCriterios_, estadoGeneral_,
   esCatalogacion_, abrePorProceso_, unirObservaciones_, SEPARADOR_OBS,
-  ordenarPorFacultadYEstado_, avanceCombinado_, filaDeTotales_,
+  ordenarPorFacultadYEstado_, avanceCombinado_, avancePorProceso_, filaDeTotales_,
   avanceGeneralAnexo1_, calcularPorcentajeGeneralAnexo1_
 };
 `;
@@ -1059,11 +1059,11 @@ bloque("Fila de totales del resumen", function () {
     { totalProd: 10, prodConformes: 10, prodObservados: 0, prodSinRegistrar: 0,
       totalProc: 2, n0Conformes: 2, n0Observados: 0, n0SinRegistrar: 0,
       subConformes: 0, subObservados: 0, subSinRegistrar: 0,
-      cumplidosProd: [8,8,8,8,8,8,8,8,8,8], cumplidosProc: [5,5] },
+      cumplidosProd: [8,8,8,8,8,8,8,8,8,8], cumplidosProc: [5,5], avanceGeneral: 90 },
     { totalProd: 2, prodConformes: 0, prodObservados: 1, prodSinRegistrar: 1,
       totalProc: 1, n0Conformes: 0, n0Observados: 1, n0SinRegistrar: 0,
       subConformes: 0, subObservados: 0, subSinRegistrar: 0,
-      cumplidosProd: [4, 0], cumplidosProc: [0] }
+      cumplidosProd: [4, 0], cumplidosProc: [0], avanceGeneral: 30 }
   ];
   const t = M.filaDeTotales_(met);
 
@@ -1075,56 +1075,90 @@ bloque("Fila de totales del resumen", function () {
   chequear("suma los procesos", t[9] === 3 && t[10] === 2 && t[11] === 1);
 
   // 84 de 96 criterios de producto = 88 %; 10 de 15 de proceso = 67 %.
+  // Estos dos SIGUEN ponderados por criterio: no son la columna que cambia en v17.
   chequear("el avance de productos es ponderado", t[6] === "88%");
   chequear("el avance de procesos es ponderado", t[16] === "67%");
-  // 94 de 111 criterios en total = 85 %.
-  chequear("el avance general suma ambos bloques", t[20] === "85%");
 
-  // Con el promedio simple saldría otra cosa: es la diferencia que se explica.
-  const avA = M.avanceCombinado_([{ cumplidos: met[0].cumplidosProd, porFila: M.TOTAL_CRITERIOS },
-                                  { cumplidos: met[0].cumplidosProc, porFila: M.TOTAL_CRITERIOS_PROCESO }]);
-  const avB = M.avanceCombinado_([{ cumplidos: met[1].cumplidosProd, porFila: M.TOTAL_CRITERIOS },
-                                  { cumplidos: met[1].cumplidosProc, porFila: M.TOTAL_CRITERIOS_PROCESO }]);
-  chequear("y no coincide con promediar las facultades",
-    parseInt(t[20], 10) !== Math.round((avA + avB) / 2));
+  // [C42] El avance general YA NO pondera por criterio: es el promedio simple
+  // de los avanceGeneral que trae cada facultad (90 y 30 en este caso).
+  chequear("el avance general es el promedio simple de las facultades",
+    t[20] === "60%");
 
-  chequear("el diagnóstico advierte que es ponderado",
+  // Si en cambio se pusiera a ponderar por los criterios de producto+proceso,
+  // como hacía la v16, saldría 85 %: es justo el sesgo que la v17 corrige.
+  const viejoEstilo = M.avanceCombinado_([
+    { cumplidos: met[0].cumplidosProd.concat(met[1].cumplidosProd), porFila: M.TOTAL_CRITERIOS },
+    { cumplidos: met[0].cumplidosProc.concat(met[1].cumplidosProc), porFila: M.TOTAL_CRITERIOS_PROCESO }
+  ]);
+  chequear("y no coincide con ponderar por criterios como en la v16",
+    parseInt(t[20], 10) !== viejoEstilo);
+
+  chequear("el diagnóstico de productos advierte que es ponderado",
     /ponderado por criterios evaluados, no promedio/i.test(t[8]));
   chequear("la columna de código de hoja queda vacía", t[19] === "—");
 });
 
+bloque("Avance general por proceso, no por criterio", function () {
+  // [C42] Un proceso SIN REGISTRAR vale 0 en el promedio, sin importar cuántos
+  // productos habría agrupado; uno con productos casi perfectos vale casi 100.
+  const n0 = [
+    ["FX", "PE.01", "GESTIÓN ESTRATÉGICA", "Nivel 0", "Obligatorio", 5, "CONFORME", "100%", "5/5", "—"],
+    ["FX", "PS.01", "ADMISIÓN", "Nivel 0", "Obligatorio", "—", "SIN REGISTRAR", "0%", "0/5", "—"]
+  ];
+  const productos = [
+    { correctos: 8, procCodigo: "PE.01" },
+    { correctos: 7, procCodigo: "PE.01" }
+  ];
+  const r = M.avancePorProceso_(n0, [], productos);
+  chequear("dos procesos evaluables: uno lleno y uno ausente", r.buckets.length === 2);
+  // PE.01: (5 + 8 + 7) / (5 + 8 + 8) = 20/21 = 95 %. PS.01: 0/5 = 0 %.
+  chequear("el proceso con productos casi perfectos pesa igual que el vacío",
+    Math.round((95 + 0) / 2) === r.avance);
+
+  chequear("nueve de quince procesos ausentes hunden el promedio, no solo un poco",
+    (function () {
+      const quince = [];
+      for (let i = 1; i <= 6; i++) {
+        quince.push(["FX", "P" + i, "x", "Nivel 0", "Obligatorio", 1, "CONFORME", "100%", "5/5", "—"]);
+      }
+      for (let i = 7; i <= 15; i++) {
+        quince.push(["FX", "P" + i, "x", "Nivel 0", "Obligatorio", "—", "SIN REGISTRAR", "0%", "0/5", "—"]);
+      }
+      // Muchos productos, todos perfectos, colgando de los 6 procesos llenos.
+      const prods = [];
+      for (let i = 1; i <= 6; i++) {
+        for (let j = 0; j < 10; j++) prods.push({ correctos: 8, procCodigo: "P" + i });
+      }
+      const res = M.avancePorProceso_(quince, [], prods);
+      // 6 procesos al 100 %, 9 en 0 %: promedio = 40 %, muy lejos del ~86 % que
+      // daría ponderar por los 60 productos casi perfectos.
+      return res.avance <= 45;
+    })());
+});
+
 /* ────────────────────────────────────────────────────────────────────────── */
 
-bloque("[C42] Avance general para el historial de revisiones", function () {
+bloque("[C43] Avance general para el historial de revisiones", function () {
+  // Mismo criterio que la fila TOTAL desde la v17: promedio simple del
+  // avanceGeneral por proceso de cada facultad, NO ponderado por criterios.
   const metricas = [
-    { cumplidosProd: [8, 8, 4], cumplidosProc: [5, 5] },
-    { cumplidosProd: [8, 0],    cumplidosProc: [5] }
+    { cumplidosProd: [8, 8, 4], cumplidosProc: [5, 5], avanceGeneral: 90 },
+    { cumplidosProd: [8, 0],    cumplidosProc: [5],    avanceGeneral: 30 }
   ];
-  // 5 productos x 8 + 3 procesos x 5 = 55 criterios; cumplidos 28 + 15 = 43.
-  const esperado = Math.round((43 / 55) * 100);
-
-  chequear("se calcula con las métricas de la corrida",
-    M.avanceGeneralAnexo1_(metricas) === esperado);
+  chequear("se calcula como el promedio simple de avanceGeneral",
+    M.avanceGeneralAnexo1_(metricas) === 60);
+  chequear("coincide con lo que muestra la fila TOTAL para las mismas facultades",
+    M.filaDeTotales_(metricas)[20] === "60%");
   chequear("devuelve 0 a 100, no una fracción", M.avanceGeneralAnexo1_(metricas) > 1);
   chequear("sin métricas no divide por cero", M.avanceGeneralAnexo1_([]) === 0);
   chequear("sin argumento tampoco revienta", M.avanceGeneralAnexo1_() === 0);
+  chequear("una facultad sin avanceGeneral cuenta como 0, no se descarta",
+    M.avanceGeneralAnexo1_([{ avanceGeneral: 100 }, {}]) === 50);
   chequear("el nombre anterior sigue funcionando",
-    M.calcularPorcentajeGeneralAnexo1_(metricas) === esperado);
-  chequear("una facultad sin productos no rompe el total",
-    M.avanceGeneralAnexo1_([{ cumplidosProd: [], cumplidosProc: [] },
-                            { cumplidosProd: [8], cumplidosProc: [] }]) === 100);
-
-  // Es el mismo número que ya publica la fila TOTAL del resumen.
-  const completas = metricas.map(function (m) {
-    return Object.assign({}, m, {
-      totalProd: m.cumplidosProd.length, prodConformes: 0, prodObservados: 0, prodSinRegistrar: 0,
-      totalProc: m.cumplidosProc.length, n0Conformes: 0, n0Observados: 0, n0SinRegistrar: 0,
-      subConformes: 0, subObservados: 0, subSinRegistrar: 0
-    });
-  });
-  chequear("coincide con la columna de la fila TOTAL",
-    M.filaDeTotales_(completas)[20] === esperado + "%");
+    M.calcularPorcentajeGeneralAnexo1_(metricas) === 60);
 });
+
+/* ────────────────────────────────────────────────────────────────────────── */
 
 console.log("\n" + (fallas === 0
   ? "TODAS LAS PRUEBAS PASAN (" + total + ")"

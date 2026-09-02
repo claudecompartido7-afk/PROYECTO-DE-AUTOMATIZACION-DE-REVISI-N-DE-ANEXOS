@@ -41,8 +41,8 @@ apps-script/Anexo1_Auditoria_v3.gs       v3, conservada como referencia
 apps-script/Anexo1_Auditoria.gs          v2, conservada como referencia
 reglas/ANEXO-3_reglas-v2.md              Reglas vigentes del Anexo 3
 reglas/ANEXO-3_reglas-v1.md              v1 (piloto FDCP), conservada como referencia
-reglas/ANEXO-1_reglas-v16.md             Reglas vigentes del Anexo 1
-reglas/ANEXO-1_reglas-v15.md             Reglas previas
+reglas/ANEXO-1_reglas-v17.md             Reglas vigentes del Anexo 1
+reglas/ANEXO-1_reglas-v16.md             Reglas previas
 docs/ANALISIS_reglas-vs-codigo.md        Comparación hoja de reglas vs. script
 docs/CONTRA_OBSERVACIONES.md             Respuesta a cada contra observación
 tests/validadores.test.js                Pruebas de los validadores del Anexo 1 (Node)
@@ -70,12 +70,13 @@ declaren el mismo nombre: en Apps Script todos comparten un único ámbito globa
 así que dos `const` iguales rompen el proyecto entero y dos funciones iguales se
 pisan en silencio.
 
-Anexo 1: 388 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
+Anexo 1: 391 comprobaciones sobre las funciones puras: validadores de las columnas C a I,
 localización de pestañas con los 20 títulos reales, jerarquía de profundidad
 variable, detección de procesos de Nivel 0 por código embebido o denominación,
 regla de mayúsculas, catálogo oficial de facultades y formularios —incluida la
 numeración posicional F01–F20 de la relación corregida—, puntuación de las filas
-de proceso y preservación de las columnas del revisor.
+de proceso, el avance general por proceso (no por criterio) y preservación de
+las columnas del revisor.
 
 Anexo 3: 308 comprobaciones sobre los validadores de codificación, la partición
 de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la

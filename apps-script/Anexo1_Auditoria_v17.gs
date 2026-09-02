@@ -5,24 +5,23 @@
  *
  *  VERSIÓN 17
  *  ─────────────────────────────────────────────────────────────────────────────
- *   [C42] El avance que se registra en HISTORIAL_REVISIONES se calcula con las
- *         métricas de la corrida, no leyendo la celda U22 del resumen: esa fila
- *         solo es la del TOTAL mientras haya exactamente 20 facultades, y
- *         releer el libro recién escrito devolvía 0 en silencio ante cualquier
- *         problema. La auditoría en sí no cambia.
+ *   [C43] El historial de revisiones registra el avance general con el MISMO
+ *         criterio que la fila TOTAL de esta versión (promedio simple del
+ *         avanceGeneral por proceso), calculado en memoria y no releído de una
+ *         celda. El menú "Auditoría OGPL" ofrece también el Anexo 3, el Anexo 4
+ *         y "Actualizar resumen general"; como puede haber más de un archivo
+ *         con `onOpen` en el proyecto, todos arman el mismo menú.
  *
- *   El menú "Auditoría OGPL" ofrece también la revisión del Anexo 3.
- *
- *   Apps Script ejecuta UNA sola función `onOpen` por proyecto, y el archivo del
- *   Anexo 3 declara la suya. Por eso ambas construyen el MISMO menú y cada ítem
- *   se agrega solo si su función existe: gane la que gane, el menú es idéntico.
- *
- *  VERSIÓN 16
- *  ─────────────────────────────────────────────────────────────────────────────
- *   [C41] Se corrigen los formularios de las cuatro últimas facultades según la
- *         relación corregida de la OGPL: FII pasa a F17, FPSIC a F18, FIEE a F19
- *         y FISI a F20. La numeración queda posicional de F01 a F20 y coincide
- *         con los nombres de las pestañas del Anexo 1.
+ *   [C42] El avance general (columna S) deja de ponderar por criterios y pasa
+ *         a promediar por proceso: cada uno de los procesos de Nivel 0
+ *         evaluables (obligatorios, o el opcional que sí está presente) pesa
+ *         lo mismo, tenga 2 productos o 60. Un proceso SIN REGISTRAR vale 0 en
+ *         ese promedio, sin importar cuántos productos habría tenido. Antes,
+ *         una facultad con 9 de 15 procesos sin registrar podía salir con 81%
+ *         porque el bloque de productos (con muchos más criterios) diluía al
+ *         de procesos; ahora sale con 35%, porque nueve de sus quince casillas
+ *         valen 0. NO APLICA (PS.08, PE.03 cuando de verdad no existen) se
+ *         sigue excluyendo del promedio, igual que en la v15/v16.
  *
  *  Arrastra de la v15: NO APLICA reservado a la ausencia real, fila de
  *  totales en el resumen, tres estados excluyentes.
@@ -31,7 +30,7 @@
  *  embebido o denominación, columna E que admite NINGUNO, y la regla de
  *  MAYÚSCULAS en la denominación de los procesos.
  *
- *  Especificación: reglas/ANEXO-1_reglas-v16.md
+ *  Especificación: reglas/ANEXO-1_reglas-v17.md
  * ═══════════════════════════════════════════════════════════════════════════════
  */
 
@@ -808,8 +807,10 @@ function ejecutarAuditoriaAnexo1() {
 
   escribirEnDashboard_(resumen, detalle, procesos);
 
-  // [C42] Historial de revisiones. El porcentaje se calcula con las métricas de
-  // esta corrida, no releyendo una celda del resumen recién escrito.
+  // [C43] Historial de revisiones. El porcentaje se calcula con las métricas de
+  // esta corrida, no releyendo una celda del resumen recién escrito, y con el
+  // MISMO criterio que ya usa la fila TOTAL de la v17: promedio simple del
+  // avanceGeneral (por proceso) de cada facultad, no ponderado por criterios.
   const avanceA1 = avanceGeneralAnexo1_(metricas);
   if (typeof registrarRevision === "function") {
     try {
@@ -826,6 +827,32 @@ function ejecutarAuditoriaAnexo1() {
 
   notificar_("Auditoría del Anexo 1 completada. " + detalle.length + " productos y " +
              procesos.length + " procesos evaluados en " + CONFIG_A1.FACULTADES.length + " facultades.");
+}
+
+/**
+ * [C43] Avance general del Anexo 1 (0–100) de toda la corrida, para el
+ * historial de revisiones.
+ *
+ * Es el MISMO número y el MISMO criterio que la columna "AVANCE GENERAL DEL
+ * ANEXO 1" de la fila TOTAL desde la v17: el promedio simple de los
+ * `avanceGeneral` por facultad (cada uno ya es, a su vez, un promedio por
+ * proceso de Nivel 0, no por criterio — ver `avancePorProceso_`). Se calcula
+ * en memoria y no se lee de ninguna celda: la fila TOTAL solo está en la
+ * posición esperada mientras el catálogo tenga exactamente 20 facultades, y
+ * releer el libro recién escrito devolvía 0 en silencio ante cualquier
+ * problema de permiso o de nombre de hoja.
+ */
+function avanceGeneralAnexo1_(metricas) {
+  const lista = metricas || [];
+  if (!lista.length) return 0;
+  return Math.round(
+    lista.reduce(function (a, m) { return a + (m.avanceGeneral || 0); }, 0) / lista.length
+  );
+}
+
+/** Nombre anterior de la función, conservado por compatibilidad. */
+function calcularPorcentajeGeneralAnexo1_(metricas) {
+  return avanceGeneralAnexo1_(metricas);
 }
 
 /** Puntúa una fila de proceso sobre los 5 criterios de CRITERIOS_PROCESO. */
@@ -911,48 +938,21 @@ function filasNivel0_(sigla, encontrados, descendientes) {
 /**
  * [C40] Fila de totales del resumen ejecutivo.
  *
- * Los recuentos se suman. Los tres avances se recalculan **ponderados por
- * criterios evaluados**, con la misma fórmula que usa cada facultad: se suman
- * los criterios cumplidos de las 20 y se dividen entre todos los que había que
- * cumplir.
+ * El avance de PRODUCTOS y el de PROCESOS (columnas de avance individuales,
+ * no la general) se recalculan **ponderados por criterios evaluados**, con la
+ * misma fórmula que usa cada facultad: se suman los criterios cumplidos de las
+ * 20 y se dividen entre todos los que había que cumplir. Ahí sí conviene
+ * ponderar: promediar los 20 porcentajes daría el mismo peso a la FII, con 30
+ * productos, que a la FO, con 283, y una facultad pequeña y floja hundiría el
+ * total tanto como una grande.
  *
- * No es el promedio de los 20 porcentajes. Promediarlos daría el mismo peso a la
- * FII, con 30 productos, que a la FO, con 283: una facultad pequeña y floja
- * hundiría el total tanto como una grande. Ponderando, cada facultad pesa lo que
- * aportó al trabajo de revisión.
+ * [C42] El AVANCE GENERAL (columna S) es distinto: cada facultad ya lo trae
+ * normalizado a 0-100 como "cuánto de sus 15 o 16 procesos completó", así que
+ * aquí sí es el **promedio simple de los 20 valores**. Ponderarlo por
+ * productos o por procesos evaluados reintroduciría el sesgo que la v17
+ * corrige: una facultad grande y bien llenada volvería a tapar a una pequeña
+ * a la que le faltan procesos enteros.
  */
-/**
- * [C42] Avance general del Anexo 1 (0–100) de toda la corrida.
- *
- * Es el mismo número que la columna "AVANCE GENERAL DEL ANEXO 1" de la fila
- * TOTAL, pero calculado con las métricas en memoria. Leerlo de la celda `U22`
- * era frágil por tres motivos:
- *
- *  · La fila 22 solo es la del TOTAL mientras el catálogo tenga exactamente 20
- *    facultades; con una menos, o con una fila insertada a mano, U22 cae sobre
- *    otra facultad.
- *  · Obligaba a releer el libro recién escrito, de modo que cualquier problema
- *    de permiso o de nombre de hoja devolvía 0 en silencio, como si el avance
- *    fuera nulo.
- *  · Si algún día esa columna pasa a tener formato de porcentaje en vez de
- *    texto, `getValue()` devolvería 0,813 y quitarle el signo dejaría 0,813 en
- *    lugar de 81,3.
- */
-function avanceGeneralAnexo1_(metricas) {
-  const juntar = function (campo) {
-    return (metricas || []).reduce(function (a, m) { return a.concat(m[campo]); }, []);
-  };
-  return avanceCombinado_([
-    { cumplidos: juntar("cumplidosProd"), porFila: TOTAL_CRITERIOS },
-    { cumplidos: juntar("cumplidosProc"), porFila: TOTAL_CRITERIOS_PROCESO }
-  ]);
-}
-
-/** Nombre anterior de la función, conservado por compatibilidad. */
-function calcularPorcentajeGeneralAnexo1_(metricas) {
-  return avanceGeneralAnexo1_(metricas);
-}
-
 function filaDeTotales_(metricas) {
   const suma = function (campo) {
     return metricas.reduce(function (a, m) { return a + m[campo]; }, 0);
@@ -966,10 +966,18 @@ function filaDeTotales_(metricas) {
 
   const avProd = avanceSobreCriterios_(cumProd, TOTAL_CRITERIOS);
   const avProc = avanceSobreCriterios_(cumProc, TOTAL_CRITERIOS_PROCESO);
-  const avGen = avanceCombinado_([
-    { cumplidos: cumProd, porFila: TOTAL_CRITERIOS },
-    { cumplidos: cumProc, porFila: TOTAL_CRITERIOS_PROCESO }
-  ]);
+
+  // [C42] El avance general de cada facultad ya es un promedio por proceso,
+  // en la misma escala 0-100 para las 20: cuánto de su propio marco de 16
+  // procesos completó. El total es el promedio simple de esos 20 valores, NO
+  // ponderado por productos ni por procesos evaluados: ponderar por productos
+  // reintroduciría exactamente el sesgo que la v17 corrige (una facultad con
+  // muchos productos bien llenados tapando a las que les faltan procesos
+  // enteros), y ponderar por procesos evaluados sigue premiando a la facultad
+  // con más productos DENTRO de cada proceso, por la misma razón.
+  const avGen = metricas.length ? Math.round(
+    metricas.reduce(function (a, m) { return a + m.avanceGeneral; }, 0) / metricas.length
+  ) : 0;
 
   const nFac = metricas.length;
   const diagProd = suma("prodConformes") + " conformes, " + suma("prodObservados") +
@@ -1067,6 +1075,9 @@ function procesarFacultad_(hoja, fac) {
   const subprocesos = [];
   const n0Encontrados = {};
   let procN0Actual = "(sin proceso asignado)";
+  // [C42] Código del proceso Nivel 0 vigente, para poder agrupar sus productos
+  // en el promedio por proceso del avance general.
+  let procN0CodigoActual = null;
 
   for (let i = 0; i < datos.length; i++) {
     const filaReal = i + CONFIG_A1.FILA_INICIO;
@@ -1091,6 +1102,7 @@ function procesarFacultad_(hoja, fac) {
       // Si el proceso aparece varias veces, se conserva la primera aparición.
       if (!n0Encontrados[k]) n0Encontrados[k] = { fila: filaReal, cls: cls };
       procN0Actual = cls.nivel0.codigo + " " + cls.nivel0.nombre;
+      procN0CodigoActual = k;
       continue;
     }
 
@@ -1139,6 +1151,7 @@ function procesarFacultad_(hoja, fac) {
       estado: estado,
       correctos: correctos,
       sinRegistro: sinRegistro,
+      procCodigo: procN0CodigoActual,
       fila: [sigla, filaReal, procN0Actual, cls.codigo || "(sin código)", cls.denominacion,
              colC || "(vacío)", estado, Math.round((correctos / TOTAL_CRITERIOS) * 100) + "%",
              correctos + "/" + TOTAL_CRITERIOS,
@@ -1190,11 +1203,10 @@ function procesarFacultad_(hoja, fac) {
   const cumplidosProc = evaluables.map(function (f) { return parseInt(f[8], 10) || 0; });
   const avanceProc = avanceSobreCriterios_(cumplidosProc, TOTAL_CRITERIOS_PROCESO);
 
-  // [C34] Avance general del Anexo 1 para esta facultad.
-  const avanceGeneral = avanceCombinado_([
-    { cumplidos: cumplidosProd, porFila: TOTAL_CRITERIOS },
-    { cumplidos: cumplidosProc, porFila: TOTAL_CRITERIOS_PROCESO }
-  ]);
+  // [C42] Avance general del Anexo 1 para esta facultad: promedio por proceso,
+  // no por criterio. Ver avancePorProceso_.
+  const generalPorProceso = avancePorProceso_(n0Evaluables, subprocesos, productos);
+  const avanceGeneral = generalPorProceso.avance;
 
   let diagProc = "Nivel 0: " + n0Conformes + " conformes, " + n0Observados + " observados y " +
                  n0SinRegistrar + " sin registrar, de " + n0Evaluables.length +
@@ -1229,7 +1241,12 @@ function procesarFacultad_(hoja, fac) {
       totalProc: evaluables.length,
       n0Conformes: n0Conformes, n0Observados: n0Observados, n0SinRegistrar: n0SinRegistrar,
       subConformes: subConformes, subObservados: subObservados, subSinRegistrar: subSinRegistrar,
-      cumplidosProd: cumplidosProd, cumplidosProc: cumplidosProc
+      cumplidosProd: cumplidosProd, cumplidosProc: cumplidosProc,
+      // [C42] El avance general ya es, en sí mismo, un promedio por proceso
+      // normalizado a 0-100; la fila TOTAL promedia estos 20 valores en vez de
+      // volver a ponderar por criterio (eso reintroduciría el sesgo hacia las
+      // facultades con más productos que la v17 corrige a nivel de facultad).
+      avanceGeneral: avanceGeneral
     }
   };
 }
@@ -1264,6 +1281,68 @@ function avanceCombinado_(bloques) {
     tope += b.cumplidos.length * b.porFila;
   });
   return tope ? Math.round((suma / tope) * 100) : 0;
+}
+
+/**
+ * [C42] Avance general del Anexo 1: promedio por proceso, no por criterio.
+ *
+ * Cada proceso de Nivel 0 evaluable (obligatorio, o el opcional que sí está
+ * presente) es una casilla del promedio. Un proceso SIN REGISTRAR es una
+ * casilla en 0%, sin importar cuántos productos habría agrupado. Los
+ * subprocesos, catalogaciones y productos suman sus criterios dentro de la
+ * casilla del proceso de Nivel 0 del que cuelgan, así que un proceso grande
+ * (muchos productos) no pesa más que uno chico: cada uno vale 1/N del
+ * resultado, con N = procesos evaluables de la facultad.
+ *
+ * `n0Evaluables`: filas de filasNivel0_ ya sin los NO APLICA.
+ * `subprocesos`: filas de filaDeProceso_ (subprocesos y catalogaciones).
+ * `productos`: los objetos { correctos, procCodigo } acumulados al clasificar
+ * la hoja; `procCodigo` es el código normalizado del proceso de Nivel 0 bajo
+ * el que aparece el producto en la pestaña.
+ */
+function avancePorProceso_(n0Evaluables, subprocesos, productos) {
+  const buckets = {};
+  n0Evaluables.forEach(function (f) {
+    const codigo = normalizarCodigo_(f[1]);
+    const puntos = f[6] === "SIN REGISTRAR" ? 0 : (parseInt(f[8], 10) || 0);
+    buckets[codigo] = { puntos: puntos, tope: TOTAL_CRITERIOS_PROCESO };
+  });
+
+  const claves = Object.keys(buckets).sort(function (a, b) { return b.length - a.length; });
+  const bucketDe = function (codigo) {
+    const norm = normalizarCodigo_(codigo || "");
+    for (let i = 0; i < claves.length; i++) {
+      const k = claves[i];
+      if (norm === k || norm.indexOf(k + ".") === 0) return k;
+    }
+    return null;
+  };
+
+  subprocesos.forEach(function (f) {
+    const b = bucketDe(f[1]);
+    if (!b) return;
+    buckets[b].puntos += parseInt(f[8], 10) || 0;
+    buckets[b].tope += TOTAL_CRITERIOS_PROCESO;
+  });
+
+  productos.forEach(function (p) {
+    const b = (p.procCodigo && buckets[p.procCodigo]) ? p.procCodigo : bucketDe(p.procCodigo);
+    if (!b) return;
+    buckets[b].puntos += p.correctos;
+    buckets[b].tope += TOTAL_CRITERIOS;
+  });
+
+  const detalles = claves.map(function (k) {
+    const b = buckets[k];
+    return { codigo: k, puntos: b.puntos, tope: b.tope,
+             avance: b.tope ? Math.round((b.puntos / b.tope) * 100) : 0 };
+  });
+
+  const avance = detalles.length
+    ? Math.round(detalles.reduce(function (a, d) { return a + d.avance; }, 0) / detalles.length)
+    : 0;
+
+  return { avance: avance, buckets: detalles };
 }
 
 function estadoGeneral_(avance) {
@@ -1479,13 +1558,18 @@ function escribirLeyenda_(hoja, numFilas) {
       ["EN DESARROLLO", "Avance igual o mayor al 40 %."],
       ["CRÍTICO", "Avance menor al 40 %."]
     ]],
-    ["CÓMO SE CALCULAN LOS TRES AVANCES", "Ninguno cuenta filas conformes: todos miden criterios cumplidos.", [
+    ["CÓMO SE CALCULAN LOS TRES AVANCES", "Los dos primeros miden criterios cumplidos; el general mide procesos completos.", [
       ["Avance (productos)",
        "Suma de criterios cumplidos por los productos ÷ (nº de productos × 8). Los 8 criterios son las columnas B a I."],
       ["Avance (procesos)",
        "Suma de criterios cumplidos por los procesos ÷ (nº de procesos × 5). Entran los de Nivel 0, los subprocesos y las catalogaciones; quedan fuera los NO APLICA."],
-      ["Avance general del Anexo 1",
-       "(criterios cumplidos de productos + de procesos) ÷ (nº productos × 8 + nº procesos × 5). No es el promedio de los dos avances: pondera cada bloque por lo que había que revisar en él."]
+      ["Avance general del Anexo 1 — [C42] cambia en la v17",
+       "Promedio por PROCESO, no por criterio. Cada uno de los procesos de Nivel 0 evaluables " +
+       "(obligatorios, o el opcional que sí está presente) vale lo mismo en el promedio, tenga 2 " +
+       "productos o 60; sus subprocesos y productos suman sus criterios dentro de esa misma " +
+       "casilla. Un proceso SIN REGISTRAR es una casilla en 0 %, sin importar cuántos productos " +
+       "habría agrupado. Así una facultad a la que le faltan 9 de 16 procesos no puede salir con " +
+       "un avance alto solo porque los pocos productos que sí registró estén bien llenados."]
     ]],
     ["CÓDIGO DE LA HOJA", "Sufijo _F## que deben llevar todos los códigos de la pestaña.", [
       ["F##", "Coincide con el formulario oficial de la facultad."],
