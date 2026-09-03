@@ -36,7 +36,8 @@ module.exports = {
   severidadDeMaestro_, severidadDeCotejo_, estadoDeFacultad_, ESCALA_SEVERIDAD,
   emparejarCodigosYDenominaciones_, limpiarDenominacion_, revisarFilasDeDescripcion_,
   claveDenominacion_, leerCatalogoAnexo1_, expandirCombinadas_,
-  porcentajeANumero_, calcularPorcentajeGeneralAnexo3_
+  porcentajeANumero_, calcularPorcentajeGeneralAnexo3_,
+  estadoTextoA3_, ubicacionCeldaA3_
 };
 module.exports.SpreadsheetApp = SpreadsheetApp;
 `;
@@ -940,6 +941,30 @@ bloque("Porcentaje general del Anexo 3 para el historial", function () {
     M.porcentajeANumero_(0.85) === 85);
   chequear("mientras que el replace de la versión anterior devolvía 0.85",
     Number((0.85).toString().replace("%", "")) === 0.85);
+});
+
+bloque("Vocabulario de la columna ESTADO", function () {
+  chequear("correcto es CONFORME", M.estadoTextoA3_("correcto") === "CONFORME");
+  chequear("incompleto es SIN REGISTRAR", M.estadoTextoA3_("incompleto") === "SIN REGISTRAR");
+  chequear("observacion es OBSERVADO", M.estadoTextoA3_("observacion") === "OBSERVADO");
+  chequear("critico es CRÍTICO", M.estadoTextoA3_("critico") === "CRÍTICO");
+  chequear("opcional (la firma) no es un defecto: se informa como CONFORME",
+    M.estadoTextoA3_("opcional") === "CONFORME");
+  chequear("una severidad desconocida no revienta, cae a OBSERVADO",
+    M.estadoTextoA3_("algo-raro") === "OBSERVADO");
+});
+
+bloque("Ubicación mostrada en la columna CELDA", function () {
+  chequear("con celda exacta, se muestra la celda",
+    M.ubicacionCeldaA3_({ celda: "B4", fila: 4 }) === "B4");
+  chequear("sin celda pero con fila, se muestra la fila",
+    M.ubicacionCeldaA3_({ celda: "", fila: 12 }) === "Fila 12");
+  chequear("sin celda pero con un rango, se muestra el rango",
+    M.ubicacionCeldaA3_({ celda: "", fila: "10–11" }) === "Fila 10–11");
+  chequear("sin celda y sin fila, queda vacío",
+    M.ubicacionCeldaA3_({ celda: "", fila: "" }) === "");
+  chequear("la celda exacta manda sobre la fila cuando hay ambas",
+    M.ubicacionCeldaA3_({ celda: "H10", fila: 10 }) === "H10");
 });
 
 /* ────────────────────────────────────────────────────────────────────────── */

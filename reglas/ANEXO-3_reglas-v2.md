@@ -250,7 +250,7 @@ toca ninguna hoja ajena. Todas abren con `FACULTAD` (sigla) y `NOMBRE`, y las
 filas vienen en el orden F01 → F20.
 
 El cotejo contra el Anexo 1 (reglas 5 y 7) ya no tiene hoja propia: sus
-hallazgos se vuelcan al `DETALLE_REVISION`, en la sección `Anexo 1` de la ficha
+hallazgos se vuelcan al `DETALLE_REVISION_A3`, en la sección `Anexo 1` de la ficha
 donde aparece cada código.
 
 En `RESUMEN_20_FACULTADES`, `SIN PRODUCTO` cuenta **fichas** con algún proceso
@@ -262,33 +262,37 @@ los porcentajes.
 
 | Hoja | Contenido |
 |---|---|
-| `DETALLE_REVISION` | Una fila por campo revisado: sección, campo, **N° de fila y celda de la hoja original**, código, ¿cumple estructura?, ¿campo completo?, observación |
-| `RESUMEN_20_FACULTADES` | Una fila por facultad en orden F01 → F20: código, sigla, facultad, fichas, fichas esperadas, completas, incompletas, críticas, sin producto, observaciones, % avance, estado y notas |
-| `RESUMEN_FICHAS` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
-| `REGISTRO_MAESTRO_CODIGOS` | Proveedores, entradas y beneficiarios: código, denominación, fichas donde aparece, consistencia |
+| `DETALLE_REVISION_A3` | Una fila por campo revisado: facultad, ficha, sección, campo, **celda**, información, **estado**, observación |
+| `RESUMEN_EJECUTIVO_A3` | Una fila por facultad en orden F01 → F20: sigla, facultad, fichas, fichas esperadas, completas, incompletas, sin producto, otros críticos, críticos (total), observaciones, estado, notas y % avance |
+| `RESUMEN_FICHAS_A3` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
+| `REGISTRO_MAESTRO_CODIGOS_A3` | Proveedores, entradas y beneficiarios: facultad, tipo, código, denominación, fichas donde aparece, **estado**, observación |
 
-**6.1 Ubicación de cada hallazgo.** El detalle indica dónde está el dato en la
-pestaña revisada: `N° DE FILA` con la fila tal como se ve en la hoja (base 1) y
-`CELDA` en notación A1 apuntando al **valor**, no a la etiqueta. Cuando el
-hallazgo no cuelga de una celda concreta —una columna entera sin registros, una
-sección que no aparece— se informa el **rango de filas** (`10–11`). La misma
-ubicación se repite entre paréntesis en la lista de campos faltantes del resumen
-ejecutivo, y en la columna `FILA / CELDA` de la hoja de observaciones.
+**6.1 Ubicación de cada hallazgo.** `DETALLE_REVISION_A3` indica dónde está el
+dato con una sola columna, `CELDA`, en notación A1 apuntando al **valor**, no a
+la etiqueta (`B4`). Cuando el hallazgo no cuelga de una celda concreta —una
+columna entera sin registros, una sección que no aparece— se muestra en esa
+misma columna el rango de filas que traía el hallazgo, como `Fila 10–11`, para
+no perder la ubicación por quedarse con una sola columna.
 
-**6.2 Clasificación de los hallazgos (v2).** Cada fila se pinta según su
-clasificación, y la misma clasificación se escribe en texto, para que la hoja se
-lea igual impresa en blanco y negro o por quien no distinga los colores.
+**6.2 Clasificación de los hallazgos (v3).** `DETALLE_REVISION_A3` y
+`REGISTRO_MAESTRO_CODIGOS_A3` traen su propia columna `ESTADO`, con cuatro
+valores posibles, y cada fila se pinta además con el color de su estado, para
+que la hoja se lea igual impresa en blanco y negro o por quien no distinga los
+colores.
 
-| Color | Clasificación | Cuándo |
+| Color | Estado | Cuándo |
 |---|---|---|
-| Verde | `Correcto` | Campo completo y codificación correcta |
-| Ámbar | `Incompleto` | Campo obligatorio vacío, o dato por verificar contra el Anexo 1 |
-| Naranja | `Observación` | Hay algo escrito pero mal: codificación fuera de estructura, denominación inconsistente, salida duplicada, salida ausente del Anexo 1 |
-| Rojo | `Crítico` | Compromete la ficha: sin producto final, código con el formulario de otra facultad, código de ficha duplicado, sección ausente |
-| Gris | `Opcional` | La firma de Formalización |
+| Verde | `CONFORME` | Campo completo y codificación correcta (incluida la firma de Formalización, que es opcional) |
+| Ámbar | `SIN REGISTRAR` | Campo obligatorio vacío, o dato por verificar contra el Anexo 1 |
+| Naranja | `OBSERVADO` | Hay algo escrito pero mal: codificación fuera de estructura, denominación inconsistente, salida duplicada, salida ausente del Anexo 1 |
+| Rojo | `CRÍTICO` | Compromete la ficha: sin producto final, código con el formulario de otra facultad, código de ficha duplicado, sección ausente |
 
 Cuando una fila reúne más de una condición manda la más grave. La ficha hereda
-la peor clasificación de sus filas, ignorando lo opcional.
+el peor estado de sus filas, ignorando la firma (opcional).
+
+Estas dos hojas ya no llevan la columna `CLASIFICACIÓN (color)` que otras hojas
+del reporte sí tienen: `ESTADO` hace ese papel, y agregar la otra columna habría
+repetido la misma clasificación dos veces.
 
 **6.3 Criterios revisados.** Completitud de la ficha · consistencia de códigos y
 denominaciones · códigos duplicados · códigos pertenecientes a otra facultad ·

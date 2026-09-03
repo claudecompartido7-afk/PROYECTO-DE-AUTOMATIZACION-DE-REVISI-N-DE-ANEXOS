@@ -78,13 +78,15 @@ numeración posicional F01–F20 de la relación corregida—, puntuación de la
 de proceso, el avance general por proceso (no por criterio) y preservación de
 las columnas del revisor.
 
-Anexo 3: 308 comprobaciones sobre los validadores de codificación, la partición
-de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, la
-el registro maestro de códigos, el cotejo con el Anexo 1
-la detección automática de las pestañas `F##_SIGLA`, el producto final
-obligatorio, el emparejado de código y denominación por líneas, la coherencia fila por
-fila de la descripción, los códigos duplicados, la clasificación en cuatro niveles, el
-semáforo de avance por facultad y la ubicación (fila y celda) de cada campo.
+Anexo 3: 292 comprobaciones sobre los validadores de codificación, la partición
+de la pestaña en fichas técnicas, la excepción de las facultades de nivel 2, el
+registro maestro de códigos, el cotejo con el Anexo 1, la detección automática de
+las pestañas `F##_SIGLA`, el producto final obligatorio, el emparejado de código
+y denominación por líneas, la coherencia fila por fila de la descripción, los
+códigos duplicados, el vocabulario de la columna `ESTADO` (`CONFORME` /
+`OBSERVADO` / `SIN REGISTRAR` / `CRÍTICO`), el semáforo de avance por facultad y
+la celda mostrada por cada hallazgo (con el rango de filas cuando no hay una
+celda exacta).
 
 ## Cómo se ejecuta
 

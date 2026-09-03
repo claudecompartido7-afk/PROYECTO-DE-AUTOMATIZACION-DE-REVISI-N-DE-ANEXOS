@@ -1550,6 +1550,36 @@ function severidadDeMaestro_(m) {
 }
 
 /**
+ * Vocabulario de la columna ESTADO: CONFORME, OBSERVADO, SIN REGISTRAR o
+ * CRÍTICO. 'opcional' (la firma de Formalización) no es un defecto, así que
+ * se informa como CONFORME; la observación de esa fila ya aclara que el campo
+ * es opcional.
+ */
+const TEXTO_ESTADO_A3 = {
+  correcto: 'CONFORME', opcional: 'CONFORME',
+  incompleto: 'SIN REGISTRAR',
+  observacion: 'OBSERVADO',
+  critico: 'CRÍTICO'
+};
+
+function estadoTextoA3_(severidad) {
+  return TEXTO_ESTADO_A3[severidad] || 'OBSERVADO';
+}
+
+/**
+ * Ubicación que se muestra en la columna CELDA del detalle: la celda exacta
+ * cuando la hay (`B4`); si el hallazgo no cuelga de una celda concreta —una
+ * columna entera, una sección ausente— se muestra el rango de filas que ya
+ * traía el hallazgo, para no perder la ubicación al quedarse con una sola
+ * columna.
+ */
+function ubicacionCeldaA3_(d) {
+  if (d.celda) return d.celda;
+  if (d.fila === '' || d.fila === undefined || d.fila === null) return '';
+  return 'Fila ' + d.fila;
+}
+
+/**
  * Severidad de una fila del cotejo con el Anexo 1. Lo que no se pudo verificar
  * no puede pesar como incumplimiento: se deja en incompleto, no en crítico.
  */
@@ -1586,7 +1616,19 @@ function estadoDeFacultad_(avance, criticos) {
  * (`ok`, `incompleto`, `error`, `neutro`). Cuando se pasa, se añade la columna
  * ESTADO al final y cada fila se pinta con el color que le corresponde.
  */
-function escribirHoja_(ss, nombre, encabezados, filas, estados) {
+/**
+ * Escribe una hoja del reporte.
+ *
+ * `estados` es opcional: un arreglo paralelo a `filas` con la severidad de
+ * cada una, para pintar los tramos del semáforo. Por defecto, cuando se pasa
+ * `estados`, se agrega además una columna de texto `CLASIFICACIÓN (color)` al
+ * final. `agregarColumnaTexto = false` sigue pintando las filas con el mismo
+ * semáforo, pero SIN esa columna añadida — para las hojas que ya traen su
+ * propia columna ESTADO como un dato más de la fila, y no quieren la
+ * clasificación repetida dos veces.
+ */
+function escribirHoja_(ss, nombre, encabezados, filas, estados, agregarColumnaTexto) {
+  agregarColumnaTexto = agregarColumnaTexto === undefined ? true : agregarColumnaTexto;
   let hoja = ss.getSheetByName(nombre);
   if (!hoja) hoja = ss.insertSheet(nombre);
   hoja.clear();
@@ -1595,9 +1637,10 @@ function escribirHoja_(ss, nombre, encabezados, filas, estados) {
   if (filtroExistente) filtroExistente.remove();
 
   const conEstado = !!estados;
-  const cabecera = conEstado ? encabezados.concat(['CLASIFICACIÓN (color)']) : encabezados.slice();
+  const agregaColumna = conEstado && agregarColumnaTexto;
+  const cabecera = agregaColumna ? encabezados.concat(['CLASIFICACIÓN (color)']) : encabezados.slice();
   const cuerpo = filas.map(function (fila, i) {
-    if (!conEstado) return fila;
+    if (!agregaColumna) return fila;
     const clave = estados[i] || 'correcto';
     return fila.concat([(CONFIG_A3.COLORES[clave] || CONFIG_A3.COLORES.correcto).rotulo]);
   });
@@ -1622,11 +1665,13 @@ function escribirHoja_(ss, nombre, encabezados, filas, estados) {
           .setBackground(color.fondo).setFontColor(color.texto);
       inicio = i;
     }
-    hoja.getRange(2, ancho, cuerpo.length, 1).setFontWeight('bold').setHorizontalAlignment('center');
+    if (agregaColumna) {
+      hoja.getRange(2, ancho, cuerpo.length, 1).setFontWeight('bold').setHorizontalAlignment('center');
+    }
   }
 
   for (let c = 1; c <= ancho; c++) {
-    hoja.setColumnWidth(c, c <= 2 ? 140 : (conEstado && c === ancho ? 110 : 260));
+    hoja.setColumnWidth(c, c <= 2 ? 140 : (agregaColumna && c === ancho ? 110 : 260));
   }
   if (cuerpo.length) hoja.getRange(1, 1, cuerpo.length + 1, ancho).createFilter();
   return hoja;
@@ -1803,19 +1848,17 @@ function escribirResultado_(ss, facultades) {
   facultades.forEach(function (fac) {
     fac.fichas.forEach(function (f) {
       f.detalle.forEach(function (d) {
-        detalle.push([fac.sigla, fac.nombre, f.numero + '. ' + f.nombre,
-                      d.seccion, d.campo, d.fila, d.celda, d.codigo, d.completo,
-                      (CONFIG_A3.COLORES[d.severidad] || CONFIG_A3.COLORES.correcto).rotulo,
+        detalle.push([fac.sigla, f.numero + '. ' + f.nombre, d.seccion, d.campo,
+                      ubicacionCeldaA3_(d), d.codigo, estadoTextoA3_(d.severidad),
                       d.observacion]);
         sevDetalle.push(d.severidad);
       });
     });
   });
   escribirHoja_(ss, H.DETALLE,
-    ['FACULTAD', 'NOMBRE', 'N° FICHA / PROCESO', 'SECCIÓN',
-     'CAMPO REVISADO', 'N° DE FILA', 'CELDA', 'CÓDIGO ENCONTRADO',
-     '¿CAMPO COMPLETO?', 'CLASIFICACIÓN', 'OBSERVACIÓN ESPECÍFICA'],
-    detalle, sevDetalle);
+    ['FACULTAD', 'N° FICHA / PROCESO', 'SECCIÓN', 'CAMPO REVISADO', 'CELDA',
+     'INFORMACIÓN', 'ESTADO', 'OBSERVACIÓN ESPECÍFICA'],
+    detalle, sevDetalle, false);
 
   /* Hoja 2 — Resumen ejecutivo por ficha técnica */
   const resumen = [];
@@ -1910,15 +1953,16 @@ function escribirResultado_(ss, facultades) {
   const sevMaestro = [];
   facultades.forEach(function (fac) {
     fac.maestro.forEach(function (m) {
-      maestro.push([fac.sigla, fac.nombre, m.tipo, m.codigo, m.denominacion,
-                    m.fichas, m.consistente, m.observacion]);
-      sevMaestro.push(severidadDeMaestro_(m));
+      const severidad = severidadDeMaestro_(m);
+      maestro.push([fac.sigla, m.tipo, m.codigo, m.denominacion,
+                    m.fichas, estadoTextoA3_(severidad), m.observacion]);
+      sevMaestro.push(severidad);
     });
   });
   escribirHoja_(ss, H.MAESTRO,
-    ['FACULTAD', 'NOMBRE', 'TIPO', 'CÓDIGO', 'DENOMINACIÓN',
-     'FICHAS EN QUE APARECE', '¿DENOMINACIÓN CONSISTENTE?', 'OBSERVACIÓN'],
-    maestro, sevMaestro);
+    ['FACULTAD', 'TIPO', 'CÓDIGO', 'DENOMINACIÓN', 'FICHAS EN QUE APARECE',
+     'ESTADO', 'OBSERVACIÓN'],
+    maestro, sevMaestro, false);
 
   // El avance general de los dos anexos (RESUMEN_GENERAL) ya no se genera
   // aquí: pasó a su propio script (ResumenGeneral.gs), disparado por su propio
