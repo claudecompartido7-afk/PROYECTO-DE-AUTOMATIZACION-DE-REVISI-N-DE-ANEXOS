@@ -264,7 +264,7 @@ los porcentajes.
 |---|---|
 | `DETALLE_REVISION_A3` | Una fila por campo revisado: facultad, ficha, sección, campo, **celda**, información, **estado**, observación |
 | `RESUMEN_EJECUTIVO_A3` | Una fila por facultad en orden F01 → F20: sigla, facultad, fichas, fichas esperadas, completas, incompletas, sin producto, otros críticos, críticos (total), observaciones, estado, notas y % avance |
-| `RESUMEN_FICHAS_A3` | Una fila por ficha: ¿completa?, % de avance, campos faltantes, errores de codificación, correcciones sugeridas |
+| `RESUMEN_FICHAS_A3` | Una fila por ficha: código, % avance, productos finales, campos/celdas faltantes, errores de codificación, **estado**, observaciones y correcciones |
 | `REGISTRO_MAESTRO_CODIGOS_A3` | Proveedores, entradas y beneficiarios: facultad, tipo, código, denominación, fichas donde aparece, **estado**, observación |
 
 **6.1 Ubicación de cada hallazgo.** `DETALLE_REVISION_A3` indica dónde está el

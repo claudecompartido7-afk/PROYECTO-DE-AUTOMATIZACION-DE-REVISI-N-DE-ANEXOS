@@ -1876,21 +1876,18 @@ function escribirResultado_(ss, facultades) {
                          'tratarse de una facultad que trabaja procesos y productos de nivel 2.');
       }
       if (!sugerencias.length) sugerencias.push('Sin observaciones.');
-      resumen.push([fac.sigla, fac.nombre, f.numero + '. ' + f.nombre, f.codigo,
-                    f.completa ? 'Sí' : 'No', f.avance / 100, f.salidas.length,
-                    f.faltantes.join('\n') || '—', f.erroresCodificacion, f.criticos,
-                    (CONFIG_A3.COLORES[f.severidad] || CONFIG_A3.COLORES.correcto).rotulo,
-                    sugerencias.join(' ')]);
+      resumen.push([fac.sigla, f.numero + '. ' + f.nombre, f.codigo, f.avance / 100,
+                    f.salidas.length, f.faltantes.join('\n') || '—', f.erroresCodificacion,
+                    estadoTextoA3_(f.severidad), sugerencias.join(' ')]);
       sevResumen.push(f.severidad);
     });
   });
   const hojaResumen = escribirHoja_(ss, H.RESUMEN,
-    ['FACULTAD', 'NOMBRE', 'N° FICHA / PROCESO', 'CÓDIGO', '¿COMPLETA?',
-     '% DE AVANCE', 'PRODUCTOS FINALES', 'CAMPOS/CELDAS FALTANTES',
-     'ERRORES DE CODIFICACIÓN', 'HALLAZGOS CRÍTICOS', 'CLASIFICACIÓN',
+    ['FACULTAD', 'N° FICHA / PROCESO', 'CÓDIGO', '% AVANCE', 'PRODUCTOS FINALES',
+     'CAMPOS/CELDAS FALTANTES', 'ERRORES DE CODIFICACIÓN', 'ESTADO',
      'OBSERVACIONES Y CORRECCIONES'],
-    resumen, sevResumen);
-  if (resumen.length) hojaResumen.getRange(2, 6, resumen.length, 1).setNumberFormat('0.0%');
+    resumen, sevResumen, false);
+  if (resumen.length) hojaResumen.getRange(2, 4, resumen.length, 1).setNumberFormat('0.0%');
 
   /* Hoja 3 — Resumen de las 20 facultades */
   const filas20 = facultades.map(function (fac) {
